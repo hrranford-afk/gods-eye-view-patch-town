@@ -1,0 +1,790 @@
+{
+"schema_version": 1,
+"title": "The Gift: event deck v0",
+"note": "All text is our own words, except bottle messages marked as the town's list, which are quoted unedited from gift_day.js. Numbers are guesses. See EVENTS.md.",
+"registries": {
+ "kinds": [
+  "storm",
+  "find",
+  "stranger",
+  "neighbour",
+  "season",
+  "wildlife",
+  "robot",
+  "boat",
+  "letter",
+  "bottle",
+  "weather",
+  "clue",
+  "delivery",
+  "guest",
+  "uncle",
+  "build"
+ ],
+ "locations": {
+  "any": "anywhere",
+  "home_beach": "home island strand and landing",
+  "home_yard": "home island yard, hut rise and camp",
+  "hut": "the hut",
+  "lamp": "the lamp knoll (home headland)",
+  "jetty": "the jetty and its store",
+  "skerry_west": "west skerry and the cairn line",
+  "skerry_east": "east outer skerry (boat)",
+  "hoard": "the Hoard depot island",
+  "woods": "the woods island",
+  "reef": "the wreck reef",
+  "seals": "the seal island",
+  "rock": "the bare rock with the lone tree",
+  "sea": "open water on the table"
+ },
+ "weather": [
+  "storm",
+  "fog",
+  "rain",
+  "showers",
+  "overcast",
+  "fair",
+  "clear",
+  "goldenhour"
+ ],
+ "tide": {
+  "any": "any state",
+  "low": "a low water",
+  "high": "a high water",
+  "spring_low": "lowest water at or under -0.74 m (Hoard bar dry)",
+  "spring_high": "highest water at or over +0.9 m"
+ },
+ "time": [
+  "any",
+  "dawn",
+  "day",
+  "dusk",
+  "night"
+ ],
+ "seasons": [
+  "spring",
+  "summer",
+  "autumn",
+  "winter"
+ ],
+ "stock": [
+  "planks",
+  "rope",
+  "glass",
+  "metal"
+ ],
+ "avenues": [
+  "holiday",
+  "sanctuary",
+  "homestead",
+  "workshop"
+ ],
+ "attitudes": [
+  "trust",
+  "distrust",
+  "investigate",
+  "share"
+ ],
+ "moods": [
+  "good",
+  "mid",
+  "bad-mild"
+ ],
+ "voices": [
+  "narration",
+  "helper",
+  "solicitor",
+  "bottle"
+ ],
+ "counts": [
+  "seals",
+  "birds",
+  "guests"
+ ],
+ "acts": {
+  "0": [
+   0,
+   0
+  ],
+  "1": [
+   1,
+   360
+  ],
+  "2": [
+   361,
+   720
+  ],
+  "3": [
+   721,
+   1080
+  ],
+  "4": [
+   1081,
+   1440
+  ]
+ },
+ "credit_levels": {
+  "4": [
+   1,
+   360
+  ],
+  "3": [
+   361,
+   720
+  ],
+  "2": [
+   721,
+   1080
+  ],
+  "1": [
+   1081,
+   1260
+  ],
+  "0": [
+   1261,
+   1440
+  ]
+ },
+ "season_calendar": "360-day year, 12 months of 30 days, game day 1 = 1 May. spring: days 1-30 and 301-360; summer 31-120; autumn 121-210; winter 211-300.",
+ "flags": {
+  "robot_started": {
+   "set_by": "game",
+   "note": "A collector robot has been started (a part fitted by the player)."
+  },
+  "has_boat": {
+   "set_by": "game",
+   "note": "The rowing tender is at the jetty (it arrives with the first order)."
+  },
+  "boat_motor": {
+   "set_by": "deck",
+   "note": "A motor is fitted to the tender."
+  },
+  "skiff": {
+   "set_by": "deck",
+   "note": "The pole-drive skiff is built."
+  },
+  "hut_patched": {
+   "set_by": "game",
+   "note": "The hut roof is patched; the shutters open."
+  },
+  "barrel_up": {
+   "set_by": "game",
+   "note": "A rain barrel stands under the hut roof."
+  },
+  "has_key": {
+   "set_by": "deck",
+   "note": "The brass key is in the player's hand (letter one)."
+  },
+  "built_jetty": {
+   "set_by": "game",
+   "note": "The jetty repair is finished."
+  },
+  "built_cottage": {
+   "set_by": "game",
+   "note": "The cottage is built."
+  },
+  "built_cistern": {
+   "set_by": "game",
+   "note": "The rain cistern is built."
+  },
+  "built_hide": {
+   "set_by": "game",
+   "note": "The wildlife hide is built."
+  },
+  "built_kiosk": {
+   "set_by": "game",
+   "note": "The kiosk is built."
+  },
+  "garden_started": {
+   "set_by": "game",
+   "note": "A garden bed has been sown."
+  },
+  "harvest_failed": {
+   "set_by": "deck",
+   "note": "The first harvest failed."
+  },
+  "storm_seen": {
+   "set_by": "deck",
+   "note": "The first big storm has passed."
+  },
+  "cairns_seen": {
+   "set_by": "deck",
+   "note": "The cairn line on the west skerry has been noticed."
+  },
+  "hoard_found": {
+   "set_by": "deck",
+   "note": "The Hoard depot has been reached."
+  },
+  "hoard_locker": {
+   "set_by": "deck",
+   "note": "The Hoard locker has been opened with the key."
+  },
+  "woods_visited": {
+   "set_by": "deck",
+   "note": "The woods island has been landed on."
+  },
+  "spring_found": {
+   "set_by": "deck",
+   "note": "The woods spring is found."
+  },
+  "seals_seen": {
+   "set_by": "deck",
+   "note": "The seal ledges have been seen."
+  },
+  "ribs_seen": {
+   "set_by": "deck",
+   "note": "The ribs on the wreck reef have been seen."
+  },
+  "lone_tree_seen": {
+   "set_by": "deck",
+   "note": "The lone tree on the bare rock has been visited."
+  },
+  "tender_seen": {
+   "set_by": "deck",
+   "note": "The player has watched the tender tie up by itself."
+  },
+  "robot_stuck": {
+   "set_by": "deck",
+   "note": "A robot is stuck and awaiting rescue."
+  },
+  "lamp_dark": {
+   "set_by": "deck",
+   "note": "The stump lamp is dark (also cleared by the game when oil or a wick arrives)."
+  },
+  "guest_first": {
+   "set_by": "deck",
+   "note": "A first guest has been counted."
+  },
+  "stranger_helped": {
+   "set_by": "deck",
+   "note": "A stranger after a storm was given a meal and a bed."
+  },
+  "neighbour_seen": {
+   "set_by": "deck",
+   "note": "Another parcel has appeared on the chart."
+  },
+  "gave_neighbour": {
+   "set_by": "deck",
+   "note": "The player has given stock to a neighbour."
+  },
+  "shared_haul": {
+   "set_by": "deck",
+   "note": "Part of the Great Wash was shared."
+  },
+  "item_vanished": {
+   "set_by": "deck",
+   "note": "The first catalogue item has vanished."
+  },
+  "glass_vanished": {
+   "set_by": "deck",
+   "note": "The glass card has vanished from the catalogue."
+  },
+  "engine_vanished": {
+   "set_by": "deck",
+   "note": "The engine card has vanished."
+  },
+  "boats_fewer": {
+   "set_by": "deck",
+   "note": "The player has seen the tender come less often."
+  },
+  "basics_only": {
+   "set_by": "deck",
+   "note": "Only basic goods are in the catalogue."
+  },
+  "last_parcel": {
+   "set_by": "deck",
+   "note": "The last large parcel has come."
+  },
+  "tender_last_seen": {
+   "set_by": "deck",
+   "note": "The empty last visit of the tender was seen."
+  },
+  "parcel_early": {
+   "set_by": "deck",
+   "note": "A parcel arrived before it was ordered (once)."
+  },
+  "wash_signs": {
+   "set_by": "deck",
+   "note": "The Great Wash signs have been seen."
+  },
+  "great_wash_done": {
+   "set_by": "deck",
+   "note": "The Great Wash has happened."
+  },
+  "hulk_there": {
+   "set_by": "deck",
+   "note": "The hulk lies on the strand."
+  },
+  "hulk_radio": {
+   "set_by": "deck",
+   "note": "The radio in the hulk has been wound."
+  },
+  "workshop_open": {
+   "set_by": "deck",
+   "note": "The workshop is open."
+  },
+  "wash_sorted": {
+   "set_by": "game",
+   "note": "The player has carried most of the Wash heaps in."
+  },
+  "second_island_seen": {
+   "set_by": "deck",
+   "note": "A second island is for sale on the chart."
+  },
+  "second_island": {
+   "set_by": "deck",
+   "note": "A second island has been bought with cash."
+  },
+  "log_stopped": {
+   "set_by": "deck",
+   "note": "The harbour log has been found unfilled."
+  },
+  "posted_query": {
+   "set_by": "deck",
+   "note": "The player posted the solicitor's letter back with a note."
+  },
+  "uncle_coat": {
+   "set_by": "deck",
+   "note": "The coat on the hook has been found."
+  },
+  "uncle_chair": {
+   "set_by": "deck",
+   "note": "The chair that faces the lamp has been found."
+  },
+  "uncle_shelf": {
+   "set_by": "deck",
+   "note": "The shelf of unread envelopes has been found."
+  },
+  "uncle_drawer": {
+   "set_by": "deck",
+   "note": "The drawer opened with the brass key."
+  },
+  "uncle_stamp_match": {
+   "set_by": "deck",
+   "note": "The signature and the stamp were compared."
+  },
+  "uncle_no_record": {
+   "set_by": "deck",
+   "note": "The office replied: no such man in any record."
+  },
+  "uncle_no_record_visit": {
+   "set_by": "deck",
+   "note": "A visitor from the loom town said no one knew him."
+  },
+  "uncle_file_closed": {
+   "set_by": "deck",
+   "note": "The office has closed the player's file."
+  },
+  "wore_coat": {
+   "set_by": "deck",
+   "note": "The player has worn the coat."
+  },
+  "envelope_1": {
+   "set_by": "deck",
+   "note": "First unread envelope opened."
+  },
+  "envelope_2": {
+   "set_by": "deck",
+   "note": "Second unread envelope opened."
+  },
+  "envelope_3": {
+   "set_by": "deck",
+   "note": "Third unread envelope opened."
+  },
+  "tool_saw": {
+   "set_by": "deck",
+   "note": "The oiled saw was found."
+  },
+  "stamp_papers": {
+   "set_by": "deck",
+   "note": "The stamp is on the uncle's papers."
+  },
+  "stamp_crate": {
+   "set_by": "deck",
+   "note": "The stamp is on a Hoard crate."
+  },
+  "stamp_ribs": {
+   "set_by": "deck",
+   "note": "The stamp is on the reef ribs plate."
+  },
+  "stamp_float": {
+   "set_by": "deck",
+   "note": "The stamp is inside a glass float."
+  },
+  "stamp_neighbour": {
+   "set_by": "deck",
+   "note": "The stamp is on a neighbour's crate."
+  },
+  "stamp_noted": {
+   "set_by": "deck",
+   "note": "The player has noted three stamps."
+  },
+  "stamps_seen_3": {
+   "set_by": "derived",
+   "note": "Derived: at least three different stamp_* flags are set."
+  },
+  "att_trust": {
+   "set_by": "derived",
+   "note": "Derived: trust points at least 3."
+  },
+  "att_distrust": {
+   "set_by": "derived",
+   "note": "Derived: distrust points at least 3."
+  },
+  "att_investigate": {
+   "set_by": "derived",
+   "note": "Derived: investigate points at least 3."
+  },
+  "att_share": {
+   "set_by": "derived",
+   "note": "Derived: share points at least 3."
+  },
+  "year1_report": {
+   "set_by": "deck",
+   "note": "Year one report seen."
+  },
+  "year2_report": {
+   "set_by": "deck",
+   "note": "Year two report seen."
+  },
+  "year4_report": {
+   "set_by": "deck",
+   "note": "Year four report seen."
+  },
+  "letter_L1": {
+   "set_by": "deck",
+   "note": "Letter L1 read."
+  },
+  "letter_L2": {
+   "set_by": "deck",
+   "note": "Letter L2 read."
+  },
+  "letter_L3": {
+   "set_by": "deck",
+   "note": "Letter L3 read."
+  },
+  "letter_L4": {
+   "set_by": "deck",
+   "note": "Letter L4 read."
+  },
+  "letter_L5": {
+   "set_by": "deck",
+   "note": "Letter L5 read."
+  },
+  "letter_L6": {
+   "set_by": "deck",
+   "note": "Letter L6 read."
+  },
+  "letter_L7": {
+   "set_by": "deck",
+   "note": "Letter L7 read."
+  },
+  "letter_L8": {
+   "set_by": "deck",
+   "note": "Letter L8 read."
+  },
+  "letter_L9": {
+   "set_by": "deck",
+   "note": "Letter L9 read."
+  },
+  "letter_L10": {
+   "set_by": "deck",
+   "note": "Letter L10 read."
+  },
+  "letter_L11": {
+   "set_by": "deck",
+   "note": "Letter L11 read."
+  },
+  "letter_L12": {
+   "set_by": "deck",
+   "note": "Letter L12 read."
+  },
+  "bag_seeds": {
+   "set_by": "deck",
+   "note": "Prelude: a tin of seeds in the bag."
+  },
+  "bag_book": {
+   "set_by": "deck",
+   "note": "Prelude: a book of tide tables in the bag."
+  },
+  "bag_lamp": {
+   "set_by": "deck",
+   "note": "Prelude: a small lamp in the bag."
+  },
+  "street_gave": {
+   "set_by": "deck",
+   "note": "Prelude: gave coins in the street."
+  },
+  "street_notice": {
+   "set_by": "deck",
+   "note": "Prelude: read the notice."
+  },
+  "street_on": {
+   "set_by": "deck",
+   "note": "Prelude: walked on."
+  },
+  "office_signed": {
+   "set_by": "deck",
+   "note": "Prelude: signed at once."
+  },
+  "office_twice": {
+   "set_by": "deck",
+   "note": "Prelude: read twice."
+  },
+  "office_copy": {
+   "set_by": "deck",
+   "note": "Prelude: asked for a copy first."
+  },
+  "station_door": {
+   "set_by": "deck",
+   "note": "Prelude: held the door."
+  },
+  "station_board": {
+   "set_by": "deck",
+   "note": "Prelude: studied the board."
+  },
+  "station_sit": {
+   "set_by": "deck",
+   "note": "Prelude: sat and watched the rain."
+  },
+  "quay_back": {
+   "set_by": "deck",
+   "note": "Prelude: looked back."
+  },
+  "quay_ahead": {
+   "set_by": "deck",
+   "note": "Prelude: looked ahead."
+  },
+  "quay_key": {
+   "set_by": "deck",
+   "note": "Prelude: turned the key over."
+  },
+  "bottle_0": {
+   "set_by": "deck",
+   "note": "Bottle 0 (the town's list) has been read."
+  },
+  "bottle_1": {
+   "set_by": "deck",
+   "note": "Bottle 1 (the town's list) has been read."
+  },
+  "bottle_2": {
+   "set_by": "deck",
+   "note": "Bottle 2 (the town's list) has been read."
+  },
+  "bottle_3": {
+   "set_by": "deck",
+   "note": "Bottle 3 (the town's list) has been read."
+  },
+  "bottle_4": {
+   "set_by": "deck",
+   "note": "Bottle 4 (the town's list) has been read."
+  },
+  "bottle_5": {
+   "set_by": "deck",
+   "note": "Bottle 5 (the town's list) has been read."
+  },
+  "bottle_own_1": {
+   "set_by": "deck",
+   "note": "Own-words bottle 1 has been read."
+  },
+  "bottle_own_2": {
+   "set_by": "deck",
+   "note": "Own-words bottle 2 has been read."
+  },
+  "bottle_own_3": {
+   "set_by": "deck",
+   "note": "Own-words bottle 3 has been read."
+  },
+  "bottle_own_4": {
+   "set_by": "deck",
+   "note": "Own-words bottle 4 has been read."
+  }
+ }
+},
+"events": [
+{"id": "p0_flat", "act": 0, "season": ["any"], "kind": "uncle", "voice": "narration", "trigger": {"day_min": 0, "day_max": 0, "tide": "any", "time": "any", "location": "any"}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "A small flat, rain on the glass. A solicitor's letter lies on the table beside a cold cup. A great-uncle you never met has died. Pack one bag.", "effects": {}, "cause": "Card scene one: grey-brown light, rain, the letter and a bag on the bed.", "tags": {"avenue": [], "attitude": [], "mood": "good"}, "source": null, "choices": [{"id": "bag_seeds", "label": "Pack a tin of seeds", "effects": {"flags_set": ["bag_seeds"]}}, {"id": "bag_book", "label": "Pack a book of tide tables", "effects": {"flags_set": ["bag_book"], "attitude": {"investigate": 1}}}, {"id": "bag_lamp", "label": "Pack a small lamp", "effects": {"flags_set": ["bag_lamp"]}}]},
+{"id": "p0_street", "act": 0, "season": ["any"], "kind": "uncle", "voice": "narration", "trigger": {"day_min": 0, "day_max": 0, "tide": "any", "time": "any", "location": "any"}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "Wet pavements, shut shops, a loom hum from a mill that has not stopped. A woman sweeps her step in the rain and nods to you.", "effects": {}, "cause": "Card scene two: sodium light on puddles; a kind nod, nothing more.", "tags": {"avenue": [], "attitude": [], "mood": "good"}, "source": null, "choices": [{"id": "street_gave", "label": "Leave your last coins in the tin by the shuttered shop", "effects": {"flags_set": ["street_gave"], "attitude": {"share": 1}}}, {"id": "street_notice", "label": "Read the notice taped in a window", "effects": {"flags_set": ["street_notice"], "attitude": {"investigate": 1}}}, {"id": "street_on", "label": "Walk on, hood up", "effects": {"flags_set": ["street_on"]}}]},
+{"id": "p0_office", "act": 0, "season": ["any"], "kind": "uncle", "voice": "solicitor", "trigger": {"day_min": 0, "day_max": 0, "tide": "any", "time": "any", "location": "any"}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "A plain office. A clerk pours tea. The solicitor reads: your great-uncle left you a small island and a sum in an account. He left no reason. He signed with one plain mark.", "effects": {}, "cause": "Card scene three: a desk, a coat on a hook by the door, a brass key in a paper fold, the signature seen from above as a mark, no face.", "tags": {"avenue": [], "attitude": [], "mood": "mid"}, "source": null, "choices": [{"id": "office_signed", "label": "Sign where it says", "effects": {"flags_set": ["office_signed"], "attitude": {"trust": 1}}}, {"id": "office_twice", "label": "Ask to read it twice", "effects": {"flags_set": ["office_twice"], "attitude": {"investigate": 1}}}, {"id": "office_copy", "label": "Ask for a copy to keep, and sign after", "effects": {"flags_set": ["office_copy"], "attitude": {"distrust": 1}}}]},
+{"id": "p0_station", "act": 0, "season": ["any"], "kind": "uncle", "voice": "narration", "trigger": {"day_min": 0, "day_max": 0, "tide": "any", "time": "any", "location": "any"}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "A small station, a late train, steam on the glass. A board lists parcels held back for a week. Nobody seems alarmed.", "effects": {}, "cause": "Card scene four: wet platform, a chalk board of delays, one lamp swinging.", "tags": {"avenue": [], "attitude": [], "mood": "mid"}, "source": null, "choices": [{"id": "station_door", "label": "Hold the door for a woman with a pram", "effects": {"flags_set": ["station_door"], "attitude": {"share": 1}}}, {"id": "station_board", "label": "Study the board of delays", "effects": {"flags_set": ["station_board"], "attitude": {"investigate": 1}}}, {"id": "station_sit", "label": "Sit by the window and watch the rain", "effects": {"flags_set": ["station_sit"]}}]},
+{"id": "p0_quay", "act": 0, "season": ["any"], "kind": "uncle", "voice": "narration", "trigger": {"day_min": 0, "day_max": 0, "tide": "any", "time": "any", "location": "any"}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "The quay at the end of the line. A small boat, engine low. You step aboard with your bag and the key. The grey slides off the water and teal and gold come in.", "effects": {}, "cause": "Card scene five: the palette flips from grey-brown to teal and gold as the boat leaves the wall; the town shrinks.", "tags": {"avenue": [], "attitude": [], "mood": "good"}, "source": null, "choices": [{"id": "quay_back", "label": "Look back at the town", "effects": {"flags_set": ["quay_back"]}}, {"id": "quay_ahead", "label": "Look ahead at the sea", "effects": {"flags_set": ["quay_ahead"], "attitude": {"trust": 1}}}, {"id": "quay_key", "label": "Turn the brass key over in your hand", "effects": {"flags_set": ["quay_key"], "attitude": {"investigate": 1}}}]},
+{"id": "a1_L1_key", "act": 1, "season": ["any"], "kind": "letter", "voice": "helper", "trigger": {"day_min": 1, "day_max": 1, "tide": "any", "time": "dawn", "location": "home_beach"}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "This island is yours. So is what is in the ledger. Spend it slowly. Parcels will come by boat. If something looks old, it is probably still useful. You do not need to understand why.", "effects": {"flags_set": ["letter_L1", "has_key"]}, "cause": "The crate above the tideline opens; paper letter, plain stamp, brass key; the ledger card unrolls.", "tags": {"avenue": ["holiday", "sanctuary", "homestead", "workshop"], "attitude": ["trust"], "mood": "good"}, "source": "beat 1 pattern (Mysterious Island): a crate nobody ordered"},
+{"id": "a1_L2_evening", "act": 1, "season": ["any"], "kind": "letter", "voice": "helper", "trigger": {"day_min": 1, "day_max": 1, "tide": "any", "time": "dusk", "location": "home_yard"}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "You can make this a place for people to visit. You can make it a place for wildlife. You can make it somewhere to live quietly. Or you can do all three badly. None of it is wrong.", "effects": {"flags_set": ["letter_L2"]}, "cause": "A second crate lands at the jetty with the evening tender; the build menu unfolds with five things.", "tags": {"avenue": ["holiday", "sanctuary", "homestead", "workshop"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a1_coat_hook", "act": 1, "season": ["any"], "kind": "uncle", "voice": "narration", "trigger": {"day_min": 1, "day_max": 6, "tide": "any", "time": "any", "location": "hut", "flags_all": ["has_key"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "A coat hangs on a hook inside the hut door. It is dry and brushed, though the roof leaks. The pockets hold nothing but a worn pencil.", "effects": {"flags_set": ["uncle_coat"]}, "cause": "Tap the hut door: a coat on a hook, dry, with one pencil in the left pocket.", "tags": {"avenue": ["homestead"], "attitude": ["investigate", "trust"], "mood": "mid"}, "source": "beat 2 pattern (Mysterious Island): a tool left behind"},
+{"id": "a1_chair_lamp", "act": 1, "season": ["any"], "kind": "uncle", "voice": "narration", "trigger": {"day_min": 1, "day_max": 8, "tide": "any", "time": "any", "location": "hut", "flags_all": ["has_key"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "A chair stands at the hut window, turned to face the lamp on the headland. The seat is clean. The tide table on the wall is marked in pencil, with a tick against some of the low waters.", "effects": {"flags_set": ["uncle_chair"]}, "cause": "Camera rests on the window chair; the pencil ticks line up with the Hoard windows on the tide card.", "tags": {"avenue": ["homestead"], "attitude": ["investigate"], "mood": "mid"}, "source": null},
+{"id": "a1_shelf_letters", "act": 1, "season": ["any"], "kind": "uncle", "voice": "narration", "trigger": {"day_min": 2, "day_max": 20, "tide": "any", "time": "any", "location": "hut", "flags_all": ["has_key", "hut_patched"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "A shelf holds a row of plain envelopes, never opened, each with the small mark in the corner. Forty or so, one for each month. They are addressed to the island, not to you.", "effects": {"flags_set": ["uncle_shelf"]}, "cause": "The player opens the hut shutter: a shelf of cream envelopes; a count appears on the notebook.", "tags": {"avenue": ["homestead"], "attitude": ["investigate", "trust"], "mood": "mid"}, "source": null},
+{"id": "a1_drawer_key", "act": 1, "season": ["any"], "kind": "uncle", "voice": "narration", "trigger": {"day_min": 3, "day_max": 40, "tide": "any", "time": "any", "location": "hut", "flags_all": ["has_key", "uncle_shelf"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "The brass key turns in a small drawer under the table. Inside: a tide book, a pencil stub, and some papers with the plain mark where a signature should be.", "effects": {"flags_set": ["uncle_drawer", "stamp_papers"], "attitude": {"investigate": 1}}, "cause": "The player turns the key in the table drawer; the papers are laid on the table and a stamp is logged in the notebook.", "tags": {"avenue": ["workshop"], "attitude": ["investigate"], "mood": "mid"}, "source": "beat 12 pattern (Tempest): an unseen hand"},
+{"id": "a1_oiled_tool", "act": 1, "season": ["any"], "kind": "find", "voice": "narration", "trigger": {"day_min": 1, "day_max": 10, "tide": "any", "time": "any", "location": "hut", "flags_all": ["has_key"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "Behind the hut stove, a hand saw, still oiled and wrapped in cloth. The teeth are sharp. It was left for someone to find.", "effects": {"stock": {"planks": 1}, "flags_set": ["tool_saw"]}, "cause": "A cloth bundle behind the stove; the player unwraps a saw; a plank on the bench is cut and added to the heap.", "tags": {"avenue": ["workshop", "homestead"], "attitude": ["investigate", "trust"], "mood": "good"}, "source": "beat 2 (Mysterious Island): a tool left behind"},
+{"id": "a1_cairns_noticed", "act": 1, "season": ["any"], "kind": "clue", "voice": "narration", "trigger": {"day_min": 1, "day_max": 6, "tide": "any", "time": "any", "location": "home_beach"}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "Five small cairns march out along the west skerry into the water. They stand on the sand that dries at low tide. Nobody told you how they got there.", "effects": {"flags_set": ["cairns_seen"]}, "cause": "Camera pans west at dawn: a line of five stone piles runs from the skerry to the sea.", "tags": {"avenue": ["homestead", "sanctuary"], "attitude": ["investigate"], "mood": "mid"}, "source": null},
+{"id": "a1_first_storm", "act": 1, "season": ["any"], "kind": "storm", "voice": "narration", "trigger": {"day_min": 2, "day_max": 3, "tide": "any", "time": "any", "location": "home_beach", "weather": ["storm"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "The glass falls all morning. By noon the sea is up on the beach. When it drops, the wrack line is heaped with timber, tins and rope. The old carriers are already working it.", "effects": {"stock": {"planks": 4, "rope": 2, "metal": 2}, "flags_set": ["storm_seen"]}, "cause": "A tidal eddy and a surge push 24 heaps onto the wrack line; robots and the player carry from them; the hulk lies near the camp.", "tags": {"avenue": ["homestead", "workshop"], "attitude": ["trust"], "mood": "mid"}, "source": "beat 4 (Robinson Crusoe): salvage before the next tide"},
+{"id": "a1_L3_storm", "act": 1, "season": ["any"], "kind": "letter", "voice": "helper", "trigger": {"day_min": 2, "day_max": 12, "tide": "any", "time": "any", "location": "home_yard", "flags_all": ["storm_seen"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "The sea gives and takes. What it leaves is not rubbish, only things that have not found a use yet. The old carriers know the shore. Let them work.", "effects": {"flags_set": ["letter_L3"]}, "cause": "A crate on the next morning's tender; a paper panel opens.", "tags": {"avenue": ["workshop"], "attitude": ["trust"], "mood": "mid"}, "source": null},
+{"id": "a1_hoard_first", "act": 1, "season": ["any"], "kind": "robot", "voice": "narration", "trigger": {"day_min": 5, "day_max": 40, "tide": "spring_low", "time": "any", "location": "hoard", "flags_all": ["robot_started", "cairns_seen"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "At the lowest tide the old carriers cross the drying bar one by one, past the cairns. On the far island, sorted heaps wait in rows. Whoever sorted them did it with care.", "effects": {"flags_set": ["hoard_found"]}, "cause": "At the first low under -0.74 m the robots wade the wet bar; the player follows with a lantern and finds the depot terrace.", "tags": {"avenue": ["workshop", "homestead"], "attitude": ["investigate", "trust"], "mood": "mid"}, "source": "beat 1 pattern (Mysterious Island): a hidden stock"},
+{"id": "a1_hoard_stamp", "act": 1, "season": ["any"], "kind": "clue", "voice": "narration", "trigger": {"day_min": 5, "day_max": 90, "tide": "any", "time": "any", "location": "hoard", "flags_all": ["hoard_found"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "On the side of the biggest heap, a crate with the small plain mark. Nothing else on it. It is shut, and it is lightly oiled.", "effects": {"flags_set": ["stamp_crate"]}, "cause": "The player brushes sand from a crate at the depot; the mark shows; the notebook adds a stamp.", "tags": {"avenue": ["workshop"], "attitude": ["investigate"], "mood": "mid"}, "source": null},
+{"id": "a1_hoard_take", "act": 1, "season": ["any"], "kind": "find", "voice": "narration", "trigger": {"day_min": 5, "day_max": 120, "tide": "spring_low", "time": "any", "location": "hoard", "flags_all": ["hoard_found"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 6, "force": false, "text": "You carry planks and rope from the sorted heaps to the bar with a robot at the other end of the load. The bar closes behind you with a soft hiss of tide.", "effects": {"stock": {"planks": 3, "rope": 2}}, "cause": "The player and a hauler robot carry a long beam between them across the bar; stock rises when it reaches the yard heap.", "tags": {"avenue": ["workshop", "homestead"], "attitude": ["trust", "investigate"], "mood": "mid"}, "source": null},
+{"id": "a1_woods_spring", "act": 1, "season": ["any"], "kind": "find", "voice": "narration", "trigger": {"day_min": 2, "day_max": 90, "tide": "any", "time": "any", "location": "woods", "flags_all": ["has_boat"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "Under the green ridge, a thin spring runs from a cleft into a stone trough. The trough has been swept clean. You fill a barrel and row home.", "effects": {"flags_set": ["woods_visited", "spring_found"]}, "cause": "The player rows to the woods (about 80 s), fills barrels at the trough; the barrel icon rises as the barrels are lifted on the tender.", "tags": {"avenue": ["homestead", "sanctuary"], "attitude": ["trust", "investigate"], "mood": "good"}, "source": null},
+{"id": "a1_woods_timber", "act": 1, "season": ["any"], "kind": "find", "voice": "narration", "trigger": {"day_min": 6, "day_max": 350, "tide": "spring_low", "time": "any", "location": "woods", "flags_all": ["woods_visited", "robot_started"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 14, "force": false, "text": "At a low spring tide the sill to the woods dries for an hour. The carriers haul a day of cut timber across it, one load at a time, while you hold the lantern end.", "effects": {"stock": {"planks": 6}}, "cause": "Robots cross the sill in the 60 to 90 minute window; each load is carried to the yard heap, the player carries one end of the long ones.", "tags": {"avenue": ["homestead", "workshop"], "attitude": ["trust"], "mood": "mid"}, "source": null},
+{"id": "a1_seals_seen", "act": 1, "season": ["any"], "kind": "wildlife", "voice": "narration", "trigger": {"day_min": 2, "day_max": 120, "tide": "any", "time": "dusk", "location": "lamp", "weather": ["clear", "fair", "goldenhour"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "From the lamp knoll, grey specks on the far ledges move and slide into the water. They are seals. They keep their distance, and so should you.", "effects": {"flags_set": ["seals_seen"], "counts": {"seals": 6}}, "cause": "At night two the lamp beam shows the seal ledges as specks; the notebook adds a tally.", "tags": {"avenue": ["sanctuary"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a1_puffins_return", "act": 1, "season": ["spring"], "kind": "wildlife", "voice": "narration", "trigger": {"day_min": 1, "day_max": 30, "tide": "any", "time": "any", "location": "lamp"}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "Small black-and-white birds with bright bills whirr past the knoll and drop into the turf of the far rock. The spring has come.", "effects": {"counts": {"birds": 12}}, "cause": "A scatter of puffins arrives at the seal island turf; the bird tally on the hide slate rises.", "tags": {"avenue": ["sanctuary"], "attitude": ["trust"], "mood": "good"}, "source": "wildlife note"},
+{"id": "a1_gull_thief", "act": 1, "season": ["any"], "kind": "wildlife", "voice": "narration", "trigger": {"day_min": 1, "day_max": 360, "tide": "any", "time": "any", "location": "home_yard"}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 25, "force": false, "text": "A gull walks off with a whole loaf from the table while you are looking at the sea. It sits on the roof and eats, and keeps an eye on you.", "effects": {"food_days": -0.3}, "cause": "A herring gull lands on the yard table, lifts the loaf, flies to the hut roof.", "tags": {"avenue": ["holiday", "homestead"], "attitude": [], "mood": "bad-mild"}, "source": null},
+{"id": "a1_fog_late_boat", "act": 1, "season": ["any"], "kind": "boat", "voice": "narration", "trigger": {"day_min": 1, "day_max": 360, "tide": "any", "time": "any", "location": "jetty", "weather": ["fog"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 20, "force": false, "text": "Fog sits on the sound all morning. The horn sounds, then nothing. The tender lies off and does not land until the evening.", "effects": {"delivery_delay_days": 1}, "cause": "The horn sounds from the fog; the delivery marker slides a day; the tender waits off the jetty.", "tags": {"avenue": ["homestead", "holiday"], "attitude": [], "mood": "bad-mild"}, "source": null},
+{"id": "a1_robot_stuck", "act": 1, "season": ["any"], "kind": "robot", "voice": "narration", "trigger": {"day_min": 8, "day_max": 340, "tide": "low", "time": "any", "location": "skerry_west", "flags_all": ["robot_started", "cairns_seen"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "One carrier has stopped on the low sand, its light amber. The tide is turning. You will have to go and free it, and a second carrier will pull.", "effects": {"flags_set": ["robot_stuck"]}, "cause": "A robot sits stopped in wet sand; the status light is amber; its tracks are filling.", "tags": {"avenue": ["workshop"], "attitude": ["investigate"], "mood": "bad-mild"}, "source": null},
+{"id": "a1_robot_freed", "act": 1, "season": ["any"], "kind": "robot", "voice": "narration", "trigger": {"day_min": 8, "day_max": 345, "tide": "any", "time": "any", "location": "skerry_west", "flags_all": ["robot_stuck"], "after": ["a1_robot_stuck"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "You wedge a plank under the tracks and the second carrier tows on its rope. The first one jerks, clears the sand and rolls on. No one is hurt, only late.", "effects": {"flags_clear": ["robot_stuck"], "attitude": {"trust": 1}}, "cause": "The player lays the plank, a second robot tows on a rope, the stuck robot's light goes green.", "tags": {"avenue": ["workshop"], "attitude": ["trust"], "mood": "mid"}, "source": null},
+{"id": "a1_robot_flat_battery", "act": 1, "season": ["any"], "kind": "robot", "voice": "narration", "trigger": {"day_min": 1, "day_max": 360, "tide": "any", "time": "dusk", "location": "home_yard", "weather": ["overcast", "rain", "showers"], "robots_min": 1}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 35, "force": false, "text": "At dusk a carrier stops short of the post, its light dim. You push it the last few metres on the plank rollers. It charges all night.", "effects": {}, "cause": "A robot with a dim light stops 10 m from the post; the player and another robot push it onto the plate.", "tags": {"avenue": ["workshop"], "attitude": [], "mood": "bad-mild"}, "source": null},
+{"id": "a1_stranger_cold", "act": 1, "season": ["any"], "kind": "stranger", "voice": "narration", "trigger": {"day_min": 8, "day_max": 340, "tide": "any", "time": "any", "location": "home_beach", "weather": ["fair", "clear", "overcast"], "since_storm_days_min": 1, "since_storm_days_max": 3}, "weight": 0.25, "repeat": "repeatable", "cooldown_days": 150, "force": false, "text": "After the storm a small boat grounds on the beach. A cold traveller sits in it, wrapped in a blanket. You give a meal and a bed and ask nothing. In the morning the boat is gone.", "effects": {"flags_set": ["guest_first", "stranger_helped"], "attitude": {"share": 1}, "counts": {"guests": 1}}, "cause": "A boat lies on the sand after the storm; a figure under a blanket by your fire; one more mark on the guest slate; later the boat is gone.", "tags": {"avenue": ["holiday", "sanctuary"], "attitude": ["share", "trust"], "mood": "good"}, "source": "beat 13 (New Atlantis): strangers cared for without questions"},
+{"id": "a1_L5_guest", "act": 1, "season": ["any"], "kind": "letter", "voice": "helper", "trigger": {"day_min": 8, "day_max": 360, "tide": "any", "time": "any", "location": "home_yard", "flags_any": ["stranger_helped", "guest_first"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "Someone will arrive who did not plan to. Be kind first. The rest can be worked out later.", "effects": {"flags_set": ["letter_L5"]}, "cause": "A crate at the jetty the morning after the first visitor; the paper panel opens.", "tags": {"avenue": ["holiday", "sanctuary"], "attitude": ["share"], "mood": "good"}, "source": null},
+{"id": "a1_summer_light", "act": 1, "season": ["summer"], "kind": "season", "voice": "narration", "trigger": {"day_min": 31, "day_max": 120, "tide": "any", "time": "any", "location": "home_beach", "weather": ["fair", "clear", "goldenhour"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 40, "force": false, "text": "The evenings are long now. At ten the sky is still pale and the sea lies flat. The carriers work late, and the lamp is lit only when the stars are.", "effects": {}, "cause": "Dusk comes late on the sky clock; robots stay out until 21:30; the lamp sprite stays dark until stars show.", "tags": {"avenue": ["holiday", "sanctuary"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a1_dry_spell", "act": 1, "season": ["summer"], "kind": "season", "voice": "narration", "trigger": {"day_min": 40, "day_max": 160, "tide": "any", "time": "any", "location": "home_yard", "weather": ["fair", "clear", "overcast"], "flags_none": ["built_cistern"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 90, "force": false, "text": "A dry fortnight. The barrel shows a hand's width of water. You carry buckets from the woods spring by boat, and the garden drinks.", "effects": {"food_days": -0.2}, "cause": "The barrel water mark falls week by week; the player and a robot carry buckets from the tender.", "tags": {"avenue": ["homestead"], "attitude": [], "mood": "bad-mild"}, "source": null},
+{"id": "a1_cistern_holds", "act": 1, "season": ["summer"], "kind": "season", "voice": "narration", "trigger": {"day_min": 40, "day_max": 160, "tide": "any", "time": "any", "location": "home_yard", "weather": ["fair", "clear"], "flags_all": ["built_cistern"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 120, "force": false, "text": "The long dry spell comes, but the cistern holds. You open the tap and the water runs clear. The garden is green when the hill is brown.", "effects": {"attitude": {"trust": 1}}, "cause": "The cistern level bar falls slowly; the tap flows; the garden beds stay dark.", "tags": {"avenue": ["homestead"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a1_first_guests", "act": 1, "season": ["summer"], "kind": "guest", "voice": "narration", "trigger": {"day_min": 31, "day_max": 200, "tide": "any", "time": "any", "location": "jetty", "flags_any": ["built_cottage", "built_jetty"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 14, "force": false, "text": "A small boat lands two guests for the day. They walk the strand, buy tea, take photographs of the lamp, and leave before the tide turns. They are only counted.", "effects": {"cash_delta": 400, "counts": {"guests": 2}}, "cause": "A boat lands at the jetty, two figures walk, the guest slate gets two marks, the cash line rises when the tea is paid for.", "tags": {"avenue": ["holiday"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a1_seal_pup_common", "act": 1, "season": ["summer"], "kind": "wildlife", "voice": "narration", "trigger": {"day_min": 31, "day_max": 90, "tide": "any", "time": "any", "location": "seals", "flags_all": ["has_boat"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "Round-headed seal pups lie on the ledge in the long light. Their mothers watch the water. You stop the engine a long way off and let the tender drift.", "effects": {"counts": {"seals": 8}}, "cause": "The player cuts the engine at 30 m; seals stay up; the tally on the slate rises by eight.", "tags": {"avenue": ["sanctuary"], "attitude": ["trust", "share"], "mood": "good"}, "source": null},
+{"id": "a1_autumn_herring", "act": 1, "season": ["autumn"], "kind": "wildlife", "voice": "narration", "trigger": {"day_min": 121, "day_max": 210, "tide": "any", "time": "any", "location": "sea", "flags_all": ["has_boat"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "Gannets fold and fall into a silver patch of water. Dolphins follow. For an hour the sound is alive. You land three fat herring on a line.", "effects": {"food_days": 0.6}, "cause": "A shoal darkens the water off the lee shore; gannets dive; the line comes up with fish and the larder tally rises.", "tags": {"avenue": ["homestead", "sanctuary"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a1_seal_pup_grey", "act": 1, "season": ["autumn"], "kind": "wildlife", "voice": "narration", "trigger": {"day_min": 121, "day_max": 240, "tide": "any", "time": "any", "location": "seals", "flags_all": ["has_boat", "seals_seen"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "White seal pups lie on the high ledge among the grey adults. The croon carries across the water at dusk. You count eleven and write the number on the slate.", "effects": {"counts": {"seals": 11}}, "cause": "The player counts pups from the tender with no engine; the tally on the slate rises.", "tags": {"avenue": ["sanctuary"], "attitude": ["trust", "investigate"], "mood": "good"}, "source": null},
+{"id": "a1_autumn_gale", "act": 1, "season": ["autumn"], "kind": "storm", "voice": "narration", "trigger": {"day_min": 121, "day_max": 210, "tide": "any", "time": "any", "location": "home_beach", "weather": ["storm"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 60, "force": false, "text": "The autumn gale takes the loose planks from the yard heap and puts some on the beach. A few are split, but most are fine. You gather them by the fire.", "effects": {"stock": {"planks": -2, "rope": 1}}, "cause": "Surge and wind push heaps; the player and robots re-stack the yard; stock numbers drop then rise as heaps are re-carried.", "tags": {"avenue": ["homestead"], "attitude": [], "mood": "mid"}, "source": null},
+{"id": "a1_L4_winter", "act": 1, "season": ["winter"], "kind": "letter", "voice": "helper", "trigger": {"day_min": 211, "day_max": 240, "tide": "any", "time": "any", "location": "home_yard"}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "Winter is not a punishment. The island rests, and so can you. Keep the lamp lit.", "effects": {"flags_set": ["letter_L4"]}, "cause": "First frost on the yard; a crate on the tender; the paper panel opens.", "tags": {"avenue": ["homestead", "sanctuary"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a1_lamp_oil_low", "act": 1, "season": ["winter"], "kind": "season", "voice": "narration", "trigger": {"day_min": 211, "day_max": 300, "tide": "any", "time": "any", "location": "lamp", "flags_none": ["lamp_dark"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 60, "force": false, "text": "The lamp oil is nearly gone. For a night the headland is dark. You light a candle in the hut window and wait for the next boat.", "effects": {"flags_set": ["lamp_dark"]}, "cause": "The stump lamp goes dark at dusk; a candle burns in the hut window; the lamp lights again after the oil crate arrives.", "tags": {"avenue": ["homestead"], "attitude": [], "mood": "bad-mild"}, "source": null},
+{"id": "a1_winter_clear_night", "act": 1, "season": ["winter"], "kind": "weather", "voice": "narration", "trigger": {"day_min": 211, "day_max": 300, "tide": "any", "time": "night", "location": "home_beach", "weather": ["clear"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 25, "force": false, "text": "A hard clear night. Stars crowd the sky to the water's edge. Frost on the planks. You stand on the strand and cannot stop looking up.", "effects": {}, "cause": "The sky clock draws a deep star field and a moon-silvered sea; a frost sparkle on the jetty planks.", "tags": {"avenue": ["sanctuary", "holiday"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a1_year_one_report", "act": 1, "season": ["any"], "kind": "season", "voice": "narration", "trigger": {"day_min": 355, "day_max": 360, "tide": "any", "time": "any", "location": "home_yard"}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "The year ends. The report is a plain card with four lines: profit, wildlife, happiness and resilience. None is the right one. You have a roof, a boat, a lamp, and a year behind you.", "effects": {"flags_set": ["year1_report"]}, "cause": "A paper card is pinned to the hut door: four bars, each with one sentence.", "tags": {"avenue": ["holiday", "sanctuary", "homestead", "workshop"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a1_skerry_crate_motor", "act": 1, "season": ["any"], "kind": "boat", "voice": "narration", "trigger": {"day_min": 2, "day_max": 14, "tide": "any", "time": "any", "location": "skerry_east", "flags_all": ["has_boat"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "Wedged on the high rock, a crate and a small motor wrapped in oilcloth. The oilcloth is dry. You lash both to the thwart and row home.", "effects": {"flags_set": ["boat_motor"]}, "cause": "The player rows to the outer skerry, loads the crate and motor, fits the motor on the stern at the jetty; the boat speed readout rises.", "tags": {"avenue": ["workshop"], "attitude": ["investigate", "trust"], "mood": "good"}, "source": "beat 1 pattern (Mysterious Island): an unordered crate"},
+{"id": "a1_bottle_0", "act": 1, "season": ["any"], "kind": "bottle", "voice": "bottle", "trigger": {"day_min": 2, "day_max": 360, "tide": "high", "time": "any", "location": "home_beach", "flags_none": ["bottle_0"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "The plank you fitted today will hold. The one beside it wants a longer nail.", "effects": {"flags_set": ["bottle_0"]}, "cause": "A green bottle rolls on the wave edge; the player lifts it and unrolls the paper.", "tags": {"avenue": ["homestead", "workshop"], "attitude": ["investigate"], "mood": "good"}, "source": "town list: gift_day.js BOTTLES[0], quoted unedited"},
+{"id": "a1_bottle_1", "act": 1, "season": ["any"], "kind": "bottle", "voice": "bottle", "trigger": {"day_min": 2, "day_max": 360, "tide": "high", "time": "any", "location": "home_beach", "flags_none": ["bottle_1"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "Between the second and third autumn storm there is always one still day. Plan your roof for it.", "effects": {"flags_set": ["bottle_1"]}, "cause": "A bottle in the weed at the high-tide line.", "tags": {"avenue": ["homestead"], "attitude": ["investigate"], "mood": "good"}, "source": "town list: gift_day.js BOTTLES[1], quoted unedited"},
+{"id": "a1_bottle_2", "act": 1, "season": ["any"], "kind": "bottle", "voice": "bottle", "trigger": {"day_min": 2, "day_max": 360, "tide": "high", "time": "any", "location": "home_beach", "flags_none": ["bottle_2"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "The seals come to the east rocks when the water is coldest. Leave them room and they will stay.", "effects": {"flags_set": ["bottle_2"]}, "cause": "A bottle against the jetty post.", "tags": {"avenue": ["sanctuary"], "attitude": ["investigate"], "mood": "good"}, "source": "town list: gift_day.js BOTTLES[2], quoted unedited"},
+{"id": "a1_harvest_fails", "act": 1, "season": ["any"], "kind": "season", "voice": "narration", "trigger": {"day_min": 60, "day_max": 200, "tide": "any", "time": "any", "location": "home_yard", "flags_all": ["garden_started"], "flags_none": ["harvest_failed"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "The first rows come up thin, and the wind takes the rest. You write down what went wrong and sow again in the spring, with a windbreak of net.", "effects": {"flags_set": ["harvest_failed"], "attitude": {"investigate": 1}, "food_days": -0.3}, "cause": "The rows are thin, salt-burnt; the player puts nets on stakes; the robot carries rope and net.", "tags": {"avenue": ["homestead"], "attitude": ["investigate", "share"], "mood": "bad-mild"}, "source": "beat 5 (Robinson Crusoe): the first harvest fails"},
+{"id": "a1_reef_ribs", "act": 1, "season": ["any"], "kind": "clue", "voice": "narration", "trigger": {"day_min": 6, "day_max": 200, "tide": "spring_low", "time": "any", "location": "reef", "flags_all": ["has_boat"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "At the lowest spring tide the ribs of an old hull stand on the highest head of the reef. Dark timber, bolted, never burned. A faded plate on one rib bears the small mark.", "effects": {"flags_set": ["ribs_seen", "stamp_ribs"]}, "cause": "At -0.7 m the reef head shows ribs; the tender stays 24 m off the reef ring; the plate shows the mark.", "tags": {"avenue": ["workshop", "holiday"], "attitude": ["investigate"], "mood": "mid"}, "source": null},
+{"id": "a1_lone_tree", "act": 1, "season": ["any"], "kind": "clue", "voice": "narration", "trigger": {"day_min": 10, "day_max": 250, "tide": "any", "time": "any", "location": "rock", "flags_all": ["has_boat"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "On the bare rock a single wind-bent tree. Tied round its trunk is a faded strip of cloth with the same knot as the tender's ropes.", "effects": {"flags_set": ["lone_tree_seen"]}, "cause": "The player rows to the bare rock (about 100 s); the tree's trunk shows a knotted cloth strip.", "tags": {"avenue": ["holiday"], "attitude": ["investigate"], "mood": "mid"}, "source": null},
+{"id": "a1_tender_ropes", "act": 1, "season": ["any"], "kind": "clue", "voice": "narration", "trigger": {"day_min": 1, "day_max": 20, "tide": "any", "time": "any", "location": "jetty", "flags_all": ["has_boat"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "You watch the tender tie up with no hand on it. The ropes lie in neat figure-eights on the jetty. When you coil one yourself it comes out the same.", "effects": {"flags_set": ["tender_seen"]}, "cause": "The unmanned tender lands, throws no crew, and lays its own ropes; the player coils one the same way.", "tags": {"avenue": ["workshop"], "attitude": ["investigate", "trust"], "mood": "mid"}, "source": null},
+{"id": "a1_cottage_up", "act": 1, "season": ["any"], "kind": "build", "voice": "narration", "trigger": {"day_min": 60, "day_max": 200, "tide": "any", "time": "any", "location": "home_yard", "flags_all": ["built_cottage"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 200, "force": false, "text": "Stakes, frame, walls, roof. By the end of the second day the cottage stands. It smells of wet wood and fresh paint. You sleep in it for the first time.", "effects": {}, "cause": "Visible stages: stakes, frame, walls, roof; the player and robots carry planks; a lit window at dusk.", "tags": {"avenue": ["holiday", "homestead"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a1_wind_down_lamp", "act": 1, "season": ["any"], "kind": "weather", "voice": "narration", "trigger": {"day_min": 31, "day_max": 340, "tide": "any", "time": "day", "location": "lamp", "weather": ["showers", "rain"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "A rainbow after rain. It lands on the east rocks, and every bird on the ledge lifts at once, then settles. You stay until it fades.", "effects": {}, "cause": "A rainbow on the lamp knoll side; birds lift and settle.", "tags": {"avenue": ["holiday", "sanctuary"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a1_net_catch", "act": 1, "season": ["any"], "kind": "find", "voice": "narration", "trigger": {"day_min": 3, "day_max": 360, "tide": "high", "time": "any", "location": "home_beach"}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 20, "force": false, "text": "A tangled net comes in on the tide with half a dozen crab pots in it. You spend the afternoon freeing it. The crab you keep. The net you hang to dry.", "effects": {"stock": {"rope": 2}, "food_days": 0.3}, "cause": "A net lies on the wrack line; the player and a robot cut it free and drag it to the yard.", "tags": {"avenue": ["homestead", "workshop"], "attitude": ["trust"], "mood": "mid"}, "source": null},
+{"id": "a1_driftwood_week", "act": 1, "season": ["any"], "kind": "find", "voice": "narration", "trigger": {"day_min": 4, "day_max": 360, "tide": "spring_high", "time": "any", "location": "home_beach"}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 15, "force": false, "text": "A bank of driftwood lies along the strand after the spring tide. You and the carriers work three mornings. By the end of the week the yard heap is a wall of grey boards.", "effects": {"stock": {"planks": 3}}, "cause": "A grey line of driftwood at the high-tide mark; robots carry loads of two; the yard heap grows visibly.", "tags": {"avenue": ["workshop", "homestead"], "attitude": ["trust"], "mood": "mid"}, "source": null},
+{"id": "a1_glass_float", "act": 1, "season": ["any"], "kind": "find", "voice": "narration", "trigger": {"day_min": 2, "day_max": 360, "tide": "any", "time": "any", "location": "home_beach"}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 25, "force": false, "text": "A green glass float rolls up the beach. It is whole, and cold, and there is not a scratch on it. You hold it to the lamp, and it makes a small green moon.", "effects": {"stock": {"glass": 1}}, "cause": "A green float in the wrack; the player lifts it; the glass tally rises by one.", "tags": {"avenue": ["workshop", "holiday"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a1_tin_lid_heap", "act": 1, "season": ["any"], "kind": "find", "voice": "narration", "trigger": {"day_min": 1, "day_max": 360, "tide": "any", "time": "any", "location": "home_yard", "robots_min": 1}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 12, "force": false, "text": "The sorter robot brings a basket of tin lids and pieces of metal. It sorts them in three clean heaps with small bright sounds, and rolls back for more.", "effects": {"stock": {"metal": 2}}, "cause": "A sorter robot drops a basket and sorts it by metal type at the yard; the metal count rises as each heap is added.", "tags": {"avenue": ["workshop"], "attitude": [], "mood": "good"}, "source": null},
+{"id": "a1_unread_letter_1", "act": 1, "season": ["any"], "kind": "uncle", "voice": "helper", "trigger": {"day_min": 30, "day_max": 150, "tide": "any", "time": "any", "location": "hut", "flags_all": ["uncle_shelf"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "You open one of the plain envelopes. It holds a single sheet: The north wall will not stand a gale unbraced. Brace it before autumn. The mark is in the corner.", "effects": {"flags_set": ["envelope_1"]}, "cause": "The player slits an envelope from the shelf; a paper panel; the north wall shows brace marks in chalk.", "tags": {"avenue": ["homestead"], "attitude": ["investigate", "trust"], "mood": "mid"}, "source": "beat 14 pattern (New Atlantis): a gift of knowledge"},
+{"id": "a1_unread_letter_2", "act": 1, "season": ["any"], "kind": "uncle", "voice": "helper", "trigger": {"day_min": 150, "day_max": 340, "tide": "any", "time": "any", "location": "hut", "flags_all": ["uncle_shelf", "envelope_1"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "Another envelope: A seal on the east rocks will not bite. A hide to the north will let you watch without a stir. It is only a note, and it is exactly right.", "effects": {"flags_set": ["envelope_2"]}, "cause": "The second envelope is opened at the hut table; a paper panel; the hide site on the north shelf is chalked.", "tags": {"avenue": ["sanctuary"], "attitude": ["investigate", "trust"], "mood": "good"}, "source": null},
+{"id": "a2_item_gone", "act": 2, "season": ["any"], "kind": "delivery", "voice": "narration", "trigger": {"day_min": 400, "day_max": 460, "tide": "any", "time": "any", "location": "jetty", "credit_level_min": 3, "credit_level_max": 3}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "One card in the catalogue has been turned over, blank side up. Track links are no longer made. The shelf slot is empty. The carriers will want a spare before long.", "effects": {"flags_set": ["item_vanished"], "credit_delta": -1000}, "cause": "On the shelf of cards in the jetty store, the card for track links is turned over and its slot is bare.", "tags": {"avenue": ["workshop"], "attitude": ["investigate"], "mood": "bad-mild"}, "source": "beat 21 pattern (Machine Stops): a spare part that no longer exists"},
+{"id": "a2_L6_thin", "act": 2, "season": ["any"], "kind": "letter", "voice": "helper", "trigger": {"day_min": 400, "day_max": 480, "tide": "any", "time": "any", "location": "home_yard", "flags_all": ["item_vanished"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "Some things are no longer made. That is not your fault. There is always another way to make a thing, and you have the hands for it.", "effects": {"flags_set": ["letter_L6"]}, "cause": "A crate on the tender with a paper panel; the shelf card is turned over.", "tags": {"avenue": ["workshop", "homestead"], "attitude": ["trust", "distrust"], "mood": "mid"}, "source": null, "variants": {"trust": "You have used what was given well.", "distrust": "You have not spent much. That is fine. It will wait."}},
+{"id": "a2_parcel_early", "act": 2, "season": ["any"], "kind": "delivery", "voice": "narration", "trigger": {"day_min": 430, "day_max": 700, "tide": "any", "time": "any", "location": "jetty", "flags_all": ["item_vanished"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "A crate is waiting at the jetty. The tender is tied up beside it, empty. In the crate is the very thing you meant to order tomorrow.", "effects": {"stock": {"metal": 2}, "flags_set": ["parcel_early"]}, "cause": "The player walks to the jetty at dawn: a crate and no boat seen; the ledger shows the order as already filled.", "tags": {"avenue": ["workshop"], "attitude": ["investigate", "distrust"], "mood": "mid"}, "source": "beat 12 pattern (Tempest): an unseen hand"},
+{"id": "a2_third_stamp", "act": 2, "season": ["any"], "kind": "clue", "voice": "narration", "trigger": {"day_min": 370, "day_max": 700, "tide": "any", "time": "any", "location": "home_yard", "flags_all": ["stamps_seen_3"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "You have now seen the small mark on a crate, a carrier and a cairn stone. It is the same. A letter might say what it means. It will not, but it is a good thing to have noticed.", "effects": {"flags_set": ["stamp_noted"], "attitude": {"investigate": 1}}, "cause": "The notebook page of stamps shows three marks side by side; the player can lay the drawer paper beside them.", "tags": {"avenue": ["workshop"], "attitude": ["investigate"], "mood": "good"}, "source": null},
+{"id": "a2_L7_stamp", "act": 2, "season": ["any"], "kind": "letter", "voice": "helper", "trigger": {"day_min": 370, "day_max": 720, "tide": "any", "time": "any", "location": "home_yard", "flags_all": ["stamps_seen_3"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "You have noticed the mark. Many do, in the end. It means only that this came from a place that cares how it lands.", "effects": {"flags_set": ["letter_L7"]}, "cause": "A crate with the mark on the lid; the paper panel opens only on the investigate path.", "tags": {"avenue": ["workshop"], "attitude": ["investigate"], "mood": "good"}, "source": null},
+{"id": "a2_stamp_signature", "act": 2, "season": ["any"], "kind": "uncle", "voice": "narration", "trigger": {"day_min": 370, "day_max": 720, "tide": "any", "time": "any", "location": "hut", "flags_all": ["uncle_drawer", "stamp_crate"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "You lay the papers from the drawer beside the crate lid. The signature on the uncle's papers and the mark on the crate are the same shape. A coincidence is a kind of answer.", "effects": {"flags_set": ["uncle_stamp_match"], "attitude": {"investigate": 1}}, "cause": "The player lays a paper next to a crate lid on the hut table; the camera lingers on the two marks.", "tags": {"avenue": ["workshop"], "attitude": ["investigate"], "mood": "mid"}, "source": "owner idea: the uncle's mark"},
+{"id": "a2_post_query", "act": 2, "season": ["any"], "kind": "uncle", "voice": "narration", "trigger": {"day_min": 370, "day_max": 700, "tide": "any", "time": "any", "location": "jetty", "flags_all": ["uncle_drawer"], "flags_none": ["posted_query"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "You put the solicitor's letter in the outgoing crate with a short note. The tender takes it. There is no way to say what you hope to hear.", "effects": {"flags_set": ["posted_query"], "attitude": {"investigate": 1}}, "cause": "The player places an envelope in the outgoing crate at the jetty; the tender takes it away.", "tags": {"avenue": ["workshop"], "attitude": ["investigate"], "mood": "mid"}, "source": null},
+{"id": "a2_uncle_reply", "act": 2, "season": ["any"], "kind": "uncle", "voice": "solicitor", "trigger": {"day_min": 420, "day_max": 720, "tide": "any", "time": "any", "location": "jetty", "flags_all": ["posted_query"], "after": ["a2_post_query"], "wait_days": 45}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "The reply is on the office's own paper. There is no file of that name, and no such man in any register. The letter you hold is on our paper, but it is not in our book. We are sorry we cannot help.", "effects": {"flags_set": ["uncle_no_record"]}, "cause": "A returned envelope on the next tender; the paper has the town's loom-watermark and no stamp.", "tags": {"avenue": ["workshop"], "attitude": ["investigate"], "mood": "mid"}, "source": "owner idea: no such man in any record"},
+{"id": "a2_neighbour_light", "act": 2, "season": ["any"], "kind": "neighbour", "voice": "narration", "trigger": {"day_min": 400, "day_max": 700, "tide": "any", "time": "night", "location": "lamp", "weather": ["clear"], "flags_none": ["neighbour_seen"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "On a clear night, a faint light blinks on the horizon: three short, one long. It is the same pattern as your horn. Someone else has been given an island.", "effects": {"flags_set": ["neighbour_seen"]}, "cause": "From the lamp knoll at night, a distant point of light flashes the horn's pattern; the chart shows a new parcel.", "tags": {"avenue": ["holiday", "sanctuary"], "attitude": ["investigate", "share"], "mood": "good"}, "source": null},
+{"id": "a2_L8_neighbour", "act": 2, "season": ["any"], "kind": "letter", "voice": "helper", "trigger": {"day_min": 400, "day_max": 720, "tide": "any", "time": "any", "location": "home_yard", "flags_all": ["neighbour_seen"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "You are not the only one. Others have islands, and many have not looked up yet. You might help them, or you might not. Both have been done.", "effects": {"flags_set": ["letter_L8"]}, "cause": "A crate on the tender; a paper panel; the chart's new parcel is outlined.", "tags": {"avenue": ["sanctuary", "holiday"], "attitude": ["share", "investigate"], "mood": "good"}, "source": null, "variants": {"share": "Some of them will need rope before the winter."}},
+{"id": "a2_neighbour_asks", "act": 2, "season": ["any"], "kind": "neighbour", "voice": "narration", "trigger": {"day_min": 430, "day_max": 700, "tide": "any", "time": "any", "location": "jetty", "flags_all": ["neighbour_seen", "has_boat"], "stock_min": {"rope": 3}}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 60, "force": false, "text": "A small boat comes by on a calm morning. Someone asks, with gestures, for rope and a tin of seed. You carry the coil and the tin to the jetty and they row off with a wave.", "effects": {"stock": {"rope": -2}, "flags_set": ["gave_neighbour"], "attitude": {"share": 1}, "counts": {"guests": 1}}, "cause": "A boat at the jetty; the player and a hauler carry a coil of rope; the rope heap in the yard shrinks.", "tags": {"avenue": ["sanctuary", "homestead"], "attitude": ["share"], "mood": "good"}, "source": "beat 24 (Looking Backward): a neighbour asks for rope and seed"},
+{"id": "a2_neighbour_gift_back", "act": 2, "season": ["any"], "kind": "neighbour", "voice": "narration", "trigger": {"day_min": 460, "day_max": 720, "tide": "any", "time": "any", "location": "jetty", "flags_all": ["gave_neighbour"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 120, "force": false, "text": "A basket on the jetty, left in the night: a bag of dried apples and a coil of good line. The tie on the basket is a knot you do not know.", "effects": {"stock": {"rope": 2}, "food_days": 0.5}, "cause": "A basket sits on the jetty at dawn, with a knot of unfamiliar pattern; the stock and larder rise when carried up.", "tags": {"avenue": ["homestead", "sanctuary"], "attitude": ["share", "trust"], "mood": "good"}, "source": null},
+{"id": "a2_neighbour_dark", "act": 2, "season": ["any"], "kind": "neighbour", "voice": "narration", "trigger": {"day_min": 480, "day_max": 700, "tide": "any", "time": "night", "location": "lamp", "weather": ["clear", "overcast"], "flags_all": ["neighbour_seen"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 120, "force": false, "text": "The far light does not blink for a week. You look every night. On the eighth it comes back, a little dimmer, and your own lamp is lit again in answer.", "effects": {}, "cause": "From the lamp knoll, the far point does not blink for seven nights; on the eighth it returns.", "tags": {"avenue": ["sanctuary"], "attitude": ["share"], "mood": "bad-mild"}, "source": null},
+{"id": "a2_winter_roof", "act": 2, "season": ["winter"], "kind": "storm", "voice": "narration", "trigger": {"day_min": 571, "day_max": 660, "tide": "any", "time": "any", "location": "hut", "weather": ["storm"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 120, "force": false, "text": "A winter gale lifts the corner of the hut roof. In the morning you and a carrier carry planks and lay them back in the dry. The rain keeps off the stove for the night.", "effects": {"stock": {"planks": -2}}, "cause": "A roof strip lifts; the player and a robot carry planks and nail them back; the planks counter drops as they are fixed.", "tags": {"avenue": ["homestead", "holiday"], "attitude": ["trust"], "mood": "bad-mild"}, "source": null},
+{"id": "a2_robot_stuck_bar", "act": 2, "season": ["any"], "kind": "robot", "voice": "narration", "trigger": {"day_min": 361, "day_max": 720, "tide": "spring_low", "time": "any", "location": "hoard", "flags_all": ["hoard_found", "robot_started"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 60, "force": false, "text": "A carrier has stalled on the bar at the turn of the tide. Its light is amber. You wade out with a rope while the water gathers round your boots.", "effects": {"flags_set": ["robot_stuck"]}, "cause": "A robot sits stopped at the lowest cells of the bar as the tide turns; its light is amber.", "tags": {"avenue": ["workshop"], "attitude": ["investigate"], "mood": "bad-mild"}, "source": null},
+{"id": "a2_robot_rescue_bar", "act": 2, "season": ["any"], "kind": "robot", "voice": "narration", "trigger": {"day_min": 361, "day_max": 720, "tide": "spring_low", "time": "any", "location": "hoard", "flags_all": ["robot_stuck"], "after": ["a2_robot_stuck_bar"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 60, "force": false, "text": "Together you and a second carrier haul the stalled one over the sill with a rope and a plank. It starts again at once, wet but sound. The bar is empty and the tide comes in.", "effects": {"flags_clear": ["robot_stuck"], "attitude": {"trust": 1}}, "cause": "The player and a robot pull on a rope; the stalled robot's light goes green; they cross before the water.", "tags": {"avenue": ["workshop"], "attitude": ["trust"], "mood": "mid"}, "source": null},
+{"id": "a2_robot_repaint", "act": 2, "season": ["any"], "kind": "robot", "voice": "narration", "trigger": {"day_min": 361, "day_max": 720, "tide": "any", "time": "any", "location": "home_yard", "robots_min": 1}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 80, "force": false, "text": "You spend a wet afternoon brushing moss off a carrier and repainting the worn patches. It is blue now where it was grey. The mark on its side is clean.", "effects": {"attitude": {"investigate": 1}}, "cause": "The player scrubs a robot with a brush; its panels change colour; a mossy strip is cleared.", "tags": {"avenue": ["workshop"], "attitude": ["investigate", "trust"], "mood": "mid"}, "source": null},
+{"id": "a2_robot_worn_link", "act": 2, "season": ["any"], "kind": "robot", "voice": "narration", "trigger": {"day_min": 420, "day_max": 720, "tide": "any", "time": "any", "location": "home_yard", "flags_all": ["item_vanished", "hoard_found"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 90, "force": false, "text": "A carrier's track link has worn through. There is no spare in the catalogue now. You take one from the Hoard, a plain link with a small mark, and fit it with your own hands.", "effects": {"stock": {"metal": -1}}, "cause": "The player carries a track link from the depot; fits it; the robot's tracks run again.", "tags": {"avenue": ["workshop"], "attitude": ["investigate", "distrust"], "mood": "bad-mild"}, "source": null},
+{"id": "a2_hoard_locker", "act": 2, "season": ["any"], "kind": "clue", "voice": "narration", "trigger": {"day_min": 370, "day_max": 720, "tide": "spring_low", "time": "any", "location": "hoard", "flags_all": ["hoard_found", "has_key"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "At the back of the depot, a locker with a brass lock. Your key turns. The lock is not meant for your key and takes it anyway. Inside: a lamp wick, a coil of line, and a chart cut to the shape of the table.", "effects": {"stock": {"rope": 2}, "flags_set": ["hoard_locker"], "attitude": {"investigate": 1}}, "cause": "The player opens the locker with the brass key; the objects are laid out on the depot table.", "tags": {"avenue": ["workshop"], "attitude": ["investigate"], "mood": "good"}, "source": null},
+{"id": "a2_stranger_boat", "act": 2, "season": ["any"], "kind": "stranger", "voice": "narration", "trigger": {"day_min": 365, "day_max": 715, "tide": "any", "time": "any", "location": "home_beach", "since_storm_days_min": 1, "since_storm_days_max": 3}, "weight": 0.25, "repeat": "repeatable", "cooldown_days": 180, "force": false, "text": "After the storm, a battered boat, two cold travellers, and a hungry dog. You give soup and dry blankets. They leave a bag of oats and say little.", "effects": {"stock": {"rope": 1}, "attitude": {"share": 1}, "counts": {"guests": 2}, "food_days": 0.4}, "cause": "A boat grounds after the storm; two figures by your fire; one more tally on the guest slate; a bag of oats in the larder.", "tags": {"avenue": ["holiday", "sanctuary"], "attitude": ["share", "trust"], "mood": "mid"}, "source": "beat 13 (New Atlantis): kind welcome to strangers"},
+{"id": "a2_seals_flee", "act": 2, "season": ["any"], "kind": "wildlife", "voice": "narration", "trigger": {"day_min": 361, "day_max": 720, "tide": "any", "time": "any", "location": "seals", "flags_all": ["boat_motor", "seals_seen"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 60, "force": false, "text": "You run the motor too close. The seals slide into the water in a rush. The ledge is empty by the time the wake settles, and you are sorry.", "effects": {"counts": {"seals": -4}}, "cause": "The motor wake reaches the ledge; seals slip into the sea; the tally on the slate drops.", "tags": {"avenue": ["sanctuary"], "attitude": [], "mood": "bad-mild"}, "source": null},
+{"id": "a2_hide_counts", "act": 2, "season": ["any"], "kind": "wildlife", "voice": "narration", "trigger": {"day_min": 361, "day_max": 720, "tide": "any", "time": "any", "location": "lamp", "flags_all": ["built_hide", "seals_seen"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 45, "force": false, "text": "From the hide you count thirty-one seals and seven pups. The notebook records it. The slate by the hide door shows a longer line than last year.", "effects": {"counts": {"seals": 5, "birds": 20}}, "cause": "The player sits in the hide; a tally of seals and pups rises on the slate.", "tags": {"avenue": ["sanctuary"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a2_summer_returns", "act": 2, "season": ["summer"], "kind": "season", "voice": "narration", "trigger": {"day_min": 391, "day_max": 480, "tide": "any", "time": "any", "location": "home_beach", "weather": ["fair", "clear", "goldenhour"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 40, "force": false, "text": "The long evenings are back. The strand is warm, and the water is almost swimmable. A boat brings a family for the afternoon. They are counted and leave smiling.", "effects": {"cash_delta": 600, "counts": {"guests": 3}}, "cause": "A boat lands at the jetty; guests walk the strand; the slate and cash line rise.", "tags": {"avenue": ["holiday"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a2_autumn_fog_week", "act": 2, "season": ["autumn"], "kind": "weather", "voice": "narration", "trigger": {"day_min": 481, "day_max": 570, "tide": "any", "time": "any", "location": "jetty", "weather": ["fog"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 60, "force": false, "text": "A week of fog. The horn sounds from the dark, the tender comes and goes by sound. You sit by the fire and mend nets and do not mind.", "effects": {"delivery_delay_days": 2}, "cause": "Fog covers the table; the delivery marker slides two days; the horn sounds more often.", "tags": {"avenue": ["homestead", "holiday"], "attitude": [], "mood": "bad-mild"}, "source": null},
+{"id": "a2_winter_still", "act": 2, "season": ["winter"], "kind": "season", "voice": "narration", "trigger": {"day_min": 571, "day_max": 660, "tide": "any", "time": "any", "location": "home_yard", "weather": ["clear", "overcast"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 80, "force": false, "text": "A still week of frost. Nothing arrives. The lamp is lit, and the stove ticks. You read the same page twice and it is enough.", "effects": {}, "cause": "Frost on the yard; smoke rises straight from the chimney; the robots rest at the post.", "tags": {"avenue": ["homestead", "sanctuary"], "attitude": ["trust"], "mood": "good"}, "source": "beat 18 (Walden): a long quiet winter"},
+{"id": "a2_spring_return", "act": 2, "season": ["spring"], "kind": "season", "voice": "narration", "trigger": {"day_min": 661, "day_max": 700, "tide": "any", "time": "any", "location": "home_beach"}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 80, "force": false, "text": "The first swallows cross the sound. The turf is green again. You walk the strand and find three new seedlings in the sand where there were none.", "effects": {"counts": {"birds": 6}}, "cause": "Seedlings on the dune, a flight of swallows over the yard.", "tags": {"avenue": ["homestead", "sanctuary"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a2_boat_engine_cough", "act": 2, "season": ["any"], "kind": "boat", "voice": "narration", "trigger": {"day_min": 361, "day_max": 720, "tide": "any", "time": "any", "location": "sea", "flags_all": ["boat_motor"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 60, "force": false, "text": "The motor coughs and stops halfway home. The tide takes you gently into the bay and you row the last stretch. It is a slow evening, and the sea is kind.", "effects": {}, "cause": "The engine stops; the player rows; a tide drift carries the boat toward the lee shore.", "tags": {"avenue": ["homestead"], "attitude": [], "mood": "bad-mild"}, "source": null},
+{"id": "a2_skiff_built", "act": 2, "season": ["any"], "kind": "boat", "voice": "narration", "trigger": {"day_min": 440, "day_max": 700, "tide": "any", "time": "any", "location": "home_yard", "flags_all": ["boat_motor", "hoard_found"], "flags_none": ["skiff"], "stock_min": {"planks": 8, "metal": 3}}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "In the long evenings you and the carriers build a narrow skiff with a pole-drive engine from a Hoard motor and a keel of old oak. It is loud, and it is quick.", "effects": {"stock": {"planks": -8, "metal": -3}, "flags_set": ["skiff"], "attitude": {"trust": 1}}, "cause": "Visible stages: keel, ribs, planking, engine on a pivot; the player and robots carry planks; launch down the slip.", "tags": {"avenue": ["workshop"], "attitude": ["trust", "investigate"], "mood": "good"}, "source": "beat 9 (Swiss Family Robinson): finds turned into tools"},
+{"id": "a2_bottle_3", "act": 2, "season": ["any"], "kind": "bottle", "voice": "bottle", "trigger": {"day_min": 361, "day_max": 720, "tide": "high", "time": "any", "location": "home_beach", "weather": ["rain", "showers"], "flags_none": ["bottle_3"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "The first rain fills a barrel faster than you expect. Do not mind the small leak. Mend it on a dry morning.", "effects": {"flags_set": ["bottle_3"]}, "cause": "A bottle at the tide wrack after rain.", "tags": {"avenue": ["homestead"], "attitude": ["investigate"], "mood": "good"}, "source": "town list: gift_day.js BOTTLES[3], quoted unedited"},
+{"id": "a2_bottle_4", "act": 2, "season": ["any"], "kind": "bottle", "voice": "bottle", "trigger": {"day_min": 361, "day_max": 720, "tide": "high", "time": "any", "location": "home_beach", "flags_none": ["bottle_4"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "A lamp that burns all night will not be missed. A lamp that burns one hour at dusk will be seen.", "effects": {"flags_set": ["bottle_4"]}, "cause": "A bottle on the strand at dawn.", "tags": {"avenue": ["sanctuary", "homestead"], "attitude": ["investigate"], "mood": "mid"}, "source": "town list: gift_day.js BOTTLES[4], quoted unedited"},
+{"id": "a2_bottle_own_1", "act": 2, "season": ["autumn"], "kind": "bottle", "voice": "bottle", "trigger": {"day_min": 540, "day_max": 720, "tide": "high", "time": "any", "location": "home_beach", "flags_none": ["bottle_own_1"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "The third winter will be a long one. Salt what you can in the autumn.", "effects": {"flags_set": ["bottle_own_1"]}, "cause": "A bottle in the weed after an autumn gale.", "tags": {"avenue": ["homestead"], "attitude": ["investigate"], "mood": "mid"}, "source": "own words"},
+{"id": "a2_uncle_cold_coat", "act": 2, "season": ["winter"], "kind": "uncle", "voice": "narration", "trigger": {"day_min": 571, "day_max": 660, "tide": "any", "time": "any", "location": "hut", "flags_all": ["uncle_coat"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "In the hardest week of winter you take the coat from its hook and put it on. It fits as if made for you. In the left pocket, the same worn pencil.", "effects": {"flags_set": ["wore_coat"], "attitude": {"trust": 1}}, "cause": "The player lifts the coat from the hook; the player's silhouette gains a coat colour.", "tags": {"avenue": ["homestead"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a2_year_two_report", "act": 2, "season": ["any"], "kind": "season", "voice": "narration", "trigger": {"day_min": 715, "day_max": 720, "tide": "any", "time": "any", "location": "home_yard"}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "Another year, another card. Fewer boats, more of your own. The bars are different shapes this year, and it is up to you which you like best.", "effects": {"flags_set": ["year2_report"]}, "cause": "A new paper card on the hut door: four bars and a longer line on resilience.", "tags": {"avenue": ["holiday", "sanctuary", "homestead", "workshop"], "attitude": [], "mood": "good"}, "source": null},
+{"id": "a2_robot_oil_morning", "act": 2, "season": ["any"], "kind": "robot", "voice": "narration", "trigger": {"day_min": 361, "day_max": 720, "tide": "any", "time": "dawn", "location": "home_beach", "robots_min": 2}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 20, "force": false, "text": "At dawn the three carriers fan out along the strand in a line, their lights green. It looks like a small slow parade. You take your tea to the jetty and watch.", "effects": {}, "cause": "Robots leave the yard at first light; the status lights show green; track marks appear on the sand.", "tags": {"avenue": ["workshop"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a3_L10_quiet", "act": 3, "season": ["any"], "kind": "letter", "voice": "helper", "trigger": {"day_min": 721, "day_max": 740, "tide": "any", "time": "any", "location": "home_yard", "credit_level_min": 2, "credit_level_max": 2}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "The boats come less often now. This was always going to happen. You have more than you think.", "effects": {"flags_set": ["letter_L10"]}, "cause": "A crate with the first spaced delivery; the chalk board at the jetty shows wider gaps.", "tags": {"avenue": ["homestead", "workshop"], "attitude": ["trust"], "mood": "mid"}, "source": null},
+{"id": "a3_boats_fewer", "act": 3, "season": ["any"], "kind": "delivery", "voice": "narration", "trigger": {"day_min": 721, "day_max": 800, "tide": "any", "time": "any", "location": "jetty", "credit_level_min": 2, "credit_level_max": 2}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "You count the boats on the chalk board: one in four days, not one in two. The horn is heard less. When one comes you go down to the jetty to meet it.", "effects": {"flags_set": ["boats_fewer"]}, "cause": "The chalk lines on the jetty board are drawn wider apart; the delivery rack has fewer slots lit.", "tags": {"avenue": ["homestead"], "attitude": ["investigate"], "mood": "mid"}, "source": null},
+{"id": "a3_glass_gone", "act": 3, "season": ["any"], "kind": "delivery", "voice": "narration", "trigger": {"day_min": 760, "day_max": 900, "tide": "any", "time": "any", "location": "jetty", "credit_level_min": 2, "credit_level_max": 2}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "The glass card is turned over, blank side up. No more panes by boat. You hold a green float to the light and think of a wall made of bottles.", "effects": {"flags_set": ["glass_vanished"]}, "cause": "On the shelf the glass card turns over; the delivery rack loses a slot.", "tags": {"avenue": ["workshop", "homestead"], "attitude": ["investigate"], "mood": "mid"}, "source": "beat 21 (Machine Stops): faults first"},
+{"id": "a3_bottle_wall", "act": 3, "season": ["any"], "kind": "build", "voice": "narration", "trigger": {"day_min": 780, "day_max": 1000, "tide": "any", "time": "any", "location": "home_yard", "flags_all": ["glass_vanished"], "stock_min": {"glass": 6}}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "You and the carriers lay a wall of bottles in mortar, the sun coming through green and blue. It is warm inside, and the stove light dances.", "effects": {"stock": {"glass": -6}, "attitude": {"trust": 1}}, "cause": "Visible stages: footing, bottle courses laid in mortar, the sun through green glass; the glass count falls as bottles go in.", "tags": {"avenue": ["homestead", "holiday"], "attitude": ["trust"], "mood": "good"}, "source": "beat 9 (Swiss Family Robinson): every find becomes a tool"},
+{"id": "a3_engine_card_gone", "act": 3, "season": ["any"], "kind": "delivery", "voice": "narration", "trigger": {"day_min": 800, "day_max": 1000, "tide": "any", "time": "any", "location": "jetty", "flags_all": ["boat_motor"], "credit_level_min": 2, "credit_level_max": 2}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "The engine card goes. The last motor part that came by boat is the one you have. You oil it and wrap it in cloth.", "effects": {"flags_set": ["engine_vanished"]}, "cause": "The engine card on the shelf turns over; the player wraps the motor in oilcloth.", "tags": {"avenue": ["workshop"], "attitude": ["investigate", "distrust"], "mood": "bad-mild"}, "source": null},
+{"id": "a3_thin_week", "act": 3, "season": ["any"], "kind": "delivery", "voice": "narration", "trigger": {"day_min": 761, "day_max": 1080, "tide": "any", "time": "any", "location": "jetty", "credit_level_min": 2, "credit_level_max": 2}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 90, "force": false, "text": "No boat for a week. The rack is empty and the horn is silent. You live on what the yard heap and the hoard have. It is enough, and it is quiet.", "effects": {"food_days": -0.2, "delivery_delay_days": 3}, "cause": "Seven mornings with no tender; the chalk board gets a long gap; the yard heaps carry the work.", "tags": {"avenue": ["homestead"], "attitude": ["distrust"], "mood": "bad-mild"}, "source": null},
+{"id": "a3_lamp_dark", "act": 3, "season": ["winter"], "kind": "season", "voice": "narration", "trigger": {"day_min": 761, "day_max": 1080, "tide": "any", "time": "any", "location": "lamp", "flags_none": ["lamp_dark"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 100, "force": false, "text": "The lamp goes dark for a week. A wick has gone, and none comes by boat. You and a carrier climb the knoll with a wick from the Hoard, and light it again at dusk.", "effects": {"flags_set": ["lamp_dark"]}, "cause": "The stump lamp is dark at dusk for seven nights; the player and a robot carry the wick up the path and relight.", "tags": {"avenue": ["homestead"], "attitude": ["investigate"], "mood": "bad-mild"}, "source": "beat 21 extra: a lighthouse that goes dark"},
+{"id": "a3_log_stops", "act": 3, "season": ["any"], "kind": "clue", "voice": "narration", "trigger": {"day_min": 800, "day_max": 1050, "tide": "any", "time": "any", "location": "jetty"}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "The harbour log at the jetty store has stopped being filled in. The last entry is in the same plain hand as always. The pages after it are blank.", "effects": {"flags_set": ["log_stopped"]}, "cause": "The player opens the log at the jetty store; the last filled page is a few days old; the rest are empty.", "tags": {"avenue": ["workshop"], "attitude": ["investigate", "distrust"], "mood": "bad-mild"}, "source": "beat 21 extra: a harbour log that stops being filled"},
+{"id": "a3_great_wash_signs", "act": 3, "season": ["autumn"], "kind": "storm", "voice": "narration", "trigger": {"day_min": 841, "day_max": 930, "tide": "any", "time": "any", "location": "home_beach", "weather": ["storm", "rain"], "flags_none": ["great_wash_done"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "The glass falls and falls. The gulls leave the sky. The carriers hurry to their post. A slow round eddy begins to turn off the west shore, and you watch it from the knoll.", "effects": {"flags_set": ["wash_signs"]}, "cause": "Barometer pill falls; gulls leave; a foamy eddy turns off the lee shore; the camera eases over.", "tags": {"avenue": ["homestead", "workshop"], "attitude": ["investigate", "trust"], "mood": "mid"}, "source": null},
+{"id": "a3_great_wash", "act": 3, "season": ["autumn"], "kind": "storm", "voice": "narration", "trigger": {"day_min": 841, "day_max": 940, "tide": "any", "time": "any", "location": "home_beach", "weather": ["storm"], "flags_all": ["wash_signs"], "flags_none": ["great_wash_done"], "after": ["a3_great_wash_signs"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "In the night the sea lets go. In the morning the whole strand is heaped with timber, crates, barrels, and a great old hull lying on the sheltered stretch. There is more than you can carry in a year.", "effects": {"stock": {"planks": 20, "rope": 8, "glass": 6, "metal": 8}, "flags_set": ["great_wash_done", "hulk_there"]}, "cause": "A tidal swirl and a surge leave 900 or so pieces on the home strand; a big hulk lies near the camp; robots and the player start carrying.", "tags": {"avenue": ["homestead", "workshop", "holiday", "sanctuary"], "attitude": ["share", "trust", "investigate"], "mood": "mid"}, "source": "owner idea: the Great Wash"},
+{"id": "a3_L9_wash", "act": 3, "season": ["any"], "kind": "letter", "voice": "helper", "trigger": {"day_min": 842, "day_max": 960, "tide": "any", "time": "any", "location": "home_yard", "flags_all": ["great_wash_done"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "Everything the sea has been holding came at once. It is a lot. You do not have to keep it all, and you do not have to decide today. Sort it slowly. Share what you cannot use.", "effects": {"flags_set": ["letter_L9"]}, "cause": "A crate on the morning boat; the paper panel opens on the heaped shore.", "tags": {"avenue": ["homestead", "workshop"], "attitude": ["share", "trust"], "mood": "mid"}, "source": null},
+{"id": "a3_hulk_salvage", "act": 3, "season": ["any"], "kind": "find", "voice": "narration", "trigger": {"day_min": 842, "day_max": 1080, "tide": "any", "time": "any", "location": "home_beach", "flags_all": ["hulk_there"]}, "weight": 0.5, "repeat": "repeatable", "cooldown_days": 10, "force": false, "text": "You and the carriers take a few boards off the hulk each morning. The old boat gives its ribs slowly. In the evenings you sort the day's bolts into jars.", "effects": {"stock": {"planks": 3, "metal": 1}}, "cause": "Visible work on the hulk: boards unbolted, carried across the beach by player and robot, jars of bolts on a shelf.", "tags": {"avenue": ["workshop"], "attitude": ["trust", "investigate"], "mood": "mid"}, "source": null},
+{"id": "a3_wash_share", "act": 3, "season": ["any"], "kind": "neighbour", "voice": "narration", "trigger": {"day_min": 850, "day_max": 1060, "tide": "any", "time": "any", "location": "jetty", "flags_all": ["great_wash_done", "neighbour_seen", "has_boat"], "stock_min": {"planks": 8}}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "You load a boat with timber, rope and barrels, and send it to the far light. The neighbour comes the next morning with a bag of seed and a hand to shake. Both islands are bigger.", "effects": {"stock": {"planks": -6, "rope": -2}, "flags_set": ["shared_haul"], "attitude": {"share": 1}, "counts": {"guests": 2}}, "cause": "The boat is loaded by the player and robots at the jetty; stock drops as crates are lifted aboard; the neighbour returns with seed.", "tags": {"avenue": ["sanctuary", "homestead"], "attitude": ["share"], "mood": "good"}, "source": "beat 11 (Swiss Family Robinson): neighbours share the work by skill"},
+{"id": "a3_wash_tide_takes", "act": 3, "season": ["any"], "kind": "storm", "voice": "narration", "trigger": {"day_min": 845, "day_max": 1000, "tide": "any", "time": "any", "location": "home_beach", "flags_all": ["great_wash_done"], "flags_none": ["wash_sorted"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 200, "force": false, "text": "You were slow with the heaps. The tide takes the loose ones back, and some of the timber floats away. You are sorry for the waste. The hulk is still there, and the best planks.", "effects": {"stock": {"planks": -3}}, "cause": "After about two days the loose heaps thin and drift away on the ebb; stock drops only by what was not carried.", "tags": {"avenue": ["homestead"], "attitude": ["distrust"], "mood": "bad-mild"}, "source": null},
+{"id": "a3_float_stamp", "act": 3, "season": ["any"], "kind": "clue", "voice": "narration", "trigger": {"day_min": 842, "day_max": 1080, "tide": "any", "time": "any", "location": "home_beach", "flags_all": ["great_wash_done"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "In the wash, a glass float with the mark etched inside, where no tool could reach. You turn it in the light. It is whole.", "effects": {"flags_set": ["stamp_float"]}, "cause": "A green float in a heap; the mark shows inside as you hold it up.", "tags": {"avenue": ["workshop"], "attitude": ["investigate"], "mood": "mid"}, "source": null},
+{"id": "a3_hulk_radio", "act": 3, "season": ["any"], "kind": "clue", "voice": "narration", "trigger": {"day_min": 850, "day_max": 1080, "tide": "any", "time": "any", "location": "home_beach", "flags_all": ["hulk_there"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "In the hulk, a hand-cranked radio. When you wind it, there is only a slow tone: three short, one long. No words. You switch it off and the silence is large.", "effects": {"flags_set": ["hulk_radio"], "attitude": {"investigate": 1}}, "cause": "The player cranks a radio from the hulk; a tone pattern like the horn plays; no voice.", "tags": {"avenue": ["workshop"], "attitude": ["investigate"], "mood": "mid"}, "source": "beat 22 pattern (Machine Stops): a small voice, here only a tone"},
+{"id": "a3_workshop_open", "act": 3, "season": ["any"], "kind": "build", "voice": "narration", "trigger": {"day_min": 860, "day_max": 1080, "tide": "any", "time": "any", "location": "home_yard", "flags_all": ["hulk_there", "hoard_found"], "flags_none": ["workshop_open"], "stock_min": {"planks": 8, "metal": 4}}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "With the hulk's ribs and the Hoard's tools you set up a workshop by the slip. Benches, a lathe, a rack of old keels. There is room for two, and a carrier sits at the end of the bench.", "effects": {"stock": {"planks": -8, "metal": -4}, "flags_set": ["workshop_open"], "attitude": {"trust": 1}}, "cause": "Visible stages: floor, benches, a roof; the player and robots carry the lathe from the hulk.", "tags": {"avenue": ["workshop"], "attitude": ["trust"], "mood": "mid"}, "source": "owner idea: sort and repair into a workshop"},
+{"id": "a3_harvest_good", "act": 3, "season": ["summer"], "kind": "season", "voice": "narration", "trigger": {"day_min": 751, "day_max": 840, "tide": "any", "time": "any", "location": "home_yard", "flags_all": ["garden_started"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 100, "force": false, "text": "The beds come up thick this year. The windbreak holds, and the rain was kind. You eat well. The rest goes in jars on the shelf.", "effects": {"food_days": 1.0}, "cause": "Rows of green; jars on the shelf; the larder tally rises.", "tags": {"avenue": ["homestead"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a3_neighbour_visit", "act": 3, "season": ["any"], "kind": "neighbour", "voice": "narration", "trigger": {"day_min": 731, "day_max": 1080, "tide": "any", "time": "any", "location": "jetty", "flags_all": ["neighbour_seen", "has_boat"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 75, "force": false, "text": "A small boat lands from the far island. Three visitors, counted, a gift of salt fish, a plan to meet in the spring. You show them the lamp.", "effects": {"attitude": {"share": 1}, "counts": {"guests": 3}, "food_days": 0.4}, "cause": "A boat lands at the jetty; three figures walk the path to the lamp; the guest slate gets three marks.", "tags": {"avenue": ["holiday", "sanctuary"], "attitude": ["share"], "mood": "good"}, "source": null},
+{"id": "a3_neighbour_stamp", "act": 3, "season": ["any"], "kind": "clue", "voice": "narration", "trigger": {"day_min": 731, "day_max": 1050, "tide": "any", "time": "any", "location": "jetty", "flags_all": ["neighbour_seen"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "A crate from the neighbour has the small mark on the lid. They did not put it there. They hold the crate out to you and shrug, and so do you.", "effects": {"flags_set": ["stamp_neighbour"]}, "cause": "The neighbour hands over a crate with the mark; the notebook adds a stamp.", "tags": {"avenue": ["sanctuary", "workshop"], "attitude": ["investigate"], "mood": "mid"}, "source": null},
+{"id": "a3_neighbour_roof", "act": 3, "season": ["any"], "kind": "neighbour", "voice": "narration", "trigger": {"day_min": 731, "day_max": 1080, "tide": "any", "time": "any", "location": "jetty", "flags_all": ["neighbour_seen", "has_boat"], "stock_min": {"planks": 4}, "since_storm_days_min": 1, "since_storm_days_max": 4}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 120, "force": false, "text": "A calm night after a storm, and a boat at your jetty: the neighbour's roof has lifted and they need planks. You load them with a carrier at one end and the neighbour at the other.", "effects": {"stock": {"planks": -4}, "attitude": {"share": 1}}, "cause": "The player and a hauler robot carry planks to a waiting boat; the planks counter drops as they go.", "tags": {"avenue": ["sanctuary", "homestead"], "attitude": ["share"], "mood": "mid"}, "source": null},
+{"id": "a3_chart_second_island", "act": 3, "season": ["any"], "kind": "neighbour", "voice": "narration", "trigger": {"day_min": 731, "day_max": 1060, "tide": "any", "time": "any", "location": "sea", "flags_all": ["has_boat"], "flags_none": ["second_island_seen"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "On the chart, a small island with a sandy cove, a low hill and a freshwater lens. It is for sale at a price you can nearly meet. You write the number on the slate.", "effects": {"flags_set": ["second_island_seen"], "attitude": {"investigate": 1}}, "cause": "A survey voyage returns; the chart shows a new parcel with a price tag.", "tags": {"avenue": ["homestead", "holiday"], "attitude": ["investigate"], "mood": "good"}, "source": null},
+{"id": "a3_second_island_bought", "act": 3, "season": ["any"], "kind": "neighbour", "voice": "narration", "trigger": {"day_min": 780, "day_max": 1080, "tide": "any", "time": "any", "location": "sea", "flags_all": ["second_island_seen", "has_boat"], "flags_none": ["second_island"], "cash_min": 180000}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "You count the cash on the table. Enough for a small one. You buy the island by cash, since credit cannot buy land. A new key, a new gate, a new beach. Two homes.", "effects": {"flags_set": ["second_island"], "attitude": {"trust": 1}, "cash_delta": -180000}, "cause": "The cash line falls by the purchase; the chart fills in the new parcel; a second jetty appears on the map.", "tags": {"avenue": ["homestead", "holiday", "sanctuary"], "attitude": ["trust"], "mood": "good"}, "source": "owner idea: stay, move or buy"},
+{"id": "a3_stranger_hulk", "act": 3, "season": ["any"], "kind": "stranger", "voice": "narration", "trigger": {"day_min": 850, "day_max": 1060, "tide": "any", "time": "any", "location": "home_beach", "since_storm_days_min": 1, "since_storm_days_max": 4}, "weight": 0.3, "repeat": "repeatable", "cooldown_days": 180, "force": false, "text": "In the wash a small party lands from a drifted boat, tired and shy. You give a meal and a bed. In the morning they ask the way to the nearest island and you tell them.", "effects": {"attitude": {"share": 1}, "counts": {"guests": 3}}, "cause": "A beached boat, a fire, three tallies; a boat leaves by dawn.", "tags": {"avenue": ["holiday", "sanctuary"], "attitude": ["share", "trust"], "mood": "good"}, "source": "beat 13 (New Atlantis)"},
+{"id": "a3_seal_big_year", "act": 3, "season": ["autumn"], "kind": "wildlife", "voice": "narration", "trigger": {"day_min": 841, "day_max": 960, "tide": "any", "time": "any", "location": "lamp", "flags_all": ["built_hide", "seals_seen"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 90, "force": false, "text": "The ledge is full this autumn. Sixty seals, a score of pups. You count from the hide for two evenings to be sure, and the number is the same both times.", "effects": {"counts": {"seals": 15}}, "cause": "The tally on the hide slate rises by fifteen; the lamp beam shows the full ledge.", "tags": {"avenue": ["sanctuary"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a3_storm_haul_normal", "act": 3, "season": ["any"], "kind": "storm", "voice": "narration", "trigger": {"day_min": 721, "day_max": 1080, "tide": "any", "time": "any", "location": "home_beach", "weather": ["storm"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 60, "force": false, "text": "A lesser storm brings a modest haul: a pile of planks and two barrels. You and the carriers sort it by noon, and have the heaps stacked by dusk.", "effects": {"stock": {"planks": 3, "metal": 2, "rope": 1}}, "cause": "Heaps on the wrack line; the player carries one end of planks with a robot at the other.", "tags": {"avenue": ["homestead", "workshop"], "attitude": ["trust"], "mood": "mid"}, "source": null},
+{"id": "a3_aurora", "act": 3, "season": ["winter"], "kind": "weather", "voice": "narration", "trigger": {"day_min": 931, "day_max": 1020, "tide": "any", "time": "night", "location": "home_beach", "weather": ["clear"]}, "weight": 0.3, "repeat": "repeatable", "cooldown_days": 120, "force": false, "text": "A thin green curtain moves across the north on a clear winter night. The robots stop and you stand with them in the cold. It lasts twenty minutes and is gone.", "effects": {}, "cause": "The sky clock draws a faint green curtain over the north horizon.", "tags": {"avenue": ["sanctuary", "holiday"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a3_bottle_own_2", "act": 3, "season": ["any"], "kind": "bottle", "voice": "bottle", "trigger": {"day_min": 800, "day_max": 1060, "tide": "high", "time": "any", "location": "home_beach", "flags_none": ["bottle_own_2"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "When the shelf is empty, look under the rock where the seals sleep.", "effects": {"flags_set": ["bottle_own_2"]}, "cause": "A bottle in the lee of the east cove.", "tags": {"avenue": ["sanctuary", "homestead"], "attitude": ["investigate"], "mood": "mid"}, "source": "own words"},
+{"id": "a3_bottle_5", "act": 3, "season": ["any"], "kind": "bottle", "voice": "bottle", "trigger": {"day_min": 721, "day_max": 1080, "tide": "high", "time": "any", "location": "home_beach", "flags_none": ["bottle_5"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "Someone is hoping this place is kind to you. That is all this note is for.", "effects": {"flags_set": ["bottle_5"]}, "cause": "A bottle on the beach at dawn.", "tags": {"avenue": ["holiday", "sanctuary"], "attitude": ["trust"], "mood": "good"}, "source": "town list: gift_day.js BOTTLES[5], quoted unedited"},
+{"id": "a3_uncle_unread_3", "act": 3, "season": ["any"], "kind": "uncle", "voice": "helper", "trigger": {"day_min": 731, "day_max": 1000, "tide": "any", "time": "any", "location": "hut", "flags_all": ["uncle_shelf", "envelope_2"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "A last envelope on the shelf: The road you built to the hide will flood in the third spring. Move it uphill. The mark is in the corner, and this time the paper is warm.", "effects": {"flags_set": ["envelope_3"]}, "cause": "The player opens the envelope at the hut table; the hide track is chalked on the hillside.", "tags": {"avenue": ["sanctuary", "homestead"], "attitude": ["investigate", "trust"], "mood": "mid"}, "source": null},
+{"id": "a3_stranger_asks_uncle", "act": 3, "season": ["any"], "kind": "uncle", "voice": "narration", "trigger": {"day_min": 731, "day_max": 1060, "tide": "any", "time": "any", "location": "home_beach", "flags_all": ["neighbour_seen"], "flags_none": ["uncle_no_record_visit"], "since_storm_days_min": 1, "since_storm_days_max": 6}, "weight": 0.2, "repeat": "once", "cooldown_days": 0, "force": false, "text": "A visitor from the loom town stops at the hut door. Your great-uncle? She laughs kindly. Nobody on our hill ever had one with an island. The rain was heavy there last week.", "effects": {"flags_set": ["uncle_no_record_visit"], "attitude": {"investigate": 1}, "counts": {"guests": 1}}, "cause": "A visitor stands at the hut door; she looks past you at the coat on the hook.", "tags": {"avenue": ["holiday"], "attitude": ["investigate", "distrust"], "mood": "mid"}, "source": "owner idea: no such man exists in any record"},
+{"id": "a3_robot_mossy", "act": 3, "season": ["any"], "kind": "robot", "voice": "narration", "trigger": {"day_min": 731, "day_max": 1080, "tide": "any", "time": "any", "location": "home_yard", "robots_min": 1}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 120, "force": false, "text": "Moss grows on the tops of the carriers. You scrub them each spring, and one of them lies still for a week under a sprig of ivy while you decide whether to wake it.", "effects": {}, "cause": "Moss on robot panels; one robot idle at the post; its light amber.", "tags": {"avenue": ["workshop"], "attitude": [], "mood": "bad-mild"}, "source": null},
+{"id": "a3_robot_cross_heap", "act": 3, "season": ["any"], "kind": "robot", "voice": "narration", "trigger": {"day_min": 731, "day_max": 1080, "tide": "spring_low", "time": "any", "location": "hoard", "flags_all": ["hoard_found", "robot_started"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "Two carriers carry a long beam across the bar at the same time, step for step, one end each. You walk behind and call out the tide. They do not need the call, but it is good to say.", "effects": {"stock": {"planks": 4}}, "cause": "Two robots carry a beam across the bar; the heap in the yard rises when they arrive.", "tags": {"avenue": ["workshop"], "attitude": ["trust", "share"], "mood": "mid"}, "source": null},
+{"id": "a3_gale_boat", "act": 3, "season": ["any"], "kind": "boat", "voice": "narration", "trigger": {"day_min": 721, "day_max": 1080, "tide": "any", "time": "any", "location": "sea", "weather": ["storm", "rain"], "flags_all": ["has_boat"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 70, "force": false, "text": "Caught between the isles in a rising wind, the boat rides high and wet. You head into the sea and it takes the spray. At the jetty you tie up and laugh from the cold.", "effects": {}, "cause": "A heavy sea, a wet boat, a rocking camera; the tender is tied up at the jetty.", "tags": {"avenue": ["workshop"], "attitude": [], "mood": "bad-mild"}, "source": null},
+{"id": "a3_summer_fair", "act": 3, "season": ["summer"], "kind": "guest", "voice": "narration", "trigger": {"day_min": 751, "day_max": 840, "tide": "any", "time": "any", "location": "jetty", "flags_all": ["neighbour_seen", "built_jetty"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 360, "force": false, "text": "A summer fair on the strand. Your neighbour sets a stall, there are lanterns of bottle glass, and a hundred small boats stand in the roads. You count the guests and pour the tea.", "effects": {"cash_delta": 3000, "counts": {"guests": 60}}, "cause": "Lanterns on the strand, a row of boats; the guest slate gets a long line of marks.", "tags": {"avenue": ["holiday"], "attitude": ["share", "trust"], "mood": "good"}, "source": null},
+{"id": "a4_L11_last", "act": 4, "season": ["any"], "kind": "letter", "voice": "helper", "trigger": {"day_min": 1081, "day_max": 1110, "tide": "any", "time": "any", "location": "home_yard", "credit_level_min": 1, "credit_level_max": 1}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "This is the last large parcel. After this, only small things come. The island can stand without them, and so can you. If you ever need anything, look at the shore.", "effects": {"stock": {"planks": 10, "rope": 6, "metal": 6, "glass": 4}, "flags_set": ["letter_L11", "last_parcel"]}, "cause": "The last big crate is carried up the beach by the player and robots; the shelf shows fewer cards.", "tags": {"avenue": ["homestead", "workshop", "holiday", "sanctuary"], "attitude": ["trust"], "mood": "mid"}, "source": null},
+{"id": "a4_basics_only", "act": 4, "season": ["any"], "kind": "delivery", "voice": "narration", "trigger": {"day_min": 1261, "day_max": 1330, "tide": "any", "time": "any", "location": "jetty", "credit_level_min": 0, "credit_level_max": 0}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "Six cards are left on the shelf: rope, tarp, seed, oil, a saw, a blanket. They are plain. They are all you need to start from.", "effects": {"flags_set": ["basics_only"]}, "cause": "Six cards remain on the shelf; the rack has one slot lit; the tender comes once a week.", "tags": {"avenue": ["homestead"], "attitude": ["investigate", "distrust"], "mood": "mid"}, "source": null},
+{"id": "a4_shore_gives", "act": 4, "season": ["any"], "kind": "find", "voice": "narration", "trigger": {"day_min": 1081, "day_max": 1440, "tide": "high", "time": "any", "location": "home_beach"}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 14, "force": false, "text": "The shore is richer this year, as if it had been saving. A week of finds: rope, glass, a drum of oil, a crate with a pair of boots. You stack them neatly, and say nothing.", "effects": {"stock": {"rope": 2, "glass": 1, "metal": 1}}, "cause": "The strand shows a string of finds after each spring tide; robots carry them in; the heaps in the yard grow.", "tags": {"avenue": ["homestead", "workshop"], "attitude": ["trust"], "mood": "good"}, "source": "beat 4 (Robinson Crusoe) and L11"},
+{"id": "a4_lamp_own_oil", "act": 4, "season": ["any"], "kind": "season", "voice": "narration", "trigger": {"day_min": 1081, "day_max": 1440, "tide": "any", "time": "any", "location": "lamp", "flags_all": ["garden_started"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 120, "force": false, "text": "You press the seed from the garden and the oil burns clean in the stump lamp. It smells of toast. It is the first night the lamp has been lit by your own hand alone.", "effects": {"flags_clear": ["lamp_dark"], "attitude": {"trust": 1}}, "cause": "A small oil press in the yard; the player carries a can up to the lamp; the lamp lights at dusk.", "tags": {"avenue": ["homestead"], "attitude": ["trust", "distrust"], "mood": "good"}, "source": null},
+{"id": "a4_winter_alone", "act": 4, "season": ["winter"], "kind": "season", "voice": "narration", "trigger": {"day_min": 1291, "day_max": 1380, "tide": "any", "time": "any", "location": "home_yard", "flags_none": ["lamp_dark"], "credit_level_min": 0, "credit_level_max": 0}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 100, "force": false, "text": "A winter with no boats. The yard heaps carry you. The stove warms, the lamp is lit, and the evenings are long. It is enough, and it is quiet.", "effects": {}, "cause": "Frost on the yard; the tender does not come; the stock bars hold.", "tags": {"avenue": ["homestead", "sanctuary"], "attitude": ["distrust", "trust"], "mood": "mid"}, "source": "beat 23 (Machine Stops): old skills win the winter"},
+{"id": "a4_neighbour_return", "act": 4, "season": ["any"], "kind": "neighbour", "voice": "narration", "trigger": {"day_min": 1081, "day_max": 1440, "tide": "any", "time": "any", "location": "jetty", "flags_all": ["gave_neighbour"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 90, "force": false, "text": "The neighbour comes with rope and seed after the winter, without being asked. You had given them the same in the spring of the year before. The boat leaves with fish.", "effects": {"stock": {"rope": 3}, "attitude": {"share": 1}, "counts": {"guests": 2}}, "cause": "A boat lands at the jetty; two crates are carried up by the player and a hauler; the rope count rises.", "tags": {"avenue": ["sanctuary", "homestead"], "attitude": ["share"], "mood": "good"}, "source": null},
+{"id": "a4_neighbour_needs", "act": 4, "season": ["any"], "kind": "neighbour", "voice": "narration", "trigger": {"day_min": 1081, "day_max": 1440, "tide": "any", "time": "any", "location": "jetty", "flags_all": ["neighbour_seen", "has_boat"], "stock_min": {"planks": 6}}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 90, "force": false, "text": "Now you are the one with a full yard. A neighbour comes for planks and nails. You load them with a carrier at one end and the visitor at the other, and wave them off.", "effects": {"stock": {"planks": -4}, "attitude": {"share": 1}}, "cause": "The player and a hauler carry planks to the jetty; the planks counter drops; the boat sails.", "tags": {"avenue": ["sanctuary", "homestead"], "attitude": ["share"], "mood": "good"}, "source": "beat 24 (Looking Backward)"},
+{"id": "a4_stranger_week", "act": 4, "season": ["any"], "kind": "stranger", "voice": "narration", "trigger": {"day_min": 1081, "day_max": 1440, "tide": "any", "time": "any", "location": "home_beach", "since_storm_days_min": 1, "since_storm_days_max": 4}, "weight": 0.3, "repeat": "repeatable", "cooldown_days": 180, "force": false, "text": "A traveller walks up the beach after a storm, stays a week in the hut, and leaves a coil of line and a way of tying it. You never ask the name, and they do not say.", "effects": {"stock": {"rope": 2}, "attitude": {"share": 1}, "counts": {"guests": 1}}, "cause": "A figure walks up the strand; hut smoke; later a coil on the jetty and an empty bunk.", "tags": {"avenue": ["holiday", "sanctuary"], "attitude": ["share", "trust"], "mood": "good"}, "source": "beat 13 (New Atlantis)"},
+{"id": "a4_robot_worn", "act": 4, "season": ["any"], "kind": "robot", "voice": "narration", "trigger": {"day_min": 1081, "day_max": 1440, "tide": "any", "time": "any", "location": "home_yard", "robots_min": 1}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 150, "force": false, "text": "One old carrier stops at its post and does not start. Its light is dark. You do not know how long it has worked. You lay a sheet of canvas over it and keep its parts for the others.", "effects": {"stock": {"metal": 3}}, "cause": "A robot with a dark light sits at the post under a tarp; a few parts are carried to the workshop.", "tags": {"avenue": ["workshop"], "attitude": ["investigate"], "mood": "bad-mild"}, "source": null},
+{"id": "a4_robot_keeps_on", "act": 4, "season": ["any"], "kind": "robot", "voice": "narration", "trigger": {"day_min": 1081, "day_max": 1440, "tide": "any", "time": "any", "location": "home_beach", "robots_min": 1}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "Winter, spring, summer: a carrier works the same strand every tide. You stop watching it, and it goes on. When you look up, the heap has grown.", "effects": {"stock": {"planks": 1}}, "cause": "The robot makes its rounds; the yard heap rises one board at a time.", "tags": {"avenue": ["workshop"], "attitude": ["trust"], "mood": "mid"}, "source": null},
+{"id": "a4_storm_haul", "act": 4, "season": ["any"], "kind": "storm", "voice": "narration", "trigger": {"day_min": 1081, "day_max": 1440, "tide": "any", "time": "any", "location": "home_beach", "weather": ["storm"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 60, "force": false, "text": "The last big storm of the year brings a handful of crates and long planks. You and the carriers go out at dawn. The tide is on the ebb.", "effects": {"stock": {"planks": 3, "metal": 2, "rope": 2}}, "cause": "Heaps on the wrack line; the player and a robot carry a long beam between them.", "tags": {"avenue": ["homestead", "workshop"], "attitude": ["trust"], "mood": "mid"}, "source": null},
+{"id": "a4_festival", "act": 4, "season": ["summer"], "kind": "guest", "voice": "narration", "trigger": {"day_min": 1111, "day_max": 1200, "tide": "any", "time": "any", "location": "jetty", "flags_all": ["neighbour_seen", "built_jetty"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 360, "force": false, "text": "On the longest day, your island hosts a small festival. Lanterns, boats, the neighbour's songs. You count two hundred guests and give them tea, and nobody goes hungry.", "effects": {"cash_delta": 6000, "counts": {"guests": 200}}, "cause": "Lanterns on the strand; boats lie in the roads; the guest slate fills.", "tags": {"avenue": ["holiday"], "attitude": ["share"], "mood": "good"}, "source": null},
+{"id": "a4_seals_record", "act": 4, "season": ["autumn"], "kind": "wildlife", "voice": "narration", "trigger": {"day_min": 1201, "day_max": 1320, "tide": "any", "time": "any", "location": "lamp", "flags_all": ["built_hide", "seals_seen"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 180, "force": false, "text": "The slate by the hide door shows the longest line yet: one hundred and four seals this autumn, thirty pups. You write the year beneath it.", "effects": {"counts": {"seals": 20}}, "cause": "The tally on the slate rises; the lamp beam shows a full ledge.", "tags": {"avenue": ["sanctuary"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a4_tender_last", "act": 4, "season": ["any"], "kind": "boat", "voice": "narration", "trigger": {"day_min": 1331, "day_max": 1440, "tide": "any", "time": "any", "location": "jetty", "flags_all": ["basics_only"], "flags_none": ["tender_last_seen"], "credit_level_min": 0, "credit_level_max": 0}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "The tender comes in at dawn, ties up, and leaves nothing. It waits a minute at the jetty, as if for something, and goes out again with the tide.", "effects": {"flags_set": ["tender_last_seen"]}, "cause": "An empty tender at the jetty at dawn, a short wait, and it leaves.", "tags": {"avenue": ["workshop"], "attitude": ["investigate", "distrust"], "mood": "bad-mild"}, "source": null},
+{"id": "a4_L12_after", "act": 4, "season": ["any"], "kind": "letter", "voice": "helper", "trigger": {"day_min": 1425, "day_max": 1440, "tide": "any", "time": "any", "location": "home_yard"}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "You made something. It does not matter what. It is yours, and it is good that it exists. The sea is still giving, if you are still looking.", "effects": {"flags_set": ["letter_L12"]}, "cause": "The year-four report is opened; the paper panel unrolls on the hut table.", "tags": {"avenue": ["holiday", "sanctuary", "homestead", "workshop"], "attitude": ["trust", "distrust", "investigate", "share"], "mood": "good"}, "source": null},
+{"id": "a4_uncle_file_closed", "act": 4, "season": ["any"], "kind": "uncle", "voice": "solicitor", "trigger": {"day_min": 1081, "day_max": 1400, "tide": "any", "time": "any", "location": "jetty", "flags_all": ["posted_query"], "flags_none": ["uncle_file_closed"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "A card from the office in the loom town: Your file is closed. The office is shutting its door in the spring. We wish the island well. The ink is blue, and the paper smells of rain.", "effects": {"flags_set": ["uncle_file_closed"]}, "cause": "A card on the weekly tender; the loom town watermark and no mark.", "tags": {"avenue": ["workshop"], "attitude": ["investigate"], "mood": "mid"}, "source": null},
+{"id": "a4_uncle_coat_final", "act": 4, "season": ["any"], "kind": "uncle", "voice": "narration", "trigger": {"day_min": 1081, "day_max": 1440, "tide": "any", "time": "any", "location": "hut", "flags_all": ["uncle_coat"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 200, "force": false, "text": "The coat still hangs on its hook. You have worn it and hung it back a dozen times. It has taken the shape of your shoulders. The pencil is still in the pocket.", "effects": {"attitude": {"trust": 1}}, "cause": "A coat on a hook, in lamp light; the camera rests on it for a breath.", "tags": {"avenue": ["homestead"], "attitude": ["trust"], "mood": "mid"}, "source": null},
+{"id": "a4_uncle_chair_view", "act": 4, "season": ["any"], "kind": "uncle", "voice": "narration", "trigger": {"day_min": 1081, "day_max": 1440, "tide": "any", "time": "any", "location": "hut", "flags_all": ["uncle_chair"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 120, "force": false, "text": "You sit in the chair that faces the lamp and watch the evening come. A tick in the table book, next to a low water. You add one of your own.", "effects": {"attitude": {"investigate": 1}}, "cause": "The chair at the window; the tide book open on the table; the player's pencil makes a tick.", "tags": {"avenue": ["homestead"], "attitude": ["investigate", "trust"], "mood": "mid"}, "source": null},
+{"id": "a4_bottle_own_3", "act": 4, "season": ["any"], "kind": "bottle", "voice": "bottle", "trigger": {"day_min": 1081, "day_max": 1440, "tide": "high", "time": "any", "location": "home_beach", "flags_none": ["bottle_own_3"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "If you are reading this, the boats have thinned and you are still here. That was always the plan, and also the hope.", "effects": {"flags_set": ["bottle_own_3"]}, "cause": "A bottle on the tideline at dawn.", "tags": {"avenue": ["holiday", "sanctuary", "homestead", "workshop"], "attitude": ["trust", "investigate"], "mood": "good"}, "source": "own words"},
+{"id": "a4_bottle_own_4", "act": 4, "season": ["any"], "kind": "bottle", "voice": "bottle", "trigger": {"day_min": 1081, "day_max": 1440, "tide": "high", "time": "any", "location": "home_beach", "flags_none": ["bottle_own_4"]}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": false, "text": "The lamp can be seen from further than you think. Keep it lit when it counts.", "effects": {"flags_set": ["bottle_own_4"]}, "cause": "A bottle against the jetty post at low light.", "tags": {"avenue": ["sanctuary", "homestead"], "attitude": ["investigate"], "mood": "good"}, "source": "own words"},
+{"id": "a4_fog_morning", "act": 4, "season": ["any"], "kind": "weather", "voice": "narration", "trigger": {"day_min": 1081, "day_max": 1440, "tide": "any", "time": "dawn", "location": "home_beach", "weather": ["fog"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "A bright, still fog in the morning. The sea and the sky are one colour. You stand on the strand and the carriers are shapes with green lights.", "effects": {}, "cause": "A white fog bank over the table; green lights on robot shapes; the horn of the lamp sounds once.", "tags": {"avenue": ["holiday", "sanctuary"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a4_lean_winter_ice", "act": 4, "season": ["winter"], "kind": "season", "voice": "narration", "trigger": {"day_min": 1291, "day_max": 1380, "tide": "any", "time": "any", "location": "home_yard", "weather": ["clear", "overcast"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 90, "force": false, "text": "A week of ice. The barrel freezes, the nets stiffen, and the tracks of the carriers print the yard white. You break the ice with a mallet and drink from the cistern.", "effects": {"food_days": -0.2}, "cause": "Ice on the barrel; frost on the yard; footprints and tracks across the white.", "tags": {"avenue": ["homestead"], "attitude": ["distrust"], "mood": "bad-mild"}, "source": null},
+{"id": "a4_rainbow", "act": 4, "season": ["any"], "kind": "weather", "voice": "narration", "trigger": {"day_min": 1081, "day_max": 1440, "tide": "any", "time": "day", "location": "lamp", "weather": ["showers", "rain"]}, "weight": 1.0, "repeat": "repeatable", "cooldown_days": 45, "force": false, "text": "After rain, a double rainbow stands over the seal rock. The seals lift their heads. A gannet folds and drops through it into the sea.", "effects": {}, "cause": "A double rainbow; seals raise heads; a gannet plunge.", "tags": {"avenue": ["sanctuary", "holiday"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a4_year_four_end", "act": 4, "season": ["any"], "kind": "season", "voice": "narration", "trigger": {"day_min": 1420, "day_max": 1440, "tide": "any", "time": "any", "location": "home_yard"}, "weight": 1.0, "repeat": "once", "cooldown_days": 0, "force": true, "text": "Four years. The report card has four bars, and none is full, and none is empty. You look at the island and it looks back like a place that is yours.", "effects": {"flags_set": ["year4_report"]}, "cause": "A fourth card on the hut door beside the other three; the island at dusk, lights in windows.", "tags": {"avenue": ["holiday", "sanctuary", "homestead", "workshop"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a2_tide_pool", "act": 2, "season": ["summer"], "kind": "find", "voice": "narration", "trigger": {"day_min": 361, "day_max": 720, "tide": "low", "time": "any", "location": "home_beach"}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "At the lowest tide the rock pools are open like small gardens. You find crabs, a starfish and a limpet the size of a coin. You put them back and keep a handful of mussels.", "effects": {"food_days": 0.2}, "cause": "Pools on the low shelf; the player kneels; the larder tally rises by a little.", "tags": {"avenue": ["homestead", "sanctuary"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a2_kelp_wrack", "act": 2, "season": ["spring"], "kind": "find", "voice": "narration", "trigger": {"day_min": 361, "day_max": 720, "tide": "any", "time": "any", "location": "home_beach"}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "A heap of kelp on the strand after the spring tide. You fork it onto the beds and the garden drinks it in. The smell is strong, and by the weekend it is gone.", "effects": {"food_days": 0.2}, "cause": "Brown kelp on the wrack line; the player and a robot fork it into barrows and carry it to the beds.", "tags": {"avenue": ["homestead"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a2_gannet_dive", "act": 2, "season": ["summer"], "kind": "wildlife", "voice": "narration", "trigger": {"day_min": 361, "day_max": 720, "tide": "any", "time": "any", "location": "sea", "flags_all": ["has_boat"]}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "Out in the sound a gannet folds and drops like a white arrow into the sea. Another, then six. You stop the oars and watch the water close over them.", "effects": {}, "cause": "White birds fold and plunge off the lee shore; the oars are shipped.", "tags": {"avenue": ["sanctuary"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a2_dolphins", "act": 2, "season": ["summer"], "kind": "wildlife", "voice": "narration", "trigger": {"day_min": 361, "day_max": 720, "tide": "any", "time": "any", "location": "sea", "flags_all": ["has_boat"]}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "Dolphins come alongside the boat and ride the bow wave for a full minute, curving over and under it. They leave as suddenly as they came. You are grinning.", "effects": {}, "cause": "Grey fins arc around the bow; the wake lifts; the camera follows them off.", "tags": {"avenue": ["holiday", "sanctuary"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a2_otter_cove", "act": 2, "season": ["any"], "kind": "wildlife", "voice": "narration", "trigger": {"day_min": 361, "day_max": 720, "tide": "any", "time": "dawn", "location": "home_beach"}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "At first light an otter hunts along the east cove, brown and low, diving with a roll. It brings a crab to a rock and eats it there, quite unhurried, and goes.", "effects": {}, "cause": "A brown shape at the cove at dawn; ripples; a crab on a rock.", "tags": {"avenue": ["sanctuary"], "attitude": ["trust", "investigate"], "mood": "good"}, "source": null},
+{"id": "a2_rain_barrel", "act": 2, "season": ["any"], "kind": "weather", "voice": "narration", "trigger": {"day_min": 361, "day_max": 720, "tide": "any", "time": "any", "location": "hut", "weather": ["rain", "showers"]}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "A long soft rain on the canvas. The barrel fills by the hour. You sit in the doorway with tea and watch the level rise, and do not mind the wet.", "effects": {}, "cause": "Rain on the roof; a trickle into the barrel; the litre count rises with the water line.", "tags": {"avenue": ["homestead"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a2_small_gale", "act": 2, "season": ["any"], "kind": "storm", "voice": "narration", "trigger": {"day_min": 361, "day_max": 720, "tide": "any", "time": "any", "location": "home_beach", "weather": ["storm"]}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "A blustery night. In the morning a drift of boards, a barrel and a coil of line lie along the wrack. A small haul, and a good start to the day.", "effects": {"stock": {"planks": 2, "rope": 1}}, "cause": "A light haul on the wrack line; robots go out at first light; heaps grow in the yard.", "tags": {"avenue": ["homestead", "workshop"], "attitude": ["trust"], "mood": "mid"}, "source": null},
+{"id": "a2_cold_barrel", "act": 2, "season": ["winter"], "kind": "season", "voice": "narration", "trigger": {"day_min": 571, "day_max": 660, "tide": "any", "time": "any", "location": "home_yard"}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "A hard frost. The barrel has a lid of ice and the tap will not run. You melt snow in the kettle, and the carriers stay under cover until the sun comes.", "effects": {"food_days": -0.1}, "cause": "Ice on the barrel; kettle steam; robots wait at the post.", "tags": {"avenue": ["homestead"], "attitude": ["distrust"], "mood": "bad-mild"}, "source": null},
+{"id": "a2_net_evening", "act": 2, "season": ["autumn"], "kind": "season", "voice": "narration", "trigger": {"day_min": 481, "day_max": 570, "tide": "any", "time": "any", "location": "home_yard"}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "In the long dusk you mend a net by the stove. The twine is stiff, the knot is slow, but by lamp-lighting the tear is shut. It is a small pleasure.", "effects": {}, "cause": "A net on stakes by the stove; the tear closes; the rope count does not change.", "tags": {"avenue": ["homestead"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a2_horn_early", "act": 2, "season": ["any"], "kind": "boat", "voice": "narration", "trigger": {"day_min": 361, "day_max": 720, "tide": "any", "time": "any", "location": "jetty"}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "The horn sounds at dawn, an hour before the tender should be in. You hurry down to the jetty and the boat is already tying up, the crate waiting on the thwart.", "effects": {}, "cause": "The horn; the tender lands early; the crate is carried up the beach by the player and a robot.", "tags": {"avenue": ["homestead", "holiday"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a2_robot_lost_track", "act": 2, "season": ["any"], "kind": "robot", "voice": "narration", "trigger": {"day_min": 361, "day_max": 720, "tide": "any", "time": "any", "location": "home_beach", "robots_min": 1}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "A carrier has gone down the wrong side of a rock, and stopped with its light amber. You turn it round by hand and set it on its route, and it goes on as if nothing had happened.", "effects": {}, "cause": "A robot wedged at a rock; the player turns it; the light goes green.", "tags": {"avenue": ["workshop"], "attitude": [], "mood": "bad-mild"}, "source": null},
+{"id": "a2_empty_rack", "act": 2, "season": ["any"], "kind": "delivery", "voice": "narration", "trigger": {"day_min": 421, "day_max": 720, "tide": "any", "time": "any", "location": "jetty", "credit_level_min": 3, "credit_level_max": 3}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "The rack at the jetty is not full this week. Two slots stand empty and the tender has no crate for you. You make do with what the yard heap has.", "effects": {"delivery_delay_days": 1}, "cause": "The delivery rack at the jetty has dark slots; the tender passes without landing.", "tags": {"avenue": ["homestead"], "attitude": ["distrust", "investigate"], "mood": "bad-mild"}, "source": null},
+{"id": "a2_gull_roost", "act": 2, "season": ["any"], "kind": "wildlife", "voice": "narration", "trigger": {"day_min": 361, "day_max": 720, "tide": "any", "time": "any", "location": "home_yard"}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "A hundred gulls on the roof of the yard shed, all facing into the wind. You walk round them. They do not mind you at all, only the wind.", "effects": {}, "cause": "Gulls lined along the shed roof; the player walks the yard.", "tags": {"avenue": ["sanctuary"], "attitude": ["trust"], "mood": "mid"}, "source": null},
+{"id": "a3_kelp_oil", "act": 3, "season": ["spring"], "kind": "find", "voice": "narration", "trigger": {"day_min": 721, "day_max": 1080, "tide": "any", "time": "any", "location": "home_beach"}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "A big mat of kelp comes in on the surge. You and a carrier fork it onto the beds before the gulls get at it. The rows green up by the next week.", "effects": {"food_days": 0.3}, "cause": "Kelp on the strand; the player and a robot fork it into barrows; the beds darken.", "tags": {"avenue": ["homestead"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a3_dolphins", "act": 3, "season": ["summer"], "kind": "wildlife", "voice": "narration", "trigger": {"day_min": 721, "day_max": 1080, "tide": "any", "time": "any", "location": "sea", "flags_all": ["has_boat"]}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "Dolphins in the sound in the long evening. They come close to the jetty and stay for the length of a song. A guest on the boat holds her breath, and nobody says a word.", "effects": {"counts": {"guests": 1}}, "cause": "Grey fins and soft clicks at the jetty; the guest slate gets a mark.", "tags": {"avenue": ["holiday", "sanctuary"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a3_storm_in", "act": 3, "season": ["any"], "kind": "storm", "voice": "narration", "trigger": {"day_min": 721, "day_max": 1080, "tide": "any", "time": "night", "location": "hut", "weather": ["storm"]}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "A night of gale, and you are warm in the hut with the stove, a book and the kettle ticking. The roof holds. The carriers sleep at the post. Outside, the sea shouts to itself.", "effects": {}, "cause": "Storm on the glass; the stove glow; the robots at the post under cover.", "tags": {"avenue": ["homestead", "sanctuary"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a3_robot_sunbath", "act": 3, "season": ["any"], "kind": "robot", "voice": "narration", "trigger": {"day_min": 721, "day_max": 1080, "tide": "any", "time": "any", "location": "home_yard", "weather": ["fair", "clear"], "robots_min": 1}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "On a sunny morning the three carriers stand in the yard with their panels turned to the light. You walk between them with your tea. The light on each one is steady green.", "effects": {}, "cause": "Robots at the post; green lights; the charge bar fills.", "tags": {"avenue": ["workshop"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a3_cold_week", "act": 3, "season": ["winter"], "kind": "season", "voice": "narration", "trigger": {"day_min": 931, "day_max": 1020, "tide": "any", "time": "any", "location": "home_yard"}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "A hard week. The wind comes round to the north and the stock bars drop one by one. You burn the worst of the wrack and wear the coat that fits.", "effects": {"stock": {"planks": -2}}, "cause": "Smoke from the chimney; the yard heaps are smaller; a coat on the player.", "tags": {"avenue": ["homestead"], "attitude": ["distrust", "trust"], "mood": "bad-mild"}, "source": null},
+{"id": "a3_empty_shelf", "act": 3, "season": ["any"], "kind": "delivery", "voice": "narration", "trigger": {"day_min": 741, "day_max": 1080, "tide": "any", "time": "any", "location": "jetty", "credit_level_min": 2, "credit_level_max": 2}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "A card falls from the shelf and nobody picks it up. The shelf has more empty slots than full. It looks like a shop at the end of a long day.", "effects": {}, "cause": "A card on the floor; the shelf shows gaps; the delivery rack has fewer lit slots.", "tags": {"avenue": ["workshop"], "attitude": ["distrust", "investigate"], "mood": "bad-mild"}, "source": null},
+{"id": "a3_dawn_boat", "act": 3, "season": ["any"], "kind": "boat", "voice": "narration", "trigger": {"day_min": 721, "day_max": 1080, "tide": "any", "time": "dawn", "location": "sea", "weather": ["clear", "fair"], "flags_all": ["has_boat"]}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "You take the boat out before sunrise. The sea is glass, the lamp a pale dot, and the whole table lies before you. Seals watch from far off, and you let the engine be quiet.", "effects": {}, "cause": "A calm dawn on the water; mist at the sea edge; the wake is long and thin.", "tags": {"avenue": ["holiday", "sanctuary"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a3_odd_tin", "act": 3, "season": ["any"], "kind": "find", "voice": "narration", "trigger": {"day_min": 721, "day_max": 1080, "tide": "high", "time": "any", "location": "home_beach"}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "A sealed tin on the tideline. You prise it open. Inside: a hundred dry seeds and a handful of salt. You plant the seeds at the edge of the garden and write the date on a stake.", "effects": {}, "cause": "A tin on the wrack; the player opens it; a stake is driven at the bed edge.", "tags": {"avenue": ["homestead"], "attitude": ["investigate", "trust"], "mood": "mid"}, "source": null},
+{"id": "a3_fog_horn", "act": 3, "season": ["any"], "kind": "weather", "voice": "narration", "trigger": {"day_min": 721, "day_max": 1080, "tide": "any", "time": "any", "location": "lamp", "weather": ["fog"], "flags_all": ["neighbour_seen"]}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "A thick fog, and the horn sounds from the jetty every few minutes. You stand on the knoll with a lantern, and a boat answers from far off, and then another.", "effects": {}, "cause": "Fog bank over the table; horn blasts; a lantern on the knoll; boats answering.", "tags": {"avenue": ["sanctuary"], "attitude": ["share"], "mood": "mid"}, "source": null},
+{"id": "a3_puffin_burrow", "act": 3, "season": ["spring"], "kind": "wildlife", "voice": "narration", "trigger": {"day_min": 1021, "day_max": 1080, "tide": "any", "time": "any", "location": "lamp"}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "Puffins stand outside their burrows on the far rock, each with a row of silver fish. They shuffle, bow and whirr off. You count twenty before the light goes.", "effects": {"counts": {"birds": 20}}, "cause": "Black-and-white birds with bright bills on the turf; the bird tally rises.", "tags": {"avenue": ["sanctuary"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a4_tide_pool", "act": 4, "season": ["summer"], "kind": "find", "voice": "narration", "trigger": {"day_min": 1081, "day_max": 1440, "tide": "low", "time": "any", "location": "home_beach"}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "The same pools, and four years older. You know the limpets by sight. You take a few mussels, put the rest back, and carry them home in your hat.", "effects": {"food_days": 0.2}, "cause": "Rock pools at the lowest tide; a hat of mussels; the larder rises a little.", "tags": {"avenue": ["homestead", "sanctuary"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a4_dolphins", "act": 4, "season": ["summer"], "kind": "wildlife", "voice": "narration", "trigger": {"day_min": 1081, "day_max": 1440, "tide": "any", "time": "any", "location": "sea", "flags_all": ["has_boat"]}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "The dolphins are back, as they are each summer. They ride the bow wave and curve under it. You wave. It is not a thing you would have done in your first year.", "effects": {}, "cause": "Fins at the bow; the camera follows the pod; the player waves.", "tags": {"avenue": ["sanctuary", "holiday"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a4_net_evening", "act": 4, "season": ["autumn"], "kind": "season", "voice": "narration", "trigger": {"day_min": 1081, "day_max": 1440, "tide": "any", "time": "any", "location": "home_yard"}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "You mend a net by the stove in the dusk, and teach a visitor the knot. They tie it wrong twice and right the third time and are pleased with themselves.", "effects": {"counts": {"guests": 1}}, "cause": "A net on stakes; two figures at the knot; the guest slate gets one mark.", "tags": {"avenue": ["homestead", "holiday"], "attitude": ["share"], "mood": "good"}, "source": null},
+{"id": "a4_storm_in", "act": 4, "season": ["any"], "kind": "storm", "voice": "narration", "trigger": {"day_min": 1081, "day_max": 1440, "tide": "any", "time": "night", "location": "hut", "weather": ["storm"]}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "Another gale, another night in the hut with the stove. You know every creak of this roof. It does not creak tonight; the brace holds. You fall asleep with a hand on the key.", "effects": {}, "cause": "Storm on the glass, the stove glow, the brace holds.", "tags": {"avenue": ["homestead"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a4_empty_jetty", "act": 4, "season": ["any"], "kind": "boat", "voice": "narration", "trigger": {"day_min": 1181, "day_max": 1440, "tide": "any", "time": "any", "location": "jetty", "credit_level_min": 0, "credit_level_max": 1}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "A week with no boat. You stand at the end of the jetty at the hour when the horn used to sound. Nothing comes. You go back up the beach and put the kettle on.", "effects": {}, "cause": "The jetty at dusk, empty; the horn silent; the kettle on.", "tags": {"avenue": ["homestead"], "attitude": ["distrust"], "mood": "bad-mild"}, "source": null},
+{"id": "a4_robot_sunbath", "act": 4, "season": ["any"], "kind": "robot", "voice": "narration", "trigger": {"day_min": 1081, "day_max": 1440, "tide": "any", "time": "any", "location": "home_yard", "weather": ["fair", "clear"], "robots_min": 1}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "Three carriers sit in the sun at the post and one of them has lichen on its shoulder. You leave the lichen. Moss and rust, and green lights, and tea.", "effects": {}, "cause": "Robots at the post, panels to the sun, lichen on one.", "tags": {"avenue": ["workshop"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a4_cold_week", "act": 4, "season": ["winter"], "kind": "season", "voice": "narration", "trigger": {"day_min": 1291, "day_max": 1380, "tide": "any", "time": "any", "location": "home_yard"}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "Ice at the edge of the sea and frost in the yard. You break up old crates for the stove and the carriers wait it out. When the sun comes, it is the best morning of the winter.", "effects": {"stock": {"planks": -2}}, "cause": "Frost on the yard; crates split for the stove; the sun on the strand.", "tags": {"avenue": ["homestead"], "attitude": ["distrust"], "mood": "bad-mild"}, "source": null},
+{"id": "a4_dawn_boat", "act": 4, "season": ["any"], "kind": "boat", "voice": "narration", "trigger": {"day_min": 1081, "day_max": 1440, "tide": "any", "time": "dawn", "location": "sea", "weather": ["clear", "fair"], "flags_all": ["has_boat"]}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "You take the boat out at first light and the whole table lies in front of you in a clean line. It looks small. It looks like something that could be loved, and kept.", "effects": {}, "cause": "A calm dawn on the water; the table in one view; the wake is thin.", "tags": {"avenue": ["holiday", "sanctuary"], "attitude": ["trust"], "mood": "good"}, "source": null},
+{"id": "a4_fog_visit", "act": 4, "season": ["any"], "kind": "neighbour", "voice": "narration", "trigger": {"day_min": 1081, "day_max": 1440, "tide": "any", "time": "any", "location": "lamp", "weather": ["fog"], "flags_all": ["neighbour_seen"]}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "In the fog a lantern bobs across the water, and then a hail. You light your own, and the two lights come together at the jetty. The neighbour has brought tea.", "effects": {}, "cause": "Fog; two lanterns meeting at the jetty; steam from a flask.", "tags": {"avenue": ["sanctuary"], "attitude": ["share"], "mood": "good"}, "source": null},
+{"id": "a4_odd_find", "act": 4, "season": ["any"], "kind": "find", "voice": "narration", "trigger": {"day_min": 1081, "day_max": 1440, "tide": "high", "time": "any", "location": "home_beach"}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "A plain crate on the strand, no label but the small mark. In it: a spool of good thread, a needle case and a pair of strong scissors. Just what a long winter wants.", "effects": {"stock": {"rope": 1}}, "cause": "A crate on the wrack; the player opens it; tools on the table.", "tags": {"avenue": ["homestead", "workshop"], "attitude": ["investigate"], "mood": "mid"}, "source": null},
+{"id": "a4_gull_roost", "act": 4, "season": ["any"], "kind": "wildlife", "voice": "narration", "trigger": {"day_min": 1081, "day_max": 1440, "tide": "any", "time": "any", "location": "home_yard"}, "weight": 0.7, "repeat": "repeatable", "cooldown_days": 30, "force": false, "text": "The gulls are on the shed roof again. You know one by its bent foot. You do not name it. You do give it the heel of the loaf.", "effects": {}, "cause": "Gulls on the shed; one on the fence rail; the loaf crust on the post.", "tags": {"avenue": ["sanctuary"], "attitude": ["trust"], "mood": "mid"}, "source": null}
+]
+}
