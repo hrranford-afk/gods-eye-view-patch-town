@@ -632,6 +632,14 @@ function info(id) {
   if (id.startsWith('pheap_')) { const k = id.slice(6); return { name: cap1(k) + ' heap (' + (stockOf()[k] || 0) + ')', use: W.heap.use, needs: W.heap.needs, action: W.heap.action }; }
   return null;
 }
+function robotNote(i) {   /* what a dock robot is doing, in words (the card of the inspect layer) */
+  const o = P.err[i], sr = simR() && simR().robots[i]; if (!o || !sr) return null; const pct = Math.round((sr.charge || 0) * 100);
+  if (o.role === 'dock' && !o.kind && !o.busy) return { use: 'An old machine stalled at the dock. Its light is amber: it is waiting for planks and rope.', needs: 'Supplies from your boat. Battery ' + pct + ' percent.', action: 'Row supplies in' };
+  if (o.kind) return { use: 'Carrying ' + o.kind + ' from its heap to the site.', needs: 'Nothing: it is working. Battery ' + pct + ' percent.', action: null, locked: null };
+  if (o.busy === 'beam') return { use: 'Holding one end of the frame beam.', needs: 'You at the other end. Battery ' + pct + ' percent.', action: 'Hold the glowing end' };
+  if (o.crate) return { use: 'Carrying a crate up the beach.', needs: 'Nothing: it is working. Battery ' + pct + ' percent.', action: null };
+  return null;
+}
 function goldId() {   /* the one next thing that needs you */
   const m = P.mk; if (!m || !P.ready) return null; const op = ph().op;
   if (m.tag === 'float') { const f = op && op.floats.filter(q => !q.gone).sort((a, b) => hypot(a.x - m.x, a.z - m.z) - hypot(b.x - m.x, b.z - m.z))[0]; return f ? 'pfloat' + f.id : null; }
@@ -733,7 +741,7 @@ function placeBoat() {   /* your little rowing boat lies near the dock from the 
 }
 function attach(api) { A = api; T = A.THREE(); C = A.C(); scratch(); P.on = true; SOFT(wireInput, 'wire'); return true; }
 root.LI_PHYS.attach = attach;
-root.LI_PHYS.page = { onCrate, crateTap, openLid, unloaded, startCarry, invalidate: saved => { P.restoredOk = false; P.pendingSaved = saved || null; P.arrDone = P.arrDone && !!(saved && saved.op); }, canCommit, commitBuild, placeBoat, attach, begin: () => { P.ready = true; }, tick, targets: () => ownTargets(), activate, hint, buildLine, finishDock: () => { const b = ph().b; if (b && b.id === 'jetty') { b.stage = 5; finishCheck(); } }, info, goldId, snapshot, restore, reset, swallowTap: () => { if (P.swallow > P.t) { P.swallow = 0; return true; } return false; }, startOpening, openingSetup, lightLantern, layoutReady: () => !!layout(),
+root.LI_PHYS.page = { onCrate, crateTap, openLid, unloaded, startCarry, invalidate: saved => { P.restoredOk = false; P.pendingSaved = saved || null; P.arrDone = P.arrDone && !!(saved && saved.op); }, canCommit, commitBuild, placeBoat, attach, begin: () => { P.ready = true; }, tick, targets: () => ownTargets(), activate, hint, buildLine, robotNote, finishDock: () => { const b = ph().b; if (b && b.id === 'jetty') { b.stage = 5; finishCheck(); } }, info, goldId, snapshot, restore, reset, swallowTap: () => { if (P.swallow > P.t) { P.swallow = 0; return true; } return false; }, startOpening, openingSetup, lightLantern, layoutReady: () => !!layout(),
   state: () => ({ ph: ph(), err: Object.keys(P.err).map(i => ({ i: +i, role: P.err[i].role, carry: P.err[i].carry || null, kind: P.err[i].kind || null })), beam: P.beam && { phase: P.beam.phase, robotAt: P.beam.robotAt, d: P.beam.c.d, total: P.beam.c.total, robot: P.beam.robot }, marker: P.mk, phase: P.phase, act: P.act && P.act.kind, hold: P.holdId, errs: P.errs.slice(), counts: P.V && { heaps: Object.fromEntries(KINDS.map(k => [k, P.V.heaps[k].count])), stage: P.V.stage.count, floats: P.V.floats.count }, dockOpen0: P.dockOpen0 }),
   hold: id => { P.holdId = id || null; }, startAct, siteAction, beamCard, layout: () => { const L = layout(); return L && { stores: L.stores, pad: L.pad, post: L.post, dock: L.dock && { psi: L.dock.psi, root: L.dock.root, tip: L.dock.tip, stand: L.dock.stand } }; },
   advance(sec) { const h = .1; let t = 0; while (t < sec - 1e-9) { const d = Math.min(h, sec - t); SOFT(() => rt().advance(d), 'adv'); tick(d); t += d; } return true; }, planFor, siteOf, puff, errs: () => P.errs.slice(), floats: () => (ph().op ? ph().op.floats : []) };
