@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Living Islands graphics check</title>
+<style>
+:root{--bg:#0e1a24;--fg:#e8f0f4;--mut:#9db3c0;--card:#17293a;--acc:#6fd0c0}
+@media (prefers-color-scheme:light){:root{--bg:#f2f6f8;--fg:#13222e;--mut:#4d6575;--card:#fff;--acc:#0b7d6e}}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 system-ui,sans-serif;padding:20px max(16px,env(safe-area-inset-left))}
+main{max-width:720px;margin:auto}h1{font-size:1.4rem}
+pre{background:var(--card);border-radius:12px;padding:14px;white-space:pre-wrap;word-break:break-word;font-size:14px}
+button{background:var(--card);color:var(--fg);border:2px solid var(--acc);border-radius:12px;padding:14px 18px;font-size:1rem;min-height:52px}
+p{color:var(--mut)}
+</style></head><body><main>
+<h1>Graphics check</h1>
+<p>Open this in the same browser and window you use for the game. Press Copy report and paste it to me.</p>
+<button id="cp">Copy report</button>
+<pre id="out">Checking...</pre>
+<script src="ultra.js"></script>
+<script>
+(function(){
+var out=document.getElementById('out'),L=[];
+function probe(pref){
+  var c=document.createElement('canvas');
+  var gl=null;
+  try{gl=c.getContext('webgl',{powerPreference:pref})||c.getContext('experimental-webgl',{powerPreference:pref});}catch(e){return pref+': error '+e.message;}
+  if(!gl)return pref+': no WebGL';
+  var ext=gl.getExtension('WEBGL_debug_renderer_info');
+  var r=ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER);
+  var v=ext?gl.getParameter(ext.UNMASKED_VENDOR_WEBGL):gl.getParameter(gl.VENDOR);
+  var cls='';
+  try{if(window.LI_ULTRA&&LI_ULTRA.classifyGpu){var k=LI_ULTRA.classifyGpu(r);cls=' -> class: '+k.kind+' ('+(k.name||'')+')';}}catch(e){}
+  return pref+': renderer="'+r+'" vendor="'+v+'"'+cls;
+}
+L.push('Time: '+new Date().toISOString());
+L.push('User agent: '+navigator.userAgent);
+L.push('Platform: '+(navigator.platform||'?')+'; touch points: '+(navigator.maxTouchPoints||0));
+L.push('Screen: '+screen.width+'x'+screen.height+'; window '+innerWidth+'x'+innerHeight+'; pixel ratio '+devicePixelRatio);
+L.push('');
+['default','high-performance','low-power'].forEach(function(p){L.push(probe(p));});
+L.push('');
+try{
+  if(window.LI_ULTRA&&LI_ULTRA.deviceStepDown){
+    var raw=function(){var c=document.createElement('canvas');var gl=c.getContext('webgl',{powerPreference:'high-performance'});if(!gl)return '';var e=gl.getExtension('WEBGL_debug_renderer_info');return e?gl.getParameter(e.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER);}();
+    var s=LI_ULTRA.deviceStepDown('radeon',raw,navigator.userAgent,navigator.maxTouchPoints||0,{});
+    L.push('Step-down decision for device=radeon (with the fast-GPU probe): '+JSON.stringify(s));
+  } else L.push('ultra.js did not load, so no step-down decision (the page may be an old cached copy).');
+}catch(e){L.push('Step-down check error: '+e.message);}
+out.textContent=L.join('\n');
+document.getElementById('cp').onclick=function(){
+  var t=out.textContent;
+  (navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(t):Promise.reject()).catch(function(){var r=document.createRange();r.selectNodeContents(out);var s=getSelection();s.removeAllRanges();s.addRange(r);});
+};
+})();
+</script></main></body></html>
