@@ -318,6 +318,20 @@ function ambientStep(a, dt, visible) {
   a.q += dt; if (a.q >= AMBIENT.quietS) { const id = AMBIENT.order[a.k % AMBIENT.order.length]; a.k++; a.q = 0; a.active = AMBIENT.dur[id]; a.id = id; return { a, fire: id }; }
   return { a, fire: null };
 }
+/* the icons over a stopped robot (Job 6c): name -> SVG inner paths on a 24 box, drawn by the page; every reason code in camp_start.js STOPS names one */
+const STOP_ICONS = {
+  battery: '<rect x="4" y="8" width="14" height="9" rx="1.5"/><rect x="18" y="10.5" width="2.5" height="4"/><rect x="5.5" y="9.5" width="3" height="6" fill="#fff"/>',
+  bolt: '<path d="M13 3 L6 14 H11 L10 21 L18 9 H12.5 Z"/>',
+  moon: '<path d="M16 4 A8 8 0 1 0 20 16 A6.5 6.5 0 0 1 16 4 Z"/>',
+  cloud: '<path d="M7 17 A4 4 0 0 1 7.5 9 A5 5 0 0 1 17 8.5 A4 4 0 0 1 17 17 Z"/><path d="M9 19 L8 22 M13 19 L12 22 M17 19 L16 22" stroke-width="1.6"/>',
+  hand: '<path d="M8 21 V11 L9.5 11 V6 H11.5 V11 H12.5 V5 H14.5 V11 H15.5 V7 H17.5 V15 Q17.5 21 12 21 Z"/>',
+  box: '<path d="M4 8 L12 4 L20 8 V17 L12 21 L4 17 Z"/><path d="M4 8 L12 12 L20 8 M12 12 V21" stroke-width="1.4"/>',
+  wave: '<path d="M3 10 Q6 6 9 10 T15 10 T21 10 M3 16 Q6 12 9 16 T15 16 T21 16" fill="none" stroke-width="2"/>',
+  zz: '<path d="M6 7 H12 L6 13 H12 M13 13 H18 L13 18 H18" fill="none" stroke-width="2"/>',
+  rock: '<path d="M3 19 L7 9 L12 6 L17 9 L21 19 Z"/><path d="M9 12 L12 15 L15 11" stroke="#fff" stroke-width="1.4" fill="none"/>',
+  off: '<circle cx="12" cy="13" r="7" fill="none" stroke-width="2"/><path d="M12 4 V12" stroke-width="2.2"/>',
+  wait: '<circle cx="12" cy="12" r="8" fill="none" stroke-width="2"/><path d="M12 7 V12 L15.5 14" fill="none" stroke-width="2"/>'
+};
 /* EXPLORATION (Job 6c item 1). Pure: the compass arrow in degrees clockwise from straight up on the screen, for a camera looking along (fx, fz) on the ground. */
 function arrowDeg(from, to, fx, fz) { const dx = to.x - from.x, dz = to.z - from.z, rx = -fz, rz = fx; return Math.atan2(dx * rx + dz * rz, dx * fx + dz * fz) * 180 / Math.PI; }
 /* the places the player knows: id, name, which landing marks it, when it is known, the one line when heading there */
@@ -326,7 +340,7 @@ const PLACES = [
   { id: 'skerry', name: 'The outer skerry', land: 'skerry', known: () => true, line: 'Something is wedged on the skerry.' },
   { id: 'woods', name: 'The woods', land: null, known: () => false, line: 'Row to the woods.' }   /* later: no woods in the world yet; the row is here so the chart grows with the map */
 ];
-const CORE = { arrowDeg, PLACES, AMBIENT, ambientStep, STARTER, missingText, WAIT, waitStep, KITS, FIT_S, CAMP_CAP, modsOf, partsText, batteryLine, fitKit, ROBOT_RATE, HAND_UNIT_S, LITTER_UNITS, litterStock, rateText, handRate, handStep, STOCKS, BUILD_NEEDS, UNITS_PER_TRIP, STOCK_CAP, emptyStock, missing, needText, addHaul, setJob, START_CASH, START_CREDIT, START_HOUR, BASE_YEARLY, CATALOGUE, BUILDS, BOTTLES, FINDS, SHELTERS, LETTER1, LETTER2, STAGES, STAGE_LABEL, WEATHER_DELAY, SAVE_KEY, SAVE_VERSION,
+const CORE = { STOP_ICONS, arrowDeg, PLACES, AMBIENT, ambientStep, STARTER, missingText, WAIT, waitStep, KITS, FIT_S, CAMP_CAP, modsOf, partsText, batteryLine, fitKit, ROBOT_RATE, HAND_UNIT_S, LITTER_UNITS, litterStock, rateText, handRate, handStep, STOCKS, BUILD_NEEDS, UNITS_PER_TRIP, STOCK_CAP, emptyStock, missing, needText, addHaul, setJob, START_CASH, START_CREDIT, START_HOUR, BASE_YEARLY, CATALOGUE, BUILDS, BOTTLES, FINDS, SHELTERS, LETTER1, LETTER2, STAGES, STAGE_LABEL, WEATHER_DELAY, SAVE_KEY, SAVE_VERSION,
   pound, signed, newLedger, spend, recent, entryLine, creditYears, creditNote, itemById, etaFor, placeOrder, resolveDelivery, etaText, bottleIndex, bottleMessage, pickFinds,
   newState, stageOf, progress, jobsDone, serialize, deserialize, validState, canned, hintFor, canBuild, doBuild, hashStr, mulberry };
 if (typeof module !== 'undefined' && module.exports) module.exports = CORE;
@@ -776,7 +790,7 @@ const INSPECT = [
   { re: /^find\d+$/, f: () => ({ name: 'Something on the shore', use: 'A small find washed up by the tide.', needs: null, action: 'Pick it up' }) },
   { re: /^wreck$/, f: s => ({ name: 'The old hull', use: 'An old hull on the shore. A track link may be inside.', needs: null, action: 'Look' }) },
   { re: /^crate\d+$/, f: (s, id) => { const c = G.crates[parseInt(id.slice(5), 10) - 1] || {}, n = c.n || id.slice(5); return { name: 'Crate number ' + n, use: c.letter2 ? 'The evening boat left it. A letter lies on top.' : c.item ? 'A delivery from the boat: ' + ((itemById(c.item) || {}).name || 'goods') + '.' : 'Supplies from the boat.', needs: c.phys && c.phys.heavy ? 'A robot and you together' : null, action: c.letter2 && !s.letter2 ? 'Open it' : 'Open' }; } },
-  { re: /^bot\d+$/, f: (s, id) => { const i = parseInt(id.slice(3), 10), b = robotState(i), on = s.robots[i], note = PHYS() && PHYS().robotNote ? PHYS().robotNote(i) : null; if (note) return Object.assign({ name: 'Carrier ' + (i + 1) }, note); return { name: 'Carrier ' + (i + 1), use: on ? 'An old machine that gathers washed-up stock for the yard. Its light shows how it is.' : 'An old machine, switched off. Dust in the tracks, one worn link.', needs: on ? (b && typeof b.charge === 'number' ? 'Battery ' + Math.round(b.charge * 100) + ' percent. ' : '') + (((s.jobs || [])[i]) ? 'Order: ' + (stockById((s.jobs || [])[i]) || {}).name : 'No order yet') : 'A track link (parts: ' + s.parts + ')', action: on ? 'Give an order' : 'Fit a part', locked: !on && !s.parts ? 'It needs a track link first' : null }; } },
+  { re: /^bot\d+$/, f: (s, id) => { const i = parseInt(id.slice(3), 10), b = robotState(i), on = s.robots[i], note = PHYS() && PHYS().robotNote ? PHYS().robotNote(i) : null; const sto = on ? stopOf(i) : null; if (note) return Object.assign({ name: 'Carrier ' + (i + 1) }, note, sto ? { use: sto.say + ' ' + (note.use || '') } : {}); if (sto) return { name: 'Carrier ' + (i + 1), use: sto.say, needs: sto.code === 'wait_player' ? 'You: tap to give it an order' : sto.code === 'wait_supplies' ? 'Supplies from your boat' : 'Nothing from you: it handles this itself', action: 'Open its card' }; return { name: 'Carrier ' + (i + 1), use: on ? 'An old machine that gathers washed-up stock for the yard. Its light shows how it is.' : 'An old machine, switched off. Dust in the tracks, one worn link.', needs: on ? (b && typeof b.charge === 'number' ? 'Battery ' + Math.round(b.charge * 100) + ' percent. ' : '') + (((s.jobs || [])[i]) ? 'Order: ' + (stockById((s.jobs || [])[i]) || {}).name : 'No order yet') : 'A track link (parts: ' + s.parts + ')', action: on ? 'Give an order' : 'Fit a part', locked: !on && !s.parts ? 'It needs a track link first' : null }; } },
   { re: /^dest$/, f: () => { const i = exploreInfo(); return i ? { name: i.name, use: i.line, needs: 'A row of about ' + Math.round(i.dist) + ' m. Follow the gold arrow.', action: 'Show the way' } : null; } },
   { re: /^bottle$/, f: () => ({ name: 'The bottle', use: 'A message in a bottle.', needs: null, action: 'Read it' }) },
   { re: /^fitpost$/, f: () => ({ name: 'The charging post', use: 'The carrier stands in its bay. Hold here while the old part comes out and the new one goes in.', needs: 'Your hands, a few seconds', action: 'Hold to fit' }) },
@@ -976,6 +990,7 @@ function notebook() {
   job(s.water, 'Find water', s.water ? 'The barrel is out. No spring on this island: rain only.' : 'Not every island has a spring. This one does not.', s.water ? null : btn('Look', barrelCard));
   job(s.finds.length >= 2, 'Look along the shore', 'Finds taken: ' + s.finds.length + ' of 2. Seals keep to the far rocks.', null);
   job(s.plank, 'Fit one plank of the old jetty', s.plank ? 'One plank is in. The tender can land a little closer.' : 'Drag a loose plank to a gap, or tap a plank and then a gap.', s.plank ? null : btn('Show me', showJetty));
+  { const L = stopLines(10); if (L.length) { c.appendChild(h('p', '', '<b>Recent stops</b> <small>(the last ' + L.length + ')</small>')); L.forEach(q => c.appendChild(h('div', 'gd-stopline', '<small>' + q.text + '</small>'))); } }
   c.appendChild(xbtn()); c.appendChild(row(btn('Close', closeCard, 'pri')));
 }
 function showJetty() { closeCard(); const rp = C.li().repair; try { const v = rp.view; if (typeof v === 'function') v(); } catch (e) { /* the camera stays */ } const j = G.spots.S.jetty; if (j) focus(j.ox, j.oz, 22, undefined, .8); toast('The loose planks lie near the old jetty. A "Fit one plank" button is under the notes if your hands need help.', 6500); G.helpPlank = true; renderUi(); }
@@ -1100,6 +1115,7 @@ function robotCard(i) {
   const s = G.s, on = s.robots[i], b = robotState(i); if (!b) return; focus(b.x, b.z, 13);
   const job = (s.jobs || [])[i], jn = job ? stockById(job).name.toLowerCase() : null;
   const c = card('bot', '<h2>' + (on ? 'Old carrier' : 'Old carrier. Needs a part.') + '</h2><p>' + (on ? (jn ? 'Order: ' + jn + '. It works the tideline and brings the pile to the yard. <small>' + rateText(job) + '</small>' : 'Running, but it has no order. It waits at its post.') : 'Switched off. Dust in the tracks, one worn link.') + '</p>' + (on ? '<p><small>Status light: ' + (LAMP_WORDS[b.lamp] || b.lamp || 'on') + '. A small mark is stamped on the chassis. You have seen it on the letter.</small> ' + mark(22) + '</p>' : '<p><small>Parts in hand: ' + s.parts + '. ' + (s.parts ? '' : 'The missing part is a track link: it is in the first crate from the boat, or in the old hull on the shore.') + '</small></p>')); c.appendChild(xbtn());
+  { const st = on ? stopOf(i) : null; if (st) c.appendChild(h('p', '', '<b>' + st.say + '</b>')); else if (on) c.appendChild(h('p', '', '<b>Working.</b> <small>' + (b.state === 'out' ? 'Walking to the shore.' : b.state === 'carry' ? 'Carrying a load to the yard.' : b.state === 'work' ? 'Gathering at the shore.' : 'On the job.') + '</small>')); }
   if (on) STOCKS.forEach(k => { const d = h('div', 'gd-item'); d.innerHTML = '<div><b>' + k.name + '</b></div>'; d.appendChild(btn(job === k.id ? 'Ordered' : 'Gather', () => giveOrder(i, k.id), job === k.id ? '' : 'pri', job === k.id)); c.appendChild(d); });
   if (on) { const m = modsOf(s, i); c.appendChild(h('p', '', '<small>' + batteryLine(m, b.charge) + '</small>')); KITS.forEach(k => { const key = k.id === 'battery' ? 'bat' : 'solar', have = (s.kits || {})[k.id] || 0; if (have || m[key]) c.appendChild(row(btn(m[key] ? k.name + ': fitted' : 'Fit ' + k.name.toLowerCase() + ' (' + have + ' kit)', () => startFit(i, k.id), 'pri', !!m[key]))); }); if (G.fit && G.fit.i === i) c.appendChild(h('p', '', '<small>Hold on the charging post to swap the part in.</small>')); }
   const bs = []; if (!on) bs.push(btn('Fit a part (' + s.parts + ')', () => startRobot(i), 'pri', s.parts < 1)); if (on) bs.push(btn('Stock and builds', robotsCard)); bs.push(btn('Close', closeCard)); c.appendChild(row(...bs));
@@ -1327,6 +1343,7 @@ function tick(dt) {
   waitTick(dt); ambientTick(dt); clockTick(dt); weatherTick(); try { if (SHP()) SHP().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('storm ' + e.message); } holdRobots(); chargePost(); handTick(dt);  plankWatch(); try { if (PHYS()) PHYS().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('phys ' + e.message); } deliveriesTick(); deliveryTick(dt); nightTick(dt); focusTick(dt);
   try { const bd = BDP(); if (bd && bd.tick) { bd.tick(dt); if (!G.boatRev && s.ordered) { G.boatRev = true; if (bd.reveal) bd.reveal(); } } } catch (e) { if (G.err.length < 20) G.err.push('boat ' + e.message); }
   try { exploreTick(dt); } catch (e) { if (G.err.length < 20) G.err.push('explore ' + e.message); }
+  try { G.stT = (G.stT || 0) + dt; if (G.stT > .12) { G.stT = 0; stopChips(); } } catch (e) { if (G.err.length < 20) G.err.push('stops ' + e.message); }
   const O = G.objs, tide = C.tide();
   /* barrel fills in rain */
   if (s.water) { if (isRaining()) G.barrel = Math.min(40, (G.barrel || 0) + dt * 1.6); }
@@ -1364,6 +1381,25 @@ function hintTarget() {
   return null;
 }
 
+/* ---------------- ROBOT STOPS on the page (Job 6c item 2): the icon over a stopped robot, the sentence on its card, the last ten stops in the notebook ---------------- */
+const STOPQ = () => root.LI_CAMP;
+function stopOf(i) {   /* { code, say, label, icon, place } for a robot that is not working, else null */
+  try { const rt = C.li().campstart.rt(), sim = rt.sim(), r = sim.robots[i], K = STOPQ(); if (!r || !K || !K.stopReason) return null; const code = K.stopReason(sim, r); if (!code) return null;
+    if (code === 'switched_off' && ['arrive', 'jobs', 'delivery', 'dock'].includes(stageOf(G.s))) return null;
+    return { code, say: K.stopSay(sim, r, code), label: K.STOPS[code].label, icon: K.STOPS[code].icon, place: K.placeOf(sim, r) }; } catch (e) { return null; }
+}
+function stopSvg(icon) { return '<svg viewBox="0 0 24 24" width="18" height="18" fill="#ffe9b0" stroke="#ffe9b0" stroke-linejoin="round" aria-hidden="true">' + (STOP_ICONS[icon] || STOP_ICONS.wait) + '</svg>'; }
+function stopChips() {
+  G.ui.chips = G.ui.chips || []; let bots = []; try { bots = C.li().campstart.rt().robots(); } catch (e) { bots = []; }
+  bots.forEach((b, i) => { let c = G.ui.chips[i]; if (!c) { c = G.ui.chips[i] = h('div', 'gd-stopchip'); c.style.cssText = 'position:fixed;z-index:5;display:none;width:28px;height:28px;margin:-40px 0 0 -14px;border-radius:50%;background:rgba(48,36,24,.82);border:2px solid #e0b040;pointer-events:none;align-items:center;justify-content:center'; document.body.appendChild(c); }
+    const st = G.cardOpen === 'bot' ? null : stopOf(i), sc = st && b.ready !== false ? screenOf(b.x, b.y + 1.5, b.z) : null;
+    if (!st || !sc) { c.style.display = 'none'; c.dataset.code = ''; return; }
+    if (c.dataset.code !== st.code) { c.dataset.code = st.code; c.innerHTML = stopSvg(st.icon); c.title = st.say; c.setAttribute('aria-label', st.say); }
+    c.style.display = 'flex'; c.style.left = Math.round(sc.x) + 'px'; c.style.top = Math.round(sc.y) + 'px'; });
+}
+function stopLines(n) {   /* the last n stops that lasted (no passing 'letting another pass' or 'pausing'), newest first */
+  try { const rt = C.li().campstart.rt(), sim = rt.sim(), K = STOPQ(); return (sim.stops || []).filter(e => e.code !== 'give_way' && e.code !== 'resting' && (e.kind === 'abort' || e.dur === null || e.dur >= 8)).slice(-n).reverse().map(e => { const mins = Math.max(0, Math.round((sim.t - e.t0) / 60)); return { id: e.id, code: e.code, text: 'Carrier ' + (e.id + 1) + ': ' + K.STOPS[e.code].label.toLowerCase() + (e.pct !== undefined && (e.code === 'battery_low' || e.code === 'charging') ? ', ' + e.pct + ' percent' : '') + ', ' + e.place + (e.kind === 'abort' ? ' (a job was dropped)' : '') + '. ' + (mins < 1 ? 'Just now.' : mins + ' min ago.') }; }); } catch (e) { return []; }
+}
 /* ---------------- EXPLORATION (Job 6c item 1; owner playtest 25 Nov: "it is not clear how to explore") ----------------
    After the dock is finished the first destination is the outer skerry: a gold column and ring on the water there, a compass chip at the left edge (an arrow that turns with the camera and the distance in metres),
    the one line 'Something is wedged on the skerry.' while you row, and a Chart in the Menu that lists the places you know; tap one to head for it. The marker clears when the boat gets within reach of a chosen place
@@ -1472,7 +1508,8 @@ function init(ctx) {
     deliverNow: id => { orderItem(id); const o = G.s.orders[G.s.orders.length - 1]; if (o) o.delivered = true; G.arrivals = (G.arrivals || []).concat([id]); }, openCrate: n => deliveryCrate(n), robotCardOpen: i => robotCard(i), startFit: (i, k) => startFit(i, k), fitState: () => G.fit && { i: G.fit.i, kit: G.fit.kit, ready: fitReady() }, cardText: () => (document.querySelector('.gd-card') || {}).textContent || '', clickBtn: txt => { const b = [...document.querySelectorAll('.gd-card button')].find(q => q.textContent.indexOf(txt) >= 0 && !q.disabled); if (b) { b.click(); return true; } return false; },
     waitReq: v => waitReq(v), waitState: () => ({ mode: G.wait && G.wait.mode, speed: G.waitSpeed || 1, mode0: G.clockMode }), actNow: () => { G.actAt = performance.now(); G.idle = 0; }, idleSet: v => { G.idle = v; }, hintNow: () => (G.ui.hint && G.ui.hint.textContent) || '',
     speedUp: k => { G.fast = k; }, inspect: id => { const t = targets().find(q => q.id === id); return t ? inspectInfo(id) : null; }, inspectAt: (cx, cy, touch) => { INS.coarse = !!touch; const t = nearestTarget(cx, cy); if (!t) { hideInspect(); return null; } showInspect(t, !!touch); return { id: t.id, info: inspectInfo(t.id), cls: inspectCls(t.id, inspectInfo(t.id) || {}), card: INS.el && INS.el.style.display !== 'none' ? INS.el.textContent : '' }; }, goldId: () => goldId(), targetsNow: () => targets(), insTable: () => INSPECT.map(q => String(q.re)), setHour: g => { G.s.gh = g; clockSet(g); }, uiRoot: () => G.ui.root, phys: () => PHYS(), addStock: (id, n) => addStockUnits(id, n),   /* test handle: stock without waiting for the shore */ userWeather: () => USER_WEATHER, objs: () => G.objs, nightT: () => G.nightT
-    ,explore: () => { const i = exploreInfo(), c = G.ui.compass, m = G.objs.dest; return { on: exploreOn(), dest: destNow(), info: i, marker: !!(m && m.visible), compass: !!(c && c.style.display !== 'none'), compassText: c ? c.textContent : '', compassDeg: c ? c.querySelector('#gd-compass-a').style.transform : '', hint: exploreHint(G.s), places: placesKnown().map(p => p.id), gold: goldId() }; }, chart: () => chartCard(), setDest: v => { G.destSet = v; G.sig = null; renderUi(); }
+    ,stops: () => { const out = []; try { const sim = C.li().campstart.rt().sim(); (sim.robots || []).forEach((r, i) => out.push({ i, st: stopOf(i), chip: !!(G.ui.chips && G.ui.chips[i] && G.ui.chips[i].style.display !== 'none') })); } catch (e) { /* none */ } return out; }, stopLines: n => stopLines(n || 10), stopChips: () => stopChips(),
+    explore: () => { const i = exploreInfo(), c = G.ui.compass, m = G.objs.dest; return { on: exploreOn(), dest: destNow(), info: i, marker: !!(m && m.visible), compass: !!(c && c.style.display !== 'none'), compassText: c ? c.textContent : '', compassDeg: c ? c.querySelector('#gd-compass-a').style.transform : '', hint: exploreHint(G.s), places: placesKnown().map(p => p.id), gold: goldId() }; }, chart: () => chartCard(), setDest: v => { G.destSet = v; G.sig = null; renderUi(); }
   };
   return G;
 }
