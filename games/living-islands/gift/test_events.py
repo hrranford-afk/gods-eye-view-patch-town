@@ -444,6 +444,33 @@ class Content(unittest.TestCase):
         self.assertIn("carpet", BY_ID["p0_street"]["text"]); self.assertIn("diamond", BY_ID["p0_street"]["text"])
         self.assertIn("carpet", BY_ID["a2_clue_lens_carpet"]["text"]); self.assertIn("diamond", BY_ID["a2_clue_lens_carpet"]["text"]); self.assertIn("teal", BY_ID["a2_clue_lens_carpet"]["text"])
 
+    def test_continuity_one_key_and_storm_letters(self):
+        # critic review v2: the brass key of P1 is the only key; L9 belongs only to year three; L3 is the first storm's letter
+        for e in EVENTS:
+            blob = e["text"] + " " + e["cause"]
+            self.assertIsNone(re.search(r"\b(second|another|spare|duplicate|extra|new|two|second) keys?\b", blob, re.I), e["id"] + " mentions a second key")
+        self.assertEqual([f for f in REG["flags"] if "key" in f and f.startswith(("has_", "key"))], ["has_key"])
+        for i in ("a1_L1_key", "a1_coat_hook", "a1_drawer_key"):
+            self.assertIn("brass key", BY_ID[i]["cause"].lower().replace("the same brass key", "brass key") + BY_ID[i]["text"].lower())
+        self.assertIn("brass key from the first envelope", BY_ID["a1_L1_key"]["cause"])
+        self.assertIn("second use", BY_ID["a1_coat_hook"]["cause"]); self.assertIn("third use", BY_ID["a1_drawer_key"]["cause"])
+        for e in EVENTS:
+            if "letter_L9" in e["effects"].get("flags_set", []):
+                self.assertEqual(e["id"], "a3_L9_wash"); self.assertEqual(e["act"], 3); self.assertGreaterEqual(e["trigger"]["day_min"], 842)
+                self.assertIn("great_wash_done", e["trigger"]["flags_all"])
+            if "great_wash_done" in e["effects"].get("flags_set", []) or "hulk_there" in e["effects"].get("flags_set", []): self.assertEqual(e["act"], 3)
+        l3 = BY_ID["a1_L3_storm"]; self.assertLessEqual(l3["trigger"]["day_max"], 12); self.assertIn("storm_seen", l3["trigger"]["flags_all"])
+        fs = BY_ID["a1_first_storm"]; self.assertLessEqual(sum(fs["effects"]["stock"].values()), 12); self.assertNotIn("hulk", fs["text"].lower()); self.assertIn("no hulk", fs["cause"])
+
+    def test_letter_nine_only_in_year_three(self):
+        for seed in range(1, 13):
+            s = simulate(seed, REG["attitudes"][seed % 4])
+            for d, i in s.fired:
+                if i == "a3_L9_wash": self.assertTrue(721 <= d <= 1080 and d >= 842, (seed, d))
+                if i == "a1_L3_storm": self.assertLessEqual(d, 12, (seed, d))
+            ids = [i for d, i in s.fired]
+            self.assertLessEqual(ids.count("a3_L9_wash"), 1)
+
     def test_world_kindnesses(self):
         # critic review v2: five kindnesses with no letter, each with a physical cause
         for i in ("a1_kind_second_blanket", "a1_kind_crate_handles", "a1_kind_dry_shelf", "a1_kind_parcel_returned", "a4_kind_spare_mould"):

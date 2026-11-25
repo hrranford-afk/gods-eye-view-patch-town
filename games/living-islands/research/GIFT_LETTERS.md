@@ -5,13 +5,13 @@ Own words only. Short, plain, warm, a little too well informed. No names. Never 
 Voice rules: kind but not chatty; it never explains itself; it never asks for anything; it never lies, but it does not tell everything. It sounds like someone who has looked after a lot of places for a long time.
 
 ## Year one: arrival and trust
-**L1. The key.** Trigger: first crate, dawn.
+**L1. The key.** Trigger: first crate, dawn. (The crate is at the dock and opens with the one brass key that came with P1; there is no second key.)
 > This island is yours. So is what is in the ledger. Spend it slowly. Parcels will come by boat. If something looks old, it is probably still useful. You do not need to understand why.
 
 **L2. The evening.** Trigger: first evening, after the first build or at dusk.
 > You can make this a place for people to visit. You can make it a place for wildlife. You can make it somewhere to live quietly. Or you can do all three badly. None of it is wrong.
 
-**L3. The first storm.** Trigger: the first big storm passes.
+**L3. The first storm.** Trigger: the first storm passes (day 2, a small storm with a small haul). L3 is the letter of the first storm and of the small storms of the first seasons; the Great Wash letter L9 never appears before year three.
 > The sea gives and takes. What it leaves is not rubbish, only things that have not found a use yet. The old carriers know the shore. Let them work.
 
 **L4. The first season.** Trigger: first change of season.
@@ -33,7 +33,7 @@ Variant (trust): *The ledger shows what was spent. The shelf shows what is gone.
 > You are not the only one. Others have islands, and many have not looked up yet. You might help them, or you might not. Both have been done.
 
 ## Year three: the wash and the middle
-**L9. The Great Wash.** Trigger: just after the big storm haul (once).
+**L9. The Great Wash.** Trigger: just after the year-three autumn big storm haul (once, never before day 842).
 > Everything the sea has been holding came at once. It is a lot. You do not have to keep it all, and you do not have to decide today. Sort it slowly. Share what you cannot use.
 
 **L10. The quiet year.** Trigger: start of year three (or when deliveries reach basics only).

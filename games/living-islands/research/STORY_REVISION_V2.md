@@ -121,3 +121,22 @@ Rewritten lightly into our voice; ids unique; mood split ten good, seven in-betw
 | 10.3 | KEEP | the loom hum, the shut shops, the sodium light, the kind nod | the town stays grey and kind |
 | 10.4 | CHANGED | the lens clue (`a2_clue_lens_carpet`, clue 59) now uses exactly that carpet, with a teal thread through it | the pattern is the thing that reappears; the teal is the island palette entering the town's weave |
 | 10.5 | NEW TEST | `test_mainland_carpet_returns` | keeps the two texts tied |
+
+## Step 11. Continuity: one key, one Great Wash, one calendar
+| # | Status | Line | Reason |
+|---|---|---|---|
+| 11.1 | CHANGED | P1's key IS the brass key: carried from the flat's door, used first on the lidded crate at the dock (`a1_L1_key`), then the hut door (`a1_coat_hook`), then the drawer in the hut table (`a1_drawer_key`), later the back-room door and the Hoard locker | the old deck said the first crate also held "a brass key", which made two |
+| 11.2 | CHANGED | `a1_L1_key` cause: the crate is locked and the key from the first envelope opens it; `p0_office` cause: the clerk hands back the same enclosed key; `a3_second_island_bought`: "A new key" cut (the second island has a gate, not a key); registry note on `has_key` | removes every second key |
+| 11.3 | KEEP | the drawer that the key opens is in the hut table, the room the owner called "the uncle's room"; the word uncle stays off the cards | one drawer, one room, no relative named |
+| 11.4 | CHANGED | the Great Wash is the year-three autumn big storm (days 841 to 940); L9 belongs only to year three; the first storm's letter is L3 | the first storm was shipping the Great Wash's letter and hulk |
+| 11.5 | CHANGED | the first storm and the first seasons' storms are small: `a1_first_storm` now leaves about 8 heaps, a few dozen pieces, no hulk; spine day 2 and day 3 lines match | a small first storm teaches the loop; the Great Wash then means something |
+| 11.6 | CHANGED | spine 2.7 (new): the four continuity rules; GIFT_LETTERS L1, L3 and L9 trigger notes | one place to look |
+| 11.7 | CHANGED | calendar note: a 360-day year of four 90-day seasons, spring split (1 to 30 and 301 to 360); the storm layer's blocks of 90 from day 1 do not line up | align the notes; the code change is listed below |
+| 11.8 | NEW TEST | `test_continuity_one_key_and_storm_letters`, `test_letter_nine_only_in_year_three` (L9 never before day 842, L3 within day 12, one key, small first storm) | keeps the rules |
+
+### Needs the page builder (not mine: code in `storm.js`, `gift_day.js` and the page; do not edit from this job)
+1. `GIFT_STORM.md` and `storm.js` ship a day-3 "letter nine, the Great Wash" with its own wording. Replace it with L3 (the wording in `research/GIFT_LETTERS.md`); keep L9 (the Great Wash) only for the year-three autumn big storm, day 842 or later, once.
+2. `storm.js` ships a first storm of 24 heaps, about 130 units, and one big hulk on day 2. Make the first storm small (about 8 heaps, about 35 units, no hulk), and the storms of the first seasons small. Only the Great Wash of year three autumn (days 841 to 940) brings the big haul (about 900 pieces) and the hulk. The `hulk_there` flag is set only then.
+3. `storm.js` counts storm cadence in 90-day blocks from day 1. The deck calendar is a 360-day year of four 90-day seasons with spring split (1 to 30 and 301 to 360), summer 31 to 120, autumn 121 to 210, winter 211 to 300. Use the deck calendar so season-tagged events and storms line up.
+4. One key: check `gift_day.js` and the opening for any second key prop. The one brass key must open the lidded dock crate, then the hut door, then the hut table drawer. The first crate holds a paper letter, not a key.
+5. (From later steps, collected here.) Props and actions the deck mentions: a hatch beside the hut door; the lidded box with two blankets at the landing; crates with rope handles at both ends and runners; a low dry shelf above the high-water line on the collector rack; a way to hand a parcel back to the tender (`parcel_returned`); the old speaker prop (`speaker_prop`) and a flat picnic rock; a boat shed lock at the jetty; the grey diamond-weave carpet texture (mainland cafe doorway and the lens wrapping, with a teal thread); mooring rings at the far cove; a notch on the lamp knoll; a tidal cave crate under the west skerry; thumb-scoop drawers in the workshop; the boxed stones under the hut; a dry boards offer from the tender in week one; the player's mark on the home beach and its save (step 12).

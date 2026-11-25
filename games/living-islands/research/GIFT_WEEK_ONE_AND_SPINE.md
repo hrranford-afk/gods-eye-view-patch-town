@@ -49,7 +49,7 @@ The question under every act: **is help a gift or a leash?** The player decides.
 | 2 Questions and the thinning edge | 361 to 720 | Stamps, a parcel before it was ordered, the first card turned over, the office that has no file. | If it can give, it can stop. The first thing disappears. The leash shows as a fray. | spring; spring |
 | 3 The middle | 721 to 1080 | The Great Wash, neighbours, a workshop, a second island, fewer boats. | You start to give as well as take. Are you now the one on the other end of a gift? | spring; spring |
 | 4 Standing alone | 1081 to 1440 | The last large parcel, basics only, a winter with no boat, a neighbour who returns a favour, the year-four report. | The helper is nearly gone. What is left is what you built, and who you gave to. | spring; spring |
-Calendar (GUESS, TASTE): a 360-day year of twelve 30-day months. Game day 1 is 1 May (the Level 1 tide model uses calendar day 121). Spring is days 1 to 30 and 301 to 360, summer 31 to 120, autumn 121 to 210, winter 211 to 300. This matches puffins in spring, common seal pups in summer, grey seal pups in autumn (FOOD_AND_WILDLIFE.md). The storm layer uses 90-day seasons for its storm cadence (GIFT_STORM.md); the two must be reconciled (open question 9).
+Calendar (GUESS, TASTE): a 360-day year of twelve 30-day months. Game day 1 is 1 May (the Level 1 tide model uses calendar day 121). Spring is days 1 to 30 and 301 to 360, summer 31 to 120, autumn 121 to 210, winter 211 to 300. This matches puffins in spring, common seal pups in summer, grey seal pups in autumn (FOOD_AND_WILDLIFE.md). Every season is 90 days (spring is split: days 1 to 30 and 301 to 360). The storm layer in `GIFT_STORM.md` counts 90-day blocks from day 1, so its blocks do not line up with these seasons: the deck calendar is the one to follow (see 2.7 and 'Needs the page builder' in STORY_REVISION_V2.md).
 
 What each act hands the player, in one line each:
 1. **Act 1.** "Is this real?" Proof by use: the barrel fills, the lamp lights, the robot starts. By day 30 trust is a habit.
@@ -123,6 +123,12 @@ The critic's point: acts two and three need things the player wants, not only my
 | 3 | **The first useful bad copy**: a part cast locally is bulky enough to foul the workshop door; file it, widen the door or fit it elsewhere | a3_goal_bad_copy | the cast sticks in the doorway; three ways out, none better | teaches that a local copy is worth keeping even when it is clumsy; the later mould (a4_kind_spare_mould) is the helper's version |
 | 3 | **A neighbour's delivery boat**: on quiet sailing days carry a neighbour's crates, with a handcart waiting at their water's edge | a3_goal_neighbour_ferry | the player's boat lands at the neighbour's tideline, the cart already turned for loading | repeatable; the player is now the other end of a gift (section 2.5, reason 1) |
 
+### 2.7 Continuity rules (v2, critic review)
+1. **One key.** P1's key is the brass key. It is carried from the flat's door, shown once in its paper fold at the office, used first on the lidded crate at the dock (L1), then on the hut door (a1_coat_hook), then on the drawer in the hut table (a1_drawer_key), and later on the narrow back-room door and the Hoard locker. There is no second key anywhere, including the second island (it gets a gate, not a key).
+2. **Storm scale.** The first storm (day 2) and the storms of the first seasons are small: about 8 heaps, a few dozen pieces, no hulk. The Great Wash is the one big storm: autumn of year three (days 841 to 940), about 900 pieces and the hulk. A lesser storm later (a3_storm_haul_normal, a4_storm_haul) is modest.
+3. **Letters.** L3 is the letter of the first storm, day 3, and of every small storm that follows. L9 (the Great Wash) belongs only to year three and never fires before day 842. The test checks both.
+4. **Calendar.** A 360-day year, four seasons of 90 days, day 1 is 1 May: spring 1 to 30 and 301 to 360, summer 31 to 120, autumn 121 to 210, winter 211 to 300. Year one is days 1 to 360, year two 361 to 720, year three 721 to 1080, year four 1081 to 1440.
+
 ## 3 Week one, day by day (days 2 to 7) on the real Level 1 map
 The map is seed 29: home (the hut at (56,-28), the yard (48,-40), the landing (10,17), the lamp (86,-60)), the woods island (7,102), the Hoard (-121,-8), the wreck reef (-103,88), the seal island (-5,-128), the bare rock (140,67). Tide numbers are MEASURED from `level1/` (LEVEL1_DESIGN.md section 5); clock times marked "est" are my interpolation (low water shifts about 50 minutes later each day). Day 1 is the arrival and the 15-minute path (BUILD_PLAN.md): not repeated here.
 
@@ -131,8 +137,8 @@ Two changes I propose to the Level 1 notes (TASTE, logged in section 8): (a) the
 Rule for every day: **every change on a counter has a visible cause**, written in the "Cause" lines below. A number moves only when the thing happens on the map.
 
 ### Day 2: the glass falls
-- **Goal:** bring in the storm's haul before the tide takes it back (GIFT_STORM.md: 24 heaps, about 130 units; loose heaps thin over 30 to 62 game hours).
-- **Discover:** the storm brings things. The wrack line is a shop. There is a hulk on the sheltered stretch near the camp.
+- **Goal:** bring in the storm's haul before the tide takes it back (v2: a small first storm, about 8 heaps and about 35 units; the page ships 24 heaps and about 130 units, a code change listed in STORY_REVISION_V2.md; loose heaps thin over 30 to 62 game hours).
+- **Discover:** the storm brings things. The wrack line is a shop. There is no hulk yet: the one big hulk comes only with the Great Wash of year three.
 - **Hands-on job:** tap a heap, a 1.3-second pick of up to 3 units; carry it to the yard heap by a short drag.
 - **Robot job:** an order of "Planks and timber" or "Rope and nets" for each started robot; each trip carries 2 units.
 - **Co-operative job:** the long beam from the biggest timber heap. The player takes one end and a hauler robot the other. It will not move for either alone.
@@ -144,7 +150,7 @@ Rule for every day: **every change on a counter has a visible cause**, written i
 
 ### Day 3: sorting, and a second robot
 - **Goal:** sort the haul into yard piles and start a second robot.
-- **Discover:** the cairn line (a1_cairns_noticed) at dawn low water; the hulk's ribs are old, bolted, never burned; the oiled saw behind the hut stove (a1_oiled_tool); the office letter's two numbers match the island (a1_letter_coordinates).
+- **Discover:** the cairn line (a1_cairns_noticed) at dawn low water; one old bolted timber in the haul was never burned; the oiled saw behind the hut stove (a1_oiled_tool); the office letter's two numbers match the island (a1_letter_coordinates).
 - **Hands-on:** saw a plank with the oiled saw: the plank counter rises by one when the board falls onto the bench.
 - **Robot job:** the first robot collects shore finds; the second starts only after a part is fitted.
 - **Co-operative job:** the gate. The robot waits at the yard until the player brings its part (a track link, from crate 1 or the hulk). The player carries it, fits it, and then the robot starts. No timer starts it.
@@ -224,7 +230,7 @@ Each clue sits on a named spot of the Level 1 map. "Found by" says how. "Hints" 
 Spots: HOME beach, hut, yard, jetty, lamp knoll; SKERRY west (the cairns); HOARD depot; WOODS; REEF; SEALS island; ROCK (the lone tree); NEIGHBOUR (another parcel on the chart).
 | # | Spot | The clue | Found by | Act | Hints, does not answer | Deck id |
 |---|---|---|---|---|---|---|
-| 1 | home beach | The first crate: paper label, the stamp, a brass key | opening the crate on day 1 | 1 | where it came from | a1_L1_key |
+| 1 | dock / home beach | The first crate: paper label, the stamp; it opens with the brass key from the first envelope (the only key) | opening the crate on day 1 | 1 | where it came from | a1_L1_key |
 | 2 | hut | A coat on a hook, dry, brushed, with a pencil in the pocket | tapping the hut door | 1 | someone was here; or was expected | a1_coat_hook |
 | 3 | hut | A chair turned to face the lamp, tide table ticked at low waters | opening the shutter | 1 | someone watched the tide; the ticks match the Hoard windows | a1_chair_lamp |
 | 4 | hut | A shelf of about forty plain envelopes, never opened, each marked | patching the hut roof | 1 | a long service; a monthly one | a1_shelf_letters |
@@ -316,7 +322,7 @@ The letters L1 to L12 and where they fire:
 | L10 | day 721, credit level 2 | a3_L10_quiet |
 | L11 | the last large parcel (about day 1090) | a4_L11_last |
 | L12 | the year-four report opens (day 1425 on) | a4_L12_after |
-**Conflict found.** `GIFT_STORM.md` already ships a "letter nine, the Great Wash" on the morning after the first storm (day 3), with wording that differs from `GIFT_LETTERS.md` L9. The spine puts the real Great Wash in year three, and L3 is the day-3 letter. Fix: rename the storm layer's day-3 letter L3 (use the GIFT_LETTERS wording) and keep L9 for year three. TASTE: or keep its beautiful words as a variant of L3.
+**Conflict found (v2: resolved in the design, open in the code).** `GIFT_STORM.md` already ships a "letter nine, the Great Wash" on the morning after the first storm (day 3), with wording that differs from `GIFT_LETTERS.md` L9. The spine puts the real Great Wash in year three, and L3 is the day-3 letter. Fix: rename the storm layer's day-3 letter L3 (use the GIFT_LETTERS wording) and keep L9 for year three. TASTE: or keep its beautiful words as a variant of L3.
 The simulation (40 seeded runs, four attitude styles; see `gift/test_events.py --report`):
 - About 713 events a run (690 to 728), most of them small and repeated; about one every two days.
 - Events per season: year one 47 to 63 (spring 63, summer 57, autumn 48, winter 47); year two 42 to 53; year three 33 to 42 (summer 33 is the thinnest); year four 36 to 42.
@@ -451,7 +457,7 @@ None touches a FIXED rule. Robots keep no faces, speech or feelings; the helper 
 6. The phone at the lamp: it rings, and when lifted it only hums. Too much, or exactly right? Default: keep.
 7. How warm should the late office letters get before they become the helper's? Default: a little warmer each time, never the same voice.
 8. Distrust: hardest early, easiest late. Is a +10 resilience line (GUESS) the right reward, or only the shelf not hurting? Default: only the shelf.
-9. Calendar: 360-day year of 30-day months versus the storm layer's 90-day seasons. Align them?
+9. Calendar: a 360-day year of four 90-day seasons (spring split 1 to 30 and 301 to 360) is now the one calendar; the storm layer's 90-day blocks from day 1 are a code change for the page builder (see 2.7).
 10. Event density: about one a day in week one, one every two days after (the sim says 0.5 a day). Fewer, longer moments, or this?
 11. L4's new trigger (first winter) and the storm layer's day-3 letter: confirm the swap (section 5).
 12. Is it right that cash buys the second island, at a price the player must really earn (about £180,000 in the deck)?
