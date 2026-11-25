@@ -250,6 +250,7 @@ const Q0 = new URLSearchParams(location.search);
 if (Q0.get('game') !== 'gift' || Q0.get('boat') === '0') { root.LI_BOAT_DRIVE.attach = function () { return null; }; return; }
 const K = CORE;
 const FORCE_BOAT = Q0.get('boat') === '1';              /* the boat is there from the start (testing and a quick look); otherwise it comes with the first order, in the yard stage */
+const MOTOR_START = Q0.get('motor') === '1';              /* a new boat starts with the small motor already fitted (for trying the fast boat without the first trip) */
 const ERRAND_ON = Q0.get('errand') === '1';             /* the errand stub: off unless asked for */
 const WIND_MS = { clear: 3.5, fair: 6.5, overcast: 7, showers: 9.5, rain: 11, fog: 2, storm: 21, goldenhour: 3 };   /* the weather module's own wind speeds */
 const WIND_DIR = (() => { const x = .45, z = -.89, l = Math.hypot(x, z); return { x: x / l, z: z / l }; })();    /* the page's default wind vector (the sea shader's uWind), the way the wind blows TO */
@@ -366,9 +367,9 @@ function computeLandings() {
   L.push({ id: 'beach', name: 'the beach landing', x: wp.x + d[0] * 3, z: wp.z + d[1] * 3, r: 12, sx: wp.x, sz: wp.z, dx: d[0], dz: d[1], yaw: Math.atan2(d[1], -d[0]) });
   try {
     const rp = li.repair, site = rp && rp.site(); if (site) {
-      const cands = []; for (const lx of [2.4, 3.6, 4.8, 6.0, 7.2]) for (const lz of [2.4, -2.7, 0]) { if (lz === 0 && lx < 5.4) continue; if (lz < 0 && lx > 1.0 && lx < 4.8) continue; const p = rp.local(lx, 0, lz); cands.push({ x: p[0], z: p[2], lx, lz }); }   /* the far side of the deck from the repair mooring, or beyond the tip */
+      const cands = []; for (const lx of [2.4, 4.0, 5.6, 7.2, 9, 11, 13, 16]) for (const lz of [2.4, 4.5, 6.5, 8.5, 11, -2.7, -5, 0]) { if (lz === 0 && lx < 5.4) continue; if (lz < 0 && lx > 1.0 && lx < 4.8) continue; const p = rp.local(lx, 0, lz); cands.push({ x: p[0], z: p[2], lx, lz }); }   /* off the deck's far side (the repair mooring is on the near side), or beyond the tip: the jetty is a short stub on a shelving beach, so the berth is the nearest water that floats a rowing boat */
       const lowD = c => K.hullDepth({ x: c.x, z: c.z, yaw: site.psi, engine: false }, { depth: (x, z) => -.5 - C.H(x, z) });   /* the nearest berth that still floats a rowing boat with the tide half a metre below the mean */
-      cands.forEach(c => { c.d = lowD(c); }); const good = cands.filter(c => c.d >= .45).sort((a, b) => a.lx - b.lx), c = good[0] || cands.sort((a, b) => b.d - a.d)[0];
+      cands.forEach(c => { c.d = lowD(c); c.k = Math.hypot(c.lx - 4.5, c.lz - 1.0); }); const good = cands.filter(c => c.d >= .45).sort((a, b) => a.k - b.k), c = good[0] || cands.sort((a, b) => b.d - a.d)[0];
       L.push({ id: 'jetty', name: 'the jetty', x: c.x, z: c.z, r: 9, fixed: true, yaw: site.psi });
     }
   } catch (e) { /* no jetty yet */ }
@@ -387,27 +388,37 @@ function berthFor(L) { if (L.fixed) return { x: L.x, z: L.z, yaw: L.yaw }; retur
 
 /* ---------------- the boat in the scene ---------------- */
 function mat(col, o) { return new THREE.MeshStandardMaterial(Object.assign({ color: col, roughness: .8, metalness: .05, flatShading: true }, o || {})); }
+/* small hand-made pieces are merged into one mesh each (vertex colours), so the whole motor, the whole load and the skerry crate cost one draw call each, not one per box (the iPad budget) */
+function mergeParts(parts) {
+  const P = [], N = [], Cc = [], I = []; let off = 0;
+  for (const p of parts) {
+    const m = new THREE.Matrix4().compose(new THREE.Vector3(...(p.pos || [0, 0, 0])), new THREE.Quaternion().setFromEuler(new THREE.Euler(...(p.rot || [0, 0, 0]))), new THREE.Vector3(...(p.scl || [1, 1, 1])));
+    const g = p.geo.clone().applyMatrix4(m), pos = g.attributes.position, nor = g.attributes.normal, col = new THREE.Color(p.col);
+    for (let i = 0; i < pos.count; i++) { P.push(pos.getX(i), pos.getY(i), pos.getZ(i)); N.push(nor.getX(i), nor.getY(i), nor.getZ(i)); Cc.push(col.r, col.g, col.b); }
+    if (g.index) for (let k = 0; k < g.index.count; k++) I.push(g.index.getX(k) + off); else for (let i = 0; i < pos.count; i++) I.push(off + i);
+    off += pos.count; g.dispose(); p.geo.dispose();
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(Cc, 3)); g.setIndex(I);
+  const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .8, metalness: .05, flatShading: true })); mesh.castShadow = true; mesh.receiveShadow = true; return mesh;
+}
 function mkMotor() {
-  const g = new THREE.Group();
-  const cowl = new THREE.Mesh(new THREE.BoxGeometry(.4, .46, .3), mat(0x3b4a53)); cowl.position.set(0, .86, 0); g.add(cowl);
-  const cap = new THREE.Mesh(new THREE.BoxGeometry(.3, .08, .24), mat(0xc2503f)); cap.position.set(.02, 1.13, 0); g.add(cap);
-  const leg = new THREE.Mesh(new THREE.BoxGeometry(.12, .8, .14), mat(0x2e3a41)); leg.position.set(-.04, .3, 0); g.add(leg);
-  const pod = new THREE.Mesh(new THREE.CylinderGeometry(.09, .07, .36, 6), mat(0x2e3a41)); pod.rotation.z = Math.PI / 2; pod.position.set(-.1, -.1, 0); g.add(pod);
-  const prop = new THREE.Mesh(new THREE.BoxGeometry(.03, .34, .06), mat(0xb9a98a)); prop.position.set(-.3, -.1, 0); g.add(prop); g.userData.prop = prop;
-  const bar = new THREE.Mesh(new THREE.BoxGeometry(.9, .04, .05), mat(0x5b4a33)); bar.position.set(.5, .9, 0); g.add(bar);
-  g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  const g = new THREE.Group(), bx = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+  g.add(mergeParts([
+    { geo: bx(.4, .46, .3), pos: [0, .86, 0], col: 0x3b4a53 }, { geo: bx(.3, .08, .24), pos: [.02, 1.13, 0], col: 0xc2503f }, { geo: bx(.12, .8, .14), pos: [-.04, .3, 0], col: 0x2e3a41 },
+    { geo: new THREE.CylinderGeometry(.09, .07, .36, 6), pos: [-.1, -.1, 0], rot: [0, 0, Math.PI / 2], col: 0x2e3a41 }, { geo: bx(.03, .34, .06), pos: [-.3, -.1, 0], col: 0xb9a98a }, { geo: bx(.9, .04, .05), pos: [.5, .9, 0], col: 0x5b4a33 }]));
   return g;
 }
 const LOAD_COL = { planks: 0xb9955e, rope: 0xd6c79a, glass: 0x58b8a4, metal: 0x8d979c };
 function rebuildLoad() {
   const b = P.b, sig = JSON.stringify(b.load) + b.engine; if (sig === P.loadSig && P.loadG) return; P.loadSig = sig;
-  if (P.loadG) { P.loadG.traverse(o => { if (o.geometry) o.geometry.dispose(); }); if (P.loadG.parent) P.loadG.parent.remove(P.loadG); }
-  const g = new THREE.Group(); let i = 0;
+  if (P.loadG) { if (P.loadG.geometry) P.loadG.geometry.dispose(); if (P.loadG.parent) P.loadG.parent.remove(P.loadG); P.loadG = null; }
+  const parts = []; let i = 0;
   for (const k of K.STOCK_IDS) for (let n = 0; n < (b.load[k] || 0); n++) {
-    const c = i % 4, rw = Math.floor(i / 4), m = new THREE.Mesh(k === 'planks' ? new THREE.BoxGeometry(.7, .14, .22) : k === 'glass' ? new THREE.SphereGeometry(.17, 7, 5) : k === 'rope' ? new THREE.TorusGeometry(.14, .06, 5, 9) : new THREE.CylinderGeometry(.15, .15, .3, 8), mat(LOAD_COL[k]));
-    if (k === 'rope') m.rotation.x = Math.PI / 2; m.position.set(-.5 + (c % 2) * .55 + (rw ? .1 : 0), .24 + rw * .2, (c < 2 ? -.2 : .2)); m.rotation.y = (i * 1.7) % 1.2; m.castShadow = true; g.add(m); i++;
+    const c = i % 4, rw = Math.floor(i / 4), geo = k === 'planks' ? new THREE.BoxGeometry(.7, .14, .22) : k === 'glass' ? new THREE.SphereGeometry(.17, 7, 5) : k === 'rope' ? new THREE.TorusGeometry(.14, .06, 5, 9) : new THREE.CylinderGeometry(.15, .15, .3, 8);
+    parts.push({ geo, pos: [-.5 + (c % 2) * .55 + (rw ? .1 : 0), .24 + rw * .2, (c < 2 ? -.2 : .2)], rot: [k === 'rope' ? Math.PI / 2 : 0, (i * 1.7) % 1.2, 0], col: LOAD_COL[k] }); i++;
   }
-  P.loadG = g; if (P.mounted) P.mounted.add(g);
+  if (!parts.length) return;
+  P.loadG = mergeParts(parts); if (P.mounted) P.mounted.add(P.loadG);
 }
 function ensureObj() {
   const li = C.li(); if (!li.xboat) return null;
@@ -418,7 +429,7 @@ function ensureObj() {
   }
   const o = li.xboat.obj(0); if (!o) return null;
   if (o !== P.obj || o.mesh !== P.mounted) {   /* the boats were rebuilt (the kit finished loading): hang the motor and the load on the new hull */
-    P.obj = o; P.mounted = o.mesh; if (P.motor && P.motor.parent) P.motor.parent.remove(P.motor); P.motor = mkMotor(); P.motor.position.set(-2.12, .0, 0); P.motor.visible = P.b.engine; o.mesh.add(P.motor);
+    P.obj = o; P.mounted = o.mesh; o.mesh.visible = !!P.b.avail; if (P.motor && P.motor.parent) P.motor.parent.remove(P.motor); P.motor = mkMotor(); P.motor.position.set(-2.12, .0, 0); P.motor.visible = P.b.engine; o.mesh.add(P.motor);
     P.loadSig = ''; P.loadG = null; rebuildLoad();
   }
   return o;
@@ -489,7 +500,7 @@ function loadFromSave() {
   const s = A.S(); P.b = K.sanitize(s.boat); const b = P.b;
   P.mode = 'idle'; P.goto = null; P.errand = null; P.dock = null; P.boarded = false;
   const had = !!(s.boat && s.boat.avail);
-  if (!had) { b.avail = false; P.hadSaved = false; } else P.hadSaved = true;
+  if (!had) { b.avail = false; P.hadSaved = false; if (MOTOR_START) { b.engine = true; b.got.engine = true; } } else P.hadSaved = true;
   P.loadSig = ''; if (P.motor) P.motor.visible = b.engine;
 }
 function placeAtStart() {
@@ -501,12 +512,6 @@ function applySaved() {
   else if (Math.hypot(b.x, b.z) > 1) P.mode = 'idle';
   else placeAtStart();
 }
-function revealBoat() {
-  if (P.b.avail) return; P.b.avail = true; const s = A.S();
-  if (!P.hadSaved || !(P.b.x || P.b.z)) { placeAtStart(); }
-  commit(); A.toast('A small rowing boat lies by the jetty. It has oars. Tap it.', 7000);
-}
-
 /* ---------------- the HUD each few frames ---------------- */
 function nearestInfo() { return K.nearestLanding(P.b, P.lands); }
 function hudUpdate() {
@@ -615,14 +620,10 @@ function updateCrateMesh() {
   if (!P.cacheMesh) return; const ready = K.cacheReady(P.b, dayNo()) && P.b.avail; P.cacheMesh.visible = ready; if (P.cacheMesh.userData.motor) P.cacheMesh.userData.motor.visible = ready && !P.b.got.engine;
 }
 function buildCache() {
-  const c = P.cacheLoc; if (!c) return; const g = new THREE.Group(), wood = mat(0x9a7448), dark = mat(0x6e5233);
-  const box = new THREE.Mesh(new THREE.BoxGeometry(.95, .6, .7), wood); box.position.y = .3; g.add(box);
-  for (const z of [-.2, .2]) { const s = new THREE.Mesh(new THREE.BoxGeometry(1.0, .08, .06), dark); s.position.set(0, .64, z); g.add(s); }
-  const lid = new THREE.Mesh(new THREE.BoxGeometry(1.0, .06, .74), wood); lid.position.set(0, .62, 0); g.add(lid);
-  const bundle = new THREE.Group(); const oil = new THREE.Mesh(new THREE.BoxGeometry(.8, .38, .45), mat(0x39503f)); oil.position.y = .19; bundle.add(oil);
-  for (const x of [-.22, .22]) { const st = new THREE.Mesh(new THREE.BoxGeometry(.05, .4, .48), mat(0xd6c79a)); st.position.set(x, .2, 0); bundle.add(st); }
+  const c = P.cacheLoc; if (!c) return; const g = new THREE.Group(), bx = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+  g.add(mergeParts([{ geo: bx(.95, .6, .7), pos: [0, .3, 0], col: 0x9a7448 }, { geo: bx(1.0, .08, .06), pos: [0, .64, -.2], col: 0x6e5233 }, { geo: bx(1.0, .08, .06), pos: [0, .64, .2], col: 0x6e5233 }, { geo: bx(1.0, .06, .74), pos: [0, .62, 0], col: 0x9a7448 }]));
+  const bundle = mergeParts([{ geo: bx(.8, .38, .45), pos: [0, .19, 0], col: 0x39503f }, { geo: bx(.05, .4, .48), pos: [-.22, .2, 0], col: 0xd6c79a }, { geo: bx(.05, .4, .48), pos: [.22, .2, 0], col: 0xd6c79a }]);
   bundle.position.set(1.0, 0, .35); bundle.rotation.y = .5; g.add(bundle); g.userData.motor = bundle;
-  g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   g.position.set(c.x, Math.max(c.h, 0) + 0.02, c.z); g.rotation.y = .6; P.group.add(g); P.cacheMesh = g; updateCrateMesh();
 }
 
@@ -633,13 +634,13 @@ function startErrand() {
   if (K.capacityOf(b) - K.loadTotal(b) < 3) { A.toast('Unload first: the boat must have room for a crate.', 3600); return; }
   const bt = berthFor(sk), path = K.findPath(pathWater({ x: b.x, z: b.z }, bt), { x: b.x, z: b.z }, { x: bt.x, z: bt.z }, { cell: 3, R: RIM() + 4 });
   if (!path) { A.toast('There is no clear water to the skerry at this tide.', 4000); return; }
-  A.closeCard(); P.errand = K.errandNew(path); P.mode = 'errand'; P.boarded = false; b.at = null; P.landNow = null; b.errands++; commit();
+  A.closeCard(); P.errand = K.errandNew(path); P.errandHome = L; P.mode = 'errand'; P.boarded = false; b.at = null; P.landNow = null; b.errands++; commit();
   A.toast('The boat sets off for the skerry by itself. It will bring back one crate.', 6000);
 }
 function finishErrand() {
   const b = P.b, s = A.S(), c = K.cacheNow(b, s.seed, dayNo()); P.errand = null; let msg = 'The boat is back at the jetty.';
-  if (c) { const un = K.unloadToStock({ ...b, load: { ...b.load } }, s.stock); const stock = Object.assign({}, s.stock); let got = []; for (const k of K.STOCK_IDS) { const n = c.units[k] || 0; if (n) { stock[k] = Math.min(K.STOCK_CAP, (stock[k] || 0) + n); got.push(n + ' ' + KIND_NAME[k]); } } A.patch({ stock }); P.b = Object.assign(b, { cacheDay: dayNo(), part: b.part || c.engine, got: Object.assign({}, b.got, { engine: b.got.engine || c.engine }), trips: b.trips + 1 }); msg = 'The boat is back. In the yard stock: ' + got.join(' and ') + '.' + (c.engine ? ' A small motor came in oilcloth, in the boat.' : ''); A.afterChange(); updateCrateMesh(); }
-  const back = P.berths.errandHome || { x: b.x, z: b.z }; P.mode = 'docked'; b.at = P.lastAt || 'jetty'; P.landNow = P.lands.find(l => l.id === b.at); commit(); A.toast(msg, 7000);
+  if (c) { const stock = Object.assign({}, s.stock); let got = []; for (const k of K.STOCK_IDS) { const n = c.units[k] || 0; if (n) { stock[k] = Math.min(K.STOCK_CAP, (stock[k] || 0) + n); got.push(n + ' ' + KIND_NAME[k]); } } A.patch({ stock }); P.b = Object.assign(b, { cacheDay: dayNo(), part: b.part || c.engine, got: Object.assign({}, b.got, { engine: b.got.engine || c.engine }), trips: b.trips + 1 }); msg = 'The boat is back. In the yard stock: ' + got.join(' and ') + '.' + (c.engine ? ' A small motor came in oilcloth, in the boat.' : ''); A.afterChange(); updateCrateMesh(); }
+  const home = P.errandHome || P.lands.find(l => l.id === 'jetty'), bt = berthFor(home); b.x = bt.x; b.z = bt.z; b.yaw = bt.yaw; b.u = 0; P.mode = 'docked'; b.at = home.id; P.landNow = home; P.errandHome = null; commit(); A.toast(msg, 7000);
 }
 
 /* ---------------- the world's reaction: seals and gulls notice the boat ---------------- */
@@ -657,18 +658,18 @@ function reactions(dt) {
     sl.scale.y = 1 + .22 * u.bd.al;
   }
   P.sealState = seals.map(sl => sl.userData.bd ? (sl.userData.bd.flee ? 'flee' : sl.userData.bd.al > .5 ? 'alert' : 'rest') : 'rest');
-  const gl = moving ? (eng ? { r: 46, lift: 7 } : { r: 22, lift: 3 }) : null; try { C.li().xboat.alarm(gl ? { x: b.x, z: b.z, r: gl.r, lift: gl.lift } : null); } catch (e) { /* no gulls */ }
+  const gl = moving ? (eng ? { r: 46, lift: 7 } : { r: 22, lift: 3 }) : null; P.alarm = gl ? { x: b.x, z: b.z, r: gl.r, lift: gl.lift } : null; try { C.li().xboat.alarm(P.alarm); } catch (e) { /* no gulls */ }
 }
 
 /* ---------------- one frame ---------------- */
 function frame(dt) {
   const b = P.b; P.t += dt;
   const o = ensureObj(); if (!o || !P.spec) return;
-  const show = b.avail; o.mesh.visible = show; if (o.ring) o.ring.visible = show && o.ring.visible;
-  P.group.visible = show; if (!show) return;
+  const show = b.avail; o.mesh.visible = show; P.group.visible = show;
+  if (!show) { P.spec.x = 9999; P.spec.z = 9999; return; }   /* not given yet: parked far off the table (the contact ring is a separate object the kit shows for any afloat boat) */
   const e = envNow(), tide = tideNow();
   let inp = { steer: 0, throttle: 0 };
-  if (P.mode === 'drive') { inp = readInput(b); const ev = K.step(b, inp, e, dt); if (ev.bump || (ev.scrape && b.grounded)) { P.scrapeT -= dt; if (P.scrapeT <= 0) { P.scrapeT = 4; A.toast(ev.bump ? 'The boat touches the shore and stops. Nothing is hurt.' : 'The keel scrapes the sand. Slow, or back off.', 2600); } } else P.scrapeT = Math.max(0, P.scrapeT - dt); }
+  if (P.mode === 'drive') { inp = readInput(b); const ev = K.step(b, inp, e, dt); if (ev.bump || (ev.scrape && b.grounded)) { P.scrapeT -= dt; if (P.scrapeT <= 0) { P.scrapeT = 4; const rim = Math.hypot(b.x, b.z) > RIM() - 5; A.toast(ev.bump ? (rim ? 'The sea goes on, but there is no chart past here yet. Turn back.' : 'The boat touches the shore and stops. Nothing is hurt.') : 'The keel scrapes the sand. Slow, or back off.', 2800); } } else P.scrapeT = Math.max(0, P.scrapeT - dt); }
   else if (P.mode === 'errand') { const r = K.errandStep(P.errand, b, dt); inp = r.input; K.step(b, inp, e, dt); if (P.errand.done) finishErrand(); }
   else if (P.mode === 'docking') { const d = P.dock; d.t += dt; const k = clamp(d.t / d.T, 0, 1), s = k * k * (3 - 2 * k); b.x = d.x0 + (d.to.x - d.x0) * s; b.z = d.z0 + (d.to.z - d.z0) * s; b.yaw = d.y0 + K.wrap(d.to.yaw - d.y0) * s; b.u *= .9; if (k >= 1) dockDone(); }
   else { b.u *= .9; b.yr *= .9; b.roll *= .95; b.pitch *= .95; }
@@ -681,7 +682,7 @@ function frame(dt) {
   const r = K.rock(b, P.t, e.sea), spd = K.specOf(b);
   let y = tide + r.heave; const gy = C.H(b.x, b.z) + .08; if (gy > y) y = gy;
   P.spec.x = b.x; P.spec.z = b.z; P.spec.yaw = b.yaw; P.spec.dy = y - .18; P.spec.dpt = r.pitch + b.pitch; P.spec.drl = r.roll + b.roll;
-  if (P.motor) { P.motor.visible = b.engine; P.motor.rotation.y = clamp((P.inp.steer || 0) * -.45, -.5, .5); if (P.motor.userData.prop) P.motor.userData.prop.rotation.x += dt * (b.engine ? 25 * Math.abs(b.u) / spd.maxSpeed : 0); }
+  if (P.motor) { P.motor.visible = b.engine; P.motor.rotation.y = clamp((P.inp.steer || 0) * -.45, -.5, .5); }
   rebuildLoad();
   if (P.fx) { fxEmit(dt); fxUpdate(dt); }
   reactions(dt);
@@ -689,8 +690,9 @@ function frame(dt) {
   if ((P.mode === 'drive' || P.mode === 'errand' || P.mode === 'docking') && !A.cardOpen() && !A.focusing() && !P.stickCam) { const lead = clamp(b.u, 0, 6) * .9, fx = b.x + Math.cos(b.yaw) * lead, fz = b.z - Math.sin(b.yaw) * lead, k = Math.min(1, dt * 2.6); const cam = C.cam; cam.tx += (fx - cam.tx) * k; cam.tz += (fz - cam.tz) * k; const rr = Math.hypot(cam.tx, cam.tz); if (rr > 100) { cam.tx *= 100 / rr; cam.tz *= 100 / rr; } }
   /* a goto marker follows the water */
   if (P.gotoMark) { if (!P.goto) P.gotoMark.visible = false; else { P.gotoMark.visible = true; const g = P.goto.pts[P.goto.pts.length - 1]; P.gotoMark.position.set(g[0], tide + .06, g[1]); P.gotoMark.scale.setScalar(1 + .12 * Math.sin(P.t * 5)); } }
-  /* a save every few seconds while under way */
-  P.saveT += dt; if (P.saveT > 5) { P.saveT = 0; if (P.mode === 'drive' && Math.abs(b.u) > .05) { A.patch({ boat: K.serializeBoat(b) }); A.save(); } }
+  /* a save every few seconds while under way, and one when it comes to rest */
+  P.saveT += dt; if (Math.abs(b.u) > .05) P.moved = true;
+  if (P.mode === 'drive' && (P.saveT > 5 || (P.moved && Math.abs(b.u) <= .05 && P.saveT > 1))) { P.saveT = 0; if (P.moved) { P.moved = Math.abs(b.u) > .05; A.patch({ boat: K.serializeBoat(b) }); A.save(); } }
   P.hudT += dt; if (P.hudT > .12) { P.hudT = 0; hudUpdate(); }
 }
 function tick(dt) {
@@ -731,10 +733,12 @@ const page = {
   /* the testing handle: the page test and the pictures drive the boat with it */
   state: () => P.ready ? { ready: true, mode: P.mode, boarded: P.boarded, b: K.serializeBoat(P.b), u: P.b.u, yr: P.b.yr, roll: P.b.roll, pitch: P.b.pitch, grounded: P.b.grounded, sc: P.b.sc, avail: P.b.avail, landNow: P.landNow ? P.landNow.id : null, goto: !!P.goto, inp: P.inp, errand: P.errand ? P.errand.phase : null, cacheOn: !!(P.cacheMesh && P.cacheMesh.visible) } : { ready: false },
   err: () => P.err.slice(), landings: () => P.lands.map(l => Object.assign({}, l, { berth: berthFor(l) })), spec: () => P.spec && { x: P.spec.x, z: P.spec.z, yaw: P.spec.yaw, dy: P.spec.dy, dpt: P.spec.dpt, drl: P.spec.drl, rowing: P.spec.rowing, oar: P.spec.oar }, fx: () => ({ active: fxActive(), kinds: P.fx ? P.fx.parts.reduce((o, p) => { if (p.on) o[p.k] = (o[p.k] || 0) + 1; return o; }, {}) : {} }),
-  seals: () => P.sealState || [], hud: () => ({ spd: P.e_spd && P.e_spd.textContent, load: P.e_load && P.e_load.textContent, main: P.e_main && P.e_main.textContent, mainShown: P.e_main && P.e_main.style.display !== 'none', stick: P.e_stick && P.e_stick.style.display !== 'none', info: P.e_info && P.e_info.style.display !== 'none', note: P.noteText || '', rect: (id) => { const e = document.getElementById(id); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; } }),
+  seals: () => P.sealState || [], hud: () => ({ spd: P.e_spd && P.e_spd.textContent, load: P.e_load && P.e_load.textContent, main: P.e_main && P.e_main.textContent, mainShown: P.e_main && getComputedStyle(P.e_main).display !== 'none', stick: P.e_stick && getComputedStyle(P.e_stick).display !== 'none', info: P.e_info && getComputedStyle(P.e_info).display !== 'none', note: P.noteText || '', rect: (id) => { const e = document.getElementById(id); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; } }),
   press: mainPress, board: startDriving, dockHere: () => { const nl = nearestInfo(); if (nl && K.canDock(P.b, nl.landing)) { beginDock(nl.landing); return true; } return false; }, castOff, unload, fit, collect, loadKind, errand: startErrand, goTo, openLanding: () => openLanding(P.landNow || P.lands.find(l => l.id === P.b.at)),
-  advance: (s, dt) => { dt = dt || .05; const n = Math.round(s / dt); for (let i = 0; i < n; i++) frame(dt); }, force: inp => { P.forced = inp; }, set: o => { Object.assign(P.b, o); }, teleport: (x, z, yaw, mode) => { const b = P.b; b.x = x; b.z = z; if (yaw !== undefined) b.yaw = yaw; b.u = 0; b.yr = 0; b.v = 0; if (mode) P.mode = mode; }, setMode: m => { P.mode = m; P.boarded = m === 'drive'; }, give: o => { Object.assign(P.b.load, o.load || {}); if (o.engine !== undefined) { P.b.engine = o.engine; if (P.motor) P.motor.visible = o.engine; } if (o.part !== undefined) P.b.part = o.part; commit(); },
-  env: () => ({ tide: tideNow(), wind: windNow(), sea: seaMood() }), obj: () => P.obj && { tris: P.obj.tris, kit: !!P.obj.kit, visible: P.obj.mesh.visible, pos: P.obj.mesh.position.toArray(), kind: P.obj.kit ? P.obj.kit.kind : 'procedural', lod: P.obj.kit ? P.obj.kit.lod : null }, lands: () => P.lands, cacheLoc: () => P.cacheLoc, stickVec: (x, y) => { P.stick.on = !!(x || y); P.stick.x = x; P.stick.y = y; }, kb: P.kb
+  advance: (s, dt) => { dt = dt || .05; const n = Math.round(s / dt); let minD = 99, amp = 0; for (let i = 0; i < n; i++) { frame(dt); if (P.b.avail) { minD = Math.min(minD, K.hullDepth(P.b, envNow())); if (P.spec) amp = Math.max(amp, Math.abs(P.spec.dpt - P.b.pitch) + Math.abs(P.spec.drl - P.b.roll)); } } return { minDepth: minD, amp, u: P.b.u }; }, force: inp => { P.forced = inp; }, set: o => { Object.assign(P.b, o); }, teleport: (x, z, yaw, mode) => { const b = P.b; b.x = x; b.z = z; if (yaw !== undefined) b.yaw = yaw; b.u = 0; b.yr = 0; b.v = 0; if (mode) P.mode = mode; }, setMode: m => { P.mode = m; P.boarded = m === 'drive'; }, give: o => { Object.assign(P.b.load, o.load || {}); if (o.engine !== undefined) { P.b.engine = o.engine; if (P.motor) P.motor.visible = o.engine; } if (o.part !== undefined) P.b.part = o.part; commit(); },
+  cost: () => { let calls = 0, tris = 0; const vis = o => { for (let n = o; n; n = n.parent) if (!n.visible) return false; return true; }; const add = root => root && root.traverse(o => { if (o.isMesh && vis(o)) { calls++; const g = o.geometry; tris += g.index ? g.index.count / 3 : g.attributes.position.count / 3; } });
+    add(P.group); if (P.obj) { add(P.obj.mesh); if (P.obj.ring && P.obj.ring.visible) { calls++; tris += P.obj.ring.geometry.index.count / 3; } } return { calls, tris: Math.round(tris) }; },
+  alarm: () => P.alarm, screenOf: (x, z) => A.screenOf(x, tideNow(), z), env: () => ({ tide: tideNow(), wind: windNow(), sea: seaMood() }), obj: () => P.obj && { tris: P.obj.tris, kit: !!P.obj.kit, visible: P.obj.mesh.visible, pos: P.obj.mesh.position.toArray(), kind: P.obj.kit ? P.obj.kit.kind : 'procedural', lod: P.obj.kit ? P.obj.kit.lod : null }, lands: () => P.lands, cacheLoc: () => P.cacheLoc, stickVec: (x, y) => { P.stick.on = !!(x || y); P.stick.x = x; P.stick.y = y; }, kb: P.kb
 };
 root.LI_BOAT_DRIVE.attach = attach; root.LI_BOAT_DRIVE.page = page; root.__boat = page;
 
