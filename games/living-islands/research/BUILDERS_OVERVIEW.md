@@ -7,7 +7,7 @@ The Gift: a cosy, hopeful island game on a tabletop world. You are given a small
 
 ## What is FIXED (do not change; ask the owner via the hand-back if you think it must)
 1. Tone: hopeful; nothing gory or cruel; danger only when the story needs it.
-2. Robots are relics: no faces, no eyes that look alive, no speech, no feelings; only motion, a status light and work.
+2. Robots are old machines, not people. OWNER CHANGE 25 Nov: eyes are now allowed and character is welcome: each robot may have a pair of small lamp or lens eyes and simple mechanical expressions (blink, look toward the task, dim when the battery is low, tilt when waiting). Still NO mouths, NO speech, NO written feelings, no human-like faces. They are old, worn and plain: character comes from movement, not emotion text. (This replaces the earlier 'no eyes that look alive' rule.)
 3. The helper is never shown, has no face, never speaks, and the game never explains it. Never name it as an AI in the first day.
 4. People are counted, never tracked: no names, no personal stats, no individual trails.
 5. Letters and messages use only our own words, short and plain.

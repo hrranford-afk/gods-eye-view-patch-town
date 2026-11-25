@@ -2,8 +2,8 @@
 
 These are TARGETS, not what the engine draws today. Each folder has BUILDER_NOTES.txt: per picture, what is art versus implementation, the UI it requires, and a clarity pass. Treat those notes as acceptance criteria. Pictures are reduced in size.
 
-## Rules the pictures break (do not copy these)
-1. Robots: the pictures give each robot TWO green lights on the front that read as eyes. FIXED rule: robots have no eyes that look alive. Use ONE small status light on top or the side, never a pair on the front.
+## Rules the pictures break (do not copy these) (robot eyes are now allowed, see 1)
+1. Robots: the pictures give each robot TWO green lamp eyes on the front. OWNER CHANGE 25 Nov: eyes are allowed and character is welcome (lamp or lens eyes, simple mechanical expressions). Still no mouths, no speech, no written feelings.
 2. People: the rower is a visible person with a cap, seen from the side. Keep any person small, distant or seen from behind, and no close-up faces.
 3. The mainland is warmer and prettier than the brief (amber lit stone, a viaduct, a chimney). Keep it gentle but push the grey-brown and wet sodium palette so the island's teal and gold is a real change.
 4. UI in the pictures is wooden-panel styled; the game's paper-panel styling is fine. Match layout and hierarchy (one corner, one job), not skin.
