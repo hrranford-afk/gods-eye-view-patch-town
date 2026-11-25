@@ -324,14 +324,14 @@ function stormAt(ts, build) {
 function baro(ts, B) { const hi = 1017, lo = 986, back = 1005; if (ts <= 0) return hi; if (ts < B + 25) return hi + (lo - hi) * sm01(ts / (B + 25)); const e = stormEnd(B); if (ts < e) return lo + (back - lo) * sm01((ts - B - 25) / (e - B - 25)); return back; }
 function baroTrend(ts, B) { const d = baro(ts + 4, B) - baro(ts - 4, B); return d < -1.6 ? 'falling fast' : d < -.3 ? 'falling' : d > 1.2 ? 'rising fast' : d > .25 ? 'rising' : 'steady'; }
 /* the trigger. st = the storm part of the gift state; gh = game hours since midnight of day 1; night = the first night has passed (the bottle was read). The first storm comes on the morning of day 2;
-   after that once a game season (90 days) at a seeded day, and never inside ten days of the last. */
+   after that once a game season at a seeded day in the middle of the season (the deck calendar, STORY V2: seasons are 90 days from day 31 (summer), 121, 211, 301), and never inside ten days of the last. */
 /* the Great Wash: the first storm that starts on day 842 or later (up to the end of year three) and only once; the day is seeded in days 842 to 886 */
 const gwDay = seed => GW_DAY0 + Math.floor(hash(77, 6, seed | 0) * GW_SPAN), gwAt = seed => (gwDay(seed) - 1) * 24 + 9;
 const isGreat = (st, startGh) => !st.gw && startGh >= (GW_DAY0 - 1) * 24 && startGh < GW_END * 24;
 const FIRST_GH = 32.5, SEASON_DAYS = 90, GAP_DAYS = 10;
 function nextDue(st, seed) {
   const n = st.n | 0; if (n === 0) return FIRST_GH;
-  const at = n * SEASON_DAYS * 24 + 24 * Math.floor(hash(n, 5, seed | 0) * 30) + 9, quiet = (st.endGh || 0) + GAP_DAYS * 24, base = Math.max(at, quiet);
+  const at = (SEASON_DAYS * (n - 1) + 30 + 30 + Math.floor(hash(n, 5, seed | 0) * 30)) * 24 + 9, quiet = (st.endGh || 0) + GAP_DAYS * 24, base = Math.max(at, quiet);
   if (!st.gw) { const g = gwAt(seed); if (base >= g) return Math.max(g, quiet); }   /* the Great Wash is due once, in autumn of year three */
   return base;
 }
