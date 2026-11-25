@@ -189,7 +189,7 @@ function pickFinds(seed, n) {
 function newState(seed) {
   return { v: SAVE_VERSION, seed: seed >>> 0, gh: START_HOUR, stage: 'arrive', letter1: false, keyUsed: false, hutOpen: false,
     dry: null, water: false, finds: [], plank: false, shipSeen: false, crate1: false, parts: 0, partFrom: null, ordered: false, orders: [], delivered: [],
-    robots: [], mods: [], kits: { battery: 0, solar: 0 }, jobs: [], stock: emptyStock(), boat: null, storm: null, phys: null, opening: false, dockDone: false, letter2: false, build: null, bottle: false, night: false, saved: false, ledger: newLedger(),
+    robots: [], mods: [], kits: { battery: 0, solar: 0 }, jobs: [], stock: emptyStock(), boat: null, storm: null, phys: null, opening: false, dockDone: false, boards: null, boardsGh: 0, declinedGift: false, letter2: false, build: null, bottle: false, night: false, saved: false, ledger: newLedger(),
     dial: { year: 1, creditThin: [1, 0.9, 0.6, 0.3, 0.1], note: 'stored for later years, not used on day 1' } };
 }
 const boatOf = o => { const K = root.LI_BOAT_DRIVE; return K && K.sanitize ? K.serializeBoat(K.sanitize(o)) : (o && typeof o === 'object' ? JSON.parse(JSON.stringify(o)) : null); };
@@ -225,6 +225,7 @@ function State(o) {
   s.boat = o.boat && typeof o.boat === 'object' ? boatOf(o.boat) : null;   /* the boat's part of the save (boat_drive.js sanitises it; absent = no boat yet) */
   s.storm = o.storm && typeof o.storm === 'object' ? (root.LI_STORM && root.LI_STORM.sanitize ? root.LI_STORM.sanitize(o.storm) : null) : null;   /* the storm and the haul's part of the save (storm.js sanitises it; absent = no storm yet) */
   s.opening = bool(o.opening); s.dockDone = bool(o.dockDone);
+  s.boards = BOARDS_STATES.includes(o.boards) ? o.boards : null; s.boardsGh = num(o.boardsGh, 0, 0, 24 * 1500); s.declinedGift = bool(o.declinedGift) && (s.boards === 'declined' || s.boards === 'tender');   /* the soft flag only exists after a decline */
   s.mods = Array.isArray(o.mods) ? o.mods.slice(0, 4).map(m => ({ bat: !!(m && m.bat), solar: !!(m && m.solar) })) : [];
   s.kits = { battery: Math.round(num(o.kits && o.kits.battery, 0, 0, 9)), solar: Math.round(num(o.kits && o.kits.solar, 0, 0, 9)) };
   s.jobs = Array.isArray(o.jobs) ? o.jobs.slice(0, 4).map(j => (stockById(j) ? j : null)) : [];
@@ -361,7 +362,23 @@ function keyOf(s) {
   return { id: 'brass_key', count: 1, where: mine ? 'yours' : 'lid', name: 'The brass key',
     use: mine ? 'The one brass key, on its string in your pocket. ' + (used.length ? 'It has opened ' + used.join(', and ') + '. ' : '') + (next ? 'Next: ' + next.text + '.' : '') + ' There is no second key.' : 'The one brass key. It hangs from the crate lid on a string. There is no second key.' };
 }
-const CORE = { KEY_USES, keyOf, CAL_MONTHS, CAL_SEASONS, CAL_YEAR, CAL_MONTH, calOf, LETTER_DAYS, letterOk, STOP_ICONS, arrowDeg, PLACES, AMBIENT, ambientStep, STARTER, missingText, WAIT, waitStep, KITS, FIT_S, CAMP_CAP, modsOf, partsText, batteryLine, fitKit, ROBOT_RATE, HAND_UNIT_S, LITTER_UNITS, litterStock, rateText, handRate, handStep, STOCKS, BUILD_NEEDS, UNITS_PER_TRIP, STOCK_CAP, emptyStock, missing, needText, addHaul, setJob, START_CASH, START_CREDIT, START_HOUR, BASE_YEARLY, CATALOGUE, BUILDS, BOTTLES, FINDS, SHELTERS, LETTER1, LETTER2, STAGES, STAGE_LABEL, WEATHER_DELAY, SAVE_KEY, SAVE_VERSION,
+/* ---------------- STORY V2 DRY BOARDS (Job 6e item 4, a1_offer_dry_boards / a1_refusal_*): after the first storm's letter is kept, the tender has left a stack of dry boards under a tarp. The player may take them or hand them back. Both are fine and nothing is scored: taking adds planks to the yard; handing them back sets only the soft flag declinedGift, costs the afternoon (the wet boards are barrowed and stacked by hand: fewer planks, and the tender still comes on its usual day two days later with no note). No credit or cash changes either way. ---------------- */
+const BOARDS_TAKE = 8, BOARDS_WET = 3, BOARDS_AFTER_H = 48, BOARDS_STATES = ['offered', 'taken', 'declined', 'tender'];
+const boardsDue = s => !!s && !s.boards && !!s.storm && s.storm.n >= 1 && s.storm.l9 === 2;
+function boardsText(s) {
+  return { offer: 'After the storm the tender left a stack of dry boards under a tarp at the landing. Nobody asked for anything in return. The wrack line is full of wet ones.',
+    taken: 'Taken. ' + BOARDS_TAKE + ' dry planks go to the yard. The wet boards can dry on the shore.',
+    declined: 'Handed back. You spend the afternoon barrowing and stacking the wet boards by hand: ' + BOARDS_WET + ' planks, and your back knows it. The offer was real, nothing was withheld and nothing was a test.',
+    tender: 'The tender came on its usual day with the crates you ordered, tied the same, with no note.' };
+}
+function boardsStep(s, choice, gh) {   /* pure: the state after taking or declining; the planks to add; the message that says why */
+  const T = boardsText(s);
+  if (choice === 'take' && s.boards === 'offered') return { ok: true, patch: { boards: 'taken', boardsGh: gh }, planks: BOARDS_TAKE, say: T.taken };
+  if (choice === 'decline' && s.boards === 'offered') return { ok: true, patch: { boards: 'declined', boardsGh: gh, declinedGift: true }, planks: BOARDS_WET, say: T.declined };
+  return { ok: false, patch: {}, planks: 0, say: 'There is nothing to decide.' };
+}
+const boardsLater = (s, gh) => !!s && s.boards === 'declined' && gh >= (s.boardsGh || 0) + BOARDS_AFTER_H;
+const CORE = { BOARDS_TAKE, BOARDS_WET, BOARDS_AFTER_H, BOARDS_STATES, boardsDue, boardsText, boardsStep, boardsLater, KEY_USES, keyOf, CAL_MONTHS, CAL_SEASONS, CAL_YEAR, CAL_MONTH, calOf, LETTER_DAYS, letterOk, STOP_ICONS, arrowDeg, PLACES, AMBIENT, ambientStep, STARTER, missingText, WAIT, waitStep, KITS, FIT_S, CAMP_CAP, modsOf, partsText, batteryLine, fitKit, ROBOT_RATE, HAND_UNIT_S, LITTER_UNITS, litterStock, rateText, handRate, handStep, STOCKS, BUILD_NEEDS, UNITS_PER_TRIP, STOCK_CAP, emptyStock, missing, needText, addHaul, setJob, START_CASH, START_CREDIT, START_HOUR, BASE_YEARLY, CATALOGUE, BUILDS, BOTTLES, FINDS, SHELTERS, LETTER1, LETTER2, STAGES, STAGE_LABEL, WEATHER_DELAY, SAVE_KEY, SAVE_VERSION,
   pound, signed, newLedger, spend, recent, entryLine, creditYears, creditNote, itemById, etaFor, placeOrder, resolveDelivery, etaText, bottleIndex, bottleMessage, pickFinds,
   newState, stageOf, progress, jobsDone, serialize, deserialize, validState, canned, hintFor, canBuild, doBuild, hashStr, mulberry };
 if (typeof module !== 'undefined' && module.exports) module.exports = CORE;
@@ -1019,6 +1036,20 @@ function ledgerCard() {
   c.appendChild(xbtn()); c.appendChild(row(btn('Close', closeCard, 'pri')));
 }
 /* (3) the jobs notebook */
+function boardsCard() {
+  const s = G.s; if (s.boards !== 'offered') return; const T = boardsText(s);
+  const c = card('boards', '<h2>Dry boards</h2><p>' + T.offer + '</p><p><small>Take them, or hand them back. Either is fine: the tender comes on its usual day.</small></p>'); c.appendChild(xbtn());
+  c.appendChild(row(btn('Take the dry boards', () => boardsChoose('take'), 'pri'), btn('Hand them back', () => boardsChoose('decline'))));
+}
+function boardsChoose(choice) {
+  const r = boardsStep(G.s, choice, G.s.gh); if (!r.ok) { toast(r.say, 3000); return; } closeCard(); setS(r.patch);
+  if (r.planks) addStockUnits('planks', r.planks); ledgerLine(choice === 'take' ? 'Dry boards from the tender (a gift, no charge)' : 'Dry boards handed back', 0, 0);
+  toast(r.say, 9000); afterChange();
+}
+function boardsTick() {
+  const s = G.s; if (boardsDue(s)) { setS({ boards: 'offered' }); afterChange(); toast('The tender has left something at the landing. See the Notebook.', 7000); setTimeout(() => { if (G.s.boards === 'offered' && !G.cardOpen) boardsCard(); }, 1200); return; }
+  if (boardsLater(s, s.gh)) { setS({ boards: 'tender' }); afterChange(); toast(boardsText(s).tender, 8000); }
+}
 function notebook() {
   const s = G.s, c = card('notes', '<h2>Notebook</h2><p><small>Nothing here is a must. Do what you like first.</small></p>');
   const job = (done, title, sub, bt) => { const d = h('div', 'gd-item'); d.innerHTML = '<div><b>' + (done ? '&#10003; ' : '') + title + '</b><small>' + sub + '</small></div>'; if (bt) d.appendChild(bt); c.appendChild(d); };
@@ -1026,6 +1057,8 @@ function notebook() {
   job(s.water, 'Find water', s.water ? 'The barrel is out. No spring on this island: rain only.' : 'Not every island has a spring. This one does not.', s.water ? null : btn('Look', barrelCard));
   job(s.finds.length >= 2, 'Look along the shore', 'Finds taken: ' + s.finds.length + ' of 2. Seals keep to the far rocks.', null);
   job(s.plank, 'Fit one plank of the old jetty', s.plank ? 'One plank is in. The tender can land a little closer.' : 'Drag a loose plank to a gap, or tap a plank and then a gap.', s.plank ? null : btn('Show me', showJetty));
+  if (s.boards === 'offered') job(false, 'Dry boards at the landing', 'Left by the tender after the storm. Take them or hand them back.', btn('Decide', boardsCard));
+  if (s.boards && s.boards !== 'offered') job(true, 'Dry boards', boardsText(s)[s.boards === 'taken' ? 'taken' : 'declined'], null);
   if (s.letter1) { const k = keyOf(s); c.appendChild(h('div', 'gd-item', '<div><b>' + k.name + '</b><small>' + k.use + '</small></div>')); }
   { const L = stopLines(10); if (L.length) { c.appendChild(h('p', '', '<b>Recent stops</b> <small>(the last ' + L.length + ')</small>')); L.forEach(q => c.appendChild(h('div', 'gd-stopline', '<small>' + q.text + '</small>'))); } }
   c.appendChild(xbtn()); c.appendChild(row(btn('Close', closeCard, 'pri')));
@@ -1405,7 +1438,7 @@ function tick(dt) {
   if (!G.ready || !G.root) return;
   const s = G.s; G.idle += dt; try { inspectTick(dt); } catch (e) { if (G.err.length < 20) G.err.push('inspect ' + e.message); }
   if (G.root.parent !== C.scene) C.scene.add(G.root);
-  waitTick(dt); ambientTick(dt); clockTick(dt); weatherTick(); try { if (SHP()) SHP().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('storm ' + e.message); } holdRobots(); chargePost(); try { storageBays(); } catch (e) { if (G.err.length < 20) G.err.push('bays ' + e.message); } handTick(dt);  plankWatch(); try { if (PHYS()) PHYS().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('phys ' + e.message); } deliveriesTick(); deliveryTick(dt); nightTick(dt); focusTick(dt);
+  waitTick(dt); ambientTick(dt); clockTick(dt); weatherTick(); try { if (SHP()) SHP().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('storm ' + e.message); } holdRobots(); chargePost(); try { storageBays(); } catch (e) { if (G.err.length < 20) G.err.push('bays ' + e.message); } try { boardsTick(); } catch (e) { if (G.err.length < 20) G.err.push('boards ' + e.message); } handTick(dt);  plankWatch(); try { if (PHYS()) PHYS().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('phys ' + e.message); } deliveriesTick(); deliveryTick(dt); nightTick(dt); focusTick(dt);
   try { const bd = BDP(); if (bd && bd.tick) { bd.tick(dt); if (!G.boatRev && s.ordered) { G.boatRev = true; if (bd.reveal) bd.reveal(); } } } catch (e) { if (G.err.length < 20) G.err.push('boat ' + e.message); }
   try { exploreTick(dt); } catch (e) { if (G.err.length < 20) G.err.push('explore ' + e.message); }
   try { G.stT = (G.stT || 0) + dt; if (G.stT > .12) { G.stT = 0; stopChips(); } } catch (e) { if (G.err.length < 20) G.err.push('stops ' + e.message); }
@@ -1569,7 +1602,7 @@ function init(ctx) {
     state: () => JSON.parse(JSON.stringify(G.s)), stage: () => stageOf(G.s), core: CORE, err: () => G.err.slice(), spots: () => G.spots && { crate: G.spots.crate, hut: G.spots.hut, tender: G.spots.tender, build: G.spots.build, stump: G.spots.stump, shore: G.spots.shore, wreck: G.spots.wreck, barrel: G.spots.barrel, finds: G.spots.finds.map(f => ({ id: f.id, x: f.x, z: f.z, taken: f.taken })), ship: G.spots.ship },
     targets: () => targets(), tap: (cx, cy) => onTap(cx, cy), act: id => activate(id), skipTo, card: () => G.cardOpen, closeCard, toast: () => G.toast, hint: () => hintFor(G.s), save: () => save(false), load: () => load(), wipe: wipeSave, saveOk: SAVE_OK,
     ledger: ledgerCard, notebook, catalogue: catalogueCard, build: buildCard, letter1: readLetter1, letter2: readLetter2, fitPlank: fitOnePlank, order: orderItem, startRobot, giveOrder, robotsCard, doBuild: confirmBuild, post: () => G.objs.post && { x: G.objs.post.position.x, z: G.objs.post.position.z, lamp: G.objs.post.userData.lampCol }, bottle: readBottle, sleep: sleepToMorning,
-    focus, calendar: () => calOf(dayNo()), keyInfo: () => keyOf(G.s), keyMeshes: () => { let n = 0; G.root && G.root.traverse(o => { if (o.userData && o.userData.brassKey) n++; }); return n; }, clockMode: () => G.clockMode, weather: () => G.weather, hornCount: () => G.hornCount || 0, dlv: () => G.dlv && G.dlv.phase, barrel: () => G.barrel, crates: () => G.crates.map(c => ({ n: c.n, item: c.item || null, letter2: !!c.letter2, l9: !!c.l9 })),
+    focus, calendar: () => calOf(dayNo()), boards: () => ({ state: G.s.boards, declinedGift: G.s.declinedGift, card: boardsCard, choose: boardsChoose }),  keyInfo: () => keyOf(G.s), keyMeshes: () => { let n = 0; G.root && G.root.traverse(o => { if (o.userData && o.userData.brassKey) n++; }); return n; }, clockMode: () => G.clockMode, weather: () => G.weather, hornCount: () => G.hornCount || 0, dlv: () => G.dlv && G.dlv.phase, barrel: () => G.barrel, crates: () => G.crates.map(c => ({ n: c.n, item: c.item || null, letter2: !!c.letter2, l9: !!c.l9 })),
     heavy: () => ({ ar: !!G.ar, seals: G.objs.seals.length, stumpKit: !!G.objs.stumpKit, finds: G.spots.finds.length, stumpScript: !!document.querySelector('script[src*="stump_b64"]') }),
     handHold: (id, sec) => { const st0 = Object.assign({}, G.s.stock); if (!handStart(id, 0, 0)) return { ok: false, got: 0 }; for (let t = 0; t < sec && G.hand && G.hand.down; t += .25) handTick(.25); handStop(); const st1 = G.s.stock; return { ok: true, got: STOCKS.reduce((n, k) => n + (st1[k.id] || 0) - (st0[k.id] || 0), 0) }; }, litterNow: () => litterNow(), stockSet: st => { G.s = Object.assign({}, G.s, { stock: Object.assign(emptyStock(), st) }); G.sig = null; }, bays: () => { const B = G.objs.bays; return B && B.list ? B.list.map(b => ({ id: b.id, x: b.x, z: b.z, step: B.step[b.id], shown: b.stack.filter(m => m.visible).length })) : []; }, bayInfo: id => bayInfo(id), baysTris: () => { const B = G.objs.bays; let t = 0; if (B && B.grp) B.grp.traverse(m => { if (m.isMesh && m.visible) t += m.geometry.index ? m.geometry.index.count / 3 : m.geometry.attributes.position.count / 3; }); return t; }, wrack: () => { try { const s = C.li().campstart.rt().sim(); return { k: s.wrackK || 1, w: s.wrack || null }; } catch (e) { return null; } }, phaseNow, litCircle, handOk: (x, z) => handOk(x, z, false), ringShown: () => !!(G.ring && G.ring.visible), setPhase: p => { G.phaseOverride = p; },
     deliverNow: id => { orderItem(id); const o = G.s.orders[G.s.orders.length - 1]; if (o) o.delivered = true; G.arrivals = (G.arrivals || []).concat([id]); }, openCrate: n => deliveryCrate(n), robotCardOpen: i => robotCard(i), startFit: (i, k) => startFit(i, k), fitState: () => G.fit && { i: G.fit.i, kit: G.fit.kit, ready: fitReady() }, cardText: () => (document.querySelector('.gd-card') || {}).textContent || '', clickBtn: txt => { const b = [...document.querySelectorAll('.gd-card button')].find(q => q.textContent.indexOf(txt) >= 0 && !q.disabled); if (b) { b.click(); return true; } return false; },

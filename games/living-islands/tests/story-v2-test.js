@@ -84,4 +84,24 @@ const env = (seed, small) => ({ seed, H, half: 64, step: .8, tableR: 60, hw: A.S
   ok(!/second key|spare key|duplicate key/i.test(src.replace(/There is no second key/g, '').replace(/no second key/g, '')), 'no code or text hands out a second key');
 }
 
+/* ---- 4. dry boards: take or decline ---- */
+{
+  const K = globalThis.LI_GIFT.core, T = K.boardsText({});
+  const base = K.newState(5), early = Object.assign({}, base, { storm: { n: 1, l9: 1 } }), after = Object.assign({}, base, { storm: { n: 1, l9: 2 } });
+  ok(!K.boardsDue(base) && !K.boardsDue(early) && K.boardsDue(after) && !K.boardsDue(Object.assign({}, after, { boards: 'offered' })), 'the offer comes once, after the first storm letter is kept (not before, not twice)');
+  const off = Object.assign({}, after, { boards: 'offered', stock: Object.assign({}, base.stock, { planks: 2 }), ledger: base.ledger });
+  const t = K.boardsStep(off, 'take', 100), d = K.boardsStep(off, 'decline', 100);
+  ok(t.ok && t.patch.boards === 'taken' && t.planks === K.BOARDS_TAKE && !t.patch.declinedGift, 'taking: the boards come to the yard (+' + t.planks + ' planks) and no flag is set');
+  ok(d.ok && d.patch.boards === 'declined' && d.patch.declinedGift === true && d.planks === K.BOARDS_WET && d.planks < t.planks, 'declining: only the soft flag declinedGift, an afternoon of wet boards (+' + d.planks + ' planks, fewer than ' + t.planks + ')');
+  ok(/nothing was withheld/.test(d.say) && /nothing was a test/.test(d.say) && /afternoon/.test(d.say), 'declining says why: "' + d.say + '"');
+  ok(!K.boardsStep(base, 'take', 1).ok && !K.boardsStep(Object.assign({}, off, { boards: 'taken' }), 'decline', 1).ok, 'once decided, or before any offer, there is nothing to decide (no double take)');
+  ok(!('cash' in d) && !('credit' in d) && !('cash' in t), 'neither choice touches cash or credit');
+  const dec = Object.assign({}, off, { boards: 'declined', boardsGh: 100, declinedGift: true });
+  ok(!K.boardsLater(dec, 100 + K.BOARDS_AFTER_H - 1) && K.boardsLater(dec, 100 + K.BOARDS_AFTER_H) && !K.boardsLater(Object.assign({}, dec, { boards: 'taken' }), 1e5), 'two days after a decline the tender keeps its usual day (only after a decline)');
+  ok(/usual day/.test(T.tender) && /no note/.test(T.tender), 'the tender line: "' + T.tender + '"');
+  for (const st of [off, Object.assign({}, off, { boards: 'taken' }), dec, Object.assign({}, dec, { boards: 'tender' })]) { const r = K.deserialize(K.serialize(st)); ok(r && r.boards === st.boards && r.declinedGift === !!st.declinedGift, 'save round trip keeps boards=' + st.boards); }
+  const odd = K.deserialize(K.serialize(Object.assign({}, off, { boards: 'bogus', declinedGift: true }))); ok(odd && odd.boards === null && odd.declinedGift === false, 'a bad value or a flag without a decline is cleaned on load');
+  const tone = JSON.stringify(T); ok(!/robot|AI\b|helper|owe|pay back|mistake|punish/i.test(tone.replace(/robots/g, '')), 'tone: no helper, no debt, no punishment in the words');
+}
+
 console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
