@@ -130,7 +130,7 @@ Rewritten lightly into our voice; ids unique; mood split ten good, seven in-betw
 | 11.3 | KEEP | the drawer that the key opens is in the hut table, the room the owner called "the uncle's room"; the word uncle stays off the cards | one drawer, one room, no relative named |
 | 11.4 | CHANGED | the Great Wash is the year-three autumn big storm (days 841 to 940); L9 belongs only to year three; the first storm's letter is L3 | the first storm was shipping the Great Wash's letter and hulk |
 | 11.5 | CHANGED | the first storm and the first seasons' storms are small: `a1_first_storm` now leaves about 8 heaps, a few dozen pieces, no hulk; spine day 2 and day 3 lines match | a small first storm teaches the loop; the Great Wash then means something |
-| 11.6 | CHANGED | spine 2.7 (new): the four continuity rules; GIFT_LETTERS L1, L3 and L9 trigger notes | one place to look |
+| 11.6 | CHANGED | spine 2.8 (new): the four continuity rules; GIFT_LETTERS L1, L3 and L9 trigger notes | one place to look |
 | 11.7 | CHANGED | calendar note: a 360-day year of four 90-day seasons, spring split (1 to 30 and 301 to 360); the storm layer's blocks of 90 from day 1 do not line up | align the notes; the code change is listed below |
 | 11.8 | NEW TEST | `test_continuity_one_key_and_storm_letters`, `test_letter_nine_only_in_year_three` (L9 never before day 842, L3 within day 12, one key, small first storm) | keeps the rules |
 
@@ -140,3 +140,15 @@ Rewritten lightly into our voice; ids unique; mood split ten good, seven in-betw
 3. `storm.js` counts storm cadence in 90-day blocks from day 1. The deck calendar is a 360-day year of four 90-day seasons with spring split (1 to 30 and 301 to 360), summer 31 to 120, autumn 121 to 210, winter 211 to 300. Use the deck calendar so season-tagged events and storms line up.
 4. One key: check `gift_day.js` and the opening for any second key prop. The one brass key must open the lidded dock crate, then the hut door, then the hut table drawer. The first crate holds a paper letter, not a key.
 5. (From later steps, collected here.) Props and actions the deck mentions: a hatch beside the hut door; the lidded box with two blankets at the landing; crates with rope handles at both ends and runners; a low dry shelf above the high-water line on the collector rack; a way to hand a parcel back to the tender (`parcel_returned`); the old speaker prop (`speaker_prop`) and a flat picnic rock; a boat shed lock at the jetty; the grey diamond-weave carpet texture (mainland cafe doorway and the lens wrapping, with a teal thread); mooring rings at the far cove; a notch on the lamp knoll; a tidal cave crate under the west skerry; thumb-scoop drawers in the workshop; the boxed stones under the hut; a dry boards offer from the tender in week one; the player's mark on the home beach and its save (step 12).
+6. The beach mark (step 12): placement UI for a stack of planks, a cairn, a bench or a painted board above the tideline in the first weeks; save key `beach_mark` with kind, day and the first build that followed; a card at the year-four report (day 1425 to 1440) showing the mark as set.
+7. The first wet morning (step 12): a drip from the tarp into a pot, the barrel's hollow knock that fills as the tarp is tipped toward the gutter; the water gauge is the barrel's sound before the litre count.
+
+## Step 12. The critic's three questions, as design answers (spine 2.7)
+| # | Status | Line | Reason |
+|---|---|---|---|
+| 12.1 | CHANGED | Question 1, declining every gift: three self-reliance wins, `a1_self_first_fire` (the first dry fire), `a1_self_boiled_water` (boiled rain from the barrel), `a1_self_mended_oar` (the first mended oar) | a player who declines everything still has an early, satisfying, hands-on thing to do and feel |
+| 12.2 | CHANGED | Question 2, the first wet morning without a spring: `a1_first_wet_morning` (rain on the tarp, a drip, the barrel's hollow knock, the tarp tipped toward the gutter, the note fuller by noon). `a1_spring_gutter_rain` now comes after it | the player works out drinking water from what they see and hear, no tutorial |
+| 12.3 | CHANGED | Question 3, the player-made mark: `a1_beach_mark` (a stack, cairn, bench or painted board above the tideline; one choice, saved) and `a4_beach_mark_report` (shown at the year-four report) | the one object that remembers exactly how this player played |
+| 12.4 | KEEP | FIXED rule 10: the home island has no spring; the woods spring is the long answer | realistic water |
+| 12.5 | KEEP | no score, no grade: the mark is not tracked against anything | people and play styles are counted, never ranked |
+| 12.6 | NEEDS PAGE | save key `beach_mark` (kind, day, first build), a placement UI for the four marks, a card at the year-four report | listed under Needs the page builder |
