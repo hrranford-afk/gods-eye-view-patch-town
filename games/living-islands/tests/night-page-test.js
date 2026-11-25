@@ -20,7 +20,7 @@ const G = (p, f, ...a) => p.evaluate(([f, a]) => { const r = __gift[f](...a); re
 const SIZES = [['ipad touch', 834, 1062, '&device=ipad'], ['desktop', 1280, 720, '']];
 for (const [name, w, h, dev] of SIZES) {
   if (!want(w)) continue;
-  const { p, errs } = await open('?game=gift&glide=0&physical=0&dev=1&stage=yard' + dev, w, h);
+  const { p, errs } = await open('?game=gift&glide=0&physical=0&dev=1&stage=evening' + dev, w, h);
   /* 2. hand gathering */
   const lit = await G(p, 'litterNow'); ok(lit.length >= 2, name + ': shore litter is there to gather by hand (' + lit.length + ' piles)');
   const tg = await G(p, 'targetsNow'); ok(tg.some(t => /^litter\d+$/.test(t.id)) || lit.length > 0, name + ': piles are targets when on screen (' + tg.filter(t => /^litter/.test(t.id)).length + ' now)');
@@ -37,6 +37,21 @@ for (const [name, w, h, dev] of SIZES) {
   if (inn) { const rn = await G(p, 'handHold', 'litter' + inn.i, 60); ok(rn.ok && rn.got >= 1, name + ': at night, inside the lit ring, you can gather (' + rn.got + ')'); }
   if (far) { const rf = await G(p, 'handHold', 'litter' + far.i, 60); ok(!rf.ok || rf.got === 0, name + ': at night, outside the lit ring, you cannot'); } else ok(true, name + ': every pile is inside the ring (none to refuse)');
   await p.waitForTimeout(500); ok(await G(p, 'ringShown'), name + ': the lit ring is shown at night');
+  /* 3. a kit crate, taking the kit, fitting it at the post */
+  if (want(3)) {
+    await G(p, 'setPhase', ''); await p.evaluate(() => { __gift.state().ledger.credit; });
+    await G(p, 'deliverNow', 'battery'); await p.waitForFunction(() => __gift.crates().some(c => c.item === 'battery'), null, { timeout: 60000 });
+    const cn = (await G(p, 'crates')).findIndex(c => c.item === 'battery') + 1; await G(p, 'openCrate', cn);
+    const ct = await G(p, 'cardText'); ok(/Kit crate: Bigger battery/.test(ct), name + ': the delivered crate is named "Kit crate: Bigger battery"');
+    ok(await G(p, 'clickBtn', 'Take the kit'), name + ': the kit comes out of the crate'); await p.waitForTimeout(300);
+    ok((await p.evaluate(() => __gift.state().kits)).battery === 1, name + ': one kit is in the yard');
+    await G(p, 'robotCardOpen', 0); const rc = await G(p, 'cardText'); ok(/Battery \d+ percent\. Parts: none\. Short night shift\./.test(rc), name + ': the carrier card shows the level, no parts and "Short night shift"');
+    ok(await G(p, 'clickBtn', 'Fit bigger battery'), name + ': Fit starts'); for (let k = 0; k < 40 && !(await G(p, 'fitState')).ready; k++) await p.evaluate(() => __li.campstart.rt().advance(5));
+    const fh = await G(p, 'handHold', 'fitpost', 6); ok(fh.ok, name + ': a hold at the charging post fits the part');
+    const mods = await p.evaluate(() => __gift.state().mods); ok(mods[0] && mods[0].bat, name + ': the robot has the bigger battery now');
+    await G(p, 'robotCardOpen', 0); ok(/Parts: bigger battery\./.test(await G(p, 'cardText')) && !/Short night shift/.test(await G(p, 'cardText')), name + ': the card shows the part and drops "Short night shift"');
+    ok((await p.evaluate(() => __li.campstart.rt().sim().robots[0].cap)) === 2.5, name + ': the camp routine runs it with capacity 2.5');
+  }
   ok(errs.length === 0, name + ': zero console errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''));
   await p.close();
 }

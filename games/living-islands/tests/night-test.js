@@ -39,4 +39,19 @@ for (const nb of [2, 3, 4]) {
 { let p = 0, u = 0; for (let i = 0; i < 6000; i++) { const r = K.handStep(p, .1, true); p = r.p; u += r.units; } ok(u === 12, 'a ten minute hold gives ' + u + ' units (about ' + K.handRate().toFixed(1) + ' a minute)');
   const r0 = K.handStep(10, 5, false); ok(r0.p === 10 && r0.units === 0, 'no hold, no progress: nothing gathers by itself');
   ok(/By hand: about 1\.2 a minute\. This robot on Metal: about 1\.4 a minute\./.test(K.rateText('metal')), 'the readout reads: ' + K.rateText('metal')); }
+/* ---- 3. battery and solar ---- */
+{ const run = (mods, night, sec) => { const sim = mk(2, mods); sim.robots.forEach(r => { r.charge = .9; }); let work = 0, minC = 1; for (let t = 0; t < sec; t += .25) { C.simStep(sim, .25, ENV(night)); sim.robots.forEach(r => { if (r.state === 'work' || r.state === 'out' || r.state === 'carry') work += .25; minC = Math.min(minC, r.charge); }); } return { work, heap: sim.heap.metal + sim.heap.plastic + sim.heap.wood, sim, minC }; };
+  const std = run([{}, {}], true, 1200), big = run([{ cap: C.CAP_BIG }, { cap: C.CAP_BIG }], true, 1200);
+  ok(big.work > std.work * 1.1, 'the bigger battery works more of the night (' + big.work + ' s against ' + std.work + ' s of out, carry and work)');
+  ok(big.heap >= std.heap, 'and brings at least as many loads to the heap (' + big.heap + ' against ' + std.heap + ')');
+  { const a = C.simCreate(plan, [{ kind: 'family' }], {}), b = C.simCreate(plan, [{ kind: 'family' }], {}); a.shifts = b.shifts = true; [a, b].forEach(sm => { sm.robots[0].charge = .9; sm.robots[0].timer = .2; }); b.robots[0].cap = C.CAP_BIG; let ta = 0, tb = 0; for (let t = 0; t < 600; t += .25) { C.simStep(a, .25, ENV(false)); C.simStep(b, .25, ENV(false)); } const da = .9 - a.robots[0].charge, db = .9 - b.robots[0].charge; ok(true, 'info: charge after 10 day minutes standard ' + a.robots[0].charge.toFixed(2) + ', big ' + b.robots[0].charge.toFixed(2)); }
+  { const mkS = sol => { const sm = C.simCreate(plan, [{ kind: 'family' }], {}); sm.shifts = true; const r = sm.robots[0]; r.timer = .2; r.charge = .95; r.solar = sol; r.fit = false; let low = 1, drain = 0, prev = r.charge, outT = 0; for (let t = 0; t < 400; t += .25) { C.simStep(sm, .25, ENV(false)); if (r.state !== 'bay') { outT += .25; drain += Math.max(0, prev - r.charge); } prev = r.charge; } return { drain, outT }; };
+    const a = mkS(false), b = mkS(true); ok(b.drain / b.outT < a.drain / a.outT * .9, 'the solar panel slows the daytime drain (' + (b.drain / b.outT * 1000).toFixed(2) + ' against ' + (a.drain / a.outT * 1000).toFixed(2) + ' per 1000 s out)'); }
+  const fit = (s, i, k) => K.fitKit(s, i, k); let st = K.newState(1); st.robots = [true, true]; st.kits = { battery: 1, solar: 0 };
+  let r1 = fit(st, 0, 'battery'); ok(r1.ok && r1.state.mods[0].bat && r1.state.kits.battery === 0, 'fitting a bigger battery uses the kit and marks the robot');
+  ok(!fit(r1.state, 0, 'battery').ok && !fit(st, 1, 'solar').ok, 'no second fit and no fit without a kit');
+  ok(/Short night shift/.test(K.batteryLine(K.modsOf(st, 1), .5)) && !/Short night shift/.test(K.batteryLine(K.modsOf(r1.state, 0), .5)) && /Battery 74 percent/.test(K.batteryLine({}, .74)), 'the card says Short night shift only without the bigger battery, and shows the level');
+  ok(K.itemById('battery') && K.itemById('solar') && K.CATALOGUE.length === 10 && K.KITS.length === 2, 'two kits sit beside the ten small things');
+  const pl = K.placeOrder(K.newLedger(), 'battery', 12); ok(pl.ok && pl.order.item === 'battery', 'a kit can be ordered like anything else');
+  const sv = K.validState(JSON.parse(K.serialize(r1.state))); ok(sv && sv.mods[0].bat && sv.kits.battery === 0, 'mods and kits survive the save'); }
 console.log('\n' + (fails ? fails + ' FAILED of ' + n : 'all ' + n + ' passed')); process.exit(fails ? 1 : 0);

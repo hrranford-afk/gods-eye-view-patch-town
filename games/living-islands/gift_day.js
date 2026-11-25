@@ -29,6 +29,21 @@ const CATALOGUE = [
   { id: 'line', name: 'Fishing line', price: 24, extra: 0, use: 'Line, hooks and a few floats.' },
   { id: 'blanket', name: 'Wool blanket', price: 80, extra: 0, use: 'Warm even when damp.' }
 ];
+/* two robot kits (Job 6b): they come in a named kit crate and are fitted at the charging post (a short hold). Kept apart from the ten small things above. */
+const KITS = [
+  { id: 'battery', name: 'Bigger battery', price: 180, extra: 0, kit: true, use: 'A kit crate for one carrier: it holds 2.5 times the charge, so it works on through the night.' },
+  { id: 'solar', name: 'Solar panel', price: 140, extra: 0, kit: true, use: 'A kit crate for one carrier: a daytime top-up and a slower drain.' }];
+const FIT_S = 4;   /* seconds of holding at the charging post to swap a part in */
+const modsOf = (s, i) => { const m = (s.mods || [])[i] || {}; return { bat: !!m.bat, solar: !!m.solar }; };
+const partsText = m => m.bat || m.solar ? [m.bat ? 'bigger battery' : null, m.solar ? 'solar panel' : null].filter(Boolean).join(', ') : 'none';
+const batteryLine = (m, charge) => 'Battery ' + Math.round((charge || 0) * 100) + ' percent. Parts: ' + partsText(m) + '.' + (m.bat ? '' : ' Short night shift.');
+function fitKit(s, i, kit) {   /* pure: use one kit on carrier i; returns { ok, state, why } */
+  if (!KITS.some(k => k.id === kit)) return { ok: false, state: s, why: 'No such kit.' }; if (!(s.robots || [])[i]) return { ok: false, state: s, why: 'That carrier is switched off.' };
+  if (((s.kits || {})[kit] || 0) < 1) return { ok: false, state: s, why: 'No ' + KITS.find(k => k.id === kit).name.toLowerCase() + ' kit in the yard.' };
+  const m = modsOf(s, i), key = kit === 'battery' ? 'bat' : 'solar'; if (m[key]) return { ok: false, state: s, why: 'It has one already.' };
+  const mods = (s.mods || []).slice(); while (mods.length <= i) mods.push({ bat: false, solar: false }); mods[i] = Object.assign({}, modsOf(s, i), { [key]: true });
+  return { ok: true, state: Object.assign({}, s, { mods, kits: Object.assign({}, s.kits, { [kit]: s.kits[kit] - 1 }) }) };
+}
 const WEATHER_DELAY = { storm: 24, fog: 5, rain: 3, showers: 1, overcast: 0, fair: 0, clear: 0, goldenhour: 0 };   /* hours added when the boat cannot land (TUNING) */
 const MAX_WEATHER_DELAYS = 2;
 
@@ -131,13 +146,13 @@ function creditNote(L, nowH) {
 }
 
 /* ---- deliveries ---- */
-const itemById = id => CATALOGUE.find(c => c.id === id) || null;
+const itemById = id => CATALOGUE.find(c => c.id === id) || KITS.find(c => c.id === id) || null;
 /* next morning at 07:00 game time after the order, plus the item's extra hours */
 function etaFor(orderH, extra) { return (Math.floor(orderH / 24) + 1) * 24 + 7 + (extra || 0); }
 function placeOrder(L, itemId, h) {
   const it = itemById(itemId); if (!it) return { ok: false, ledger: L, why: 'No such item.' };
   const r = spend(L, { credit: it.price, text: 'Order: ' + it.name }, h); if (!r.ok) return r;
-  return { ok: true, ledger: r.ledger, order: { id: 'o' + (hashStr(itemId + ':' + h) % 100000), item: itemId, placed: h, due: etaFor(h, it.extra), delays: 0, delayH: 0, delivered: false } };
+  return { ok: true, ledger: r.ledger, order: { id: 'o' + (hashStr(itemId + ':' + h) % 100000), item: itemId, placed: h, due: etaFor(h, it.extra), delays: 0, delayH: 0, delivered: false, taken: false } };
 }
 /* does the boat come now? (nowH in game hours; weather is the state name at the landing). Returns { order, arrived, delayedBy } and never changes the old order. */
 function resolveDelivery(order, nowH, weather) {
@@ -166,7 +181,7 @@ function pickFinds(seed, n) {
 function newState(seed) {
   return { v: SAVE_VERSION, seed: seed >>> 0, gh: START_HOUR, stage: 'arrive', letter1: false, keyUsed: false, hutOpen: false,
     dry: null, water: false, finds: [], plank: false, shipSeen: false, crate1: false, parts: 0, partFrom: null, ordered: false, orders: [], delivered: [],
-    robots: [], jobs: [], mods: [], kits: { battery: 0, solar: 0 }, stock: emptyStock(), boat: null, storm: null, phys: null, opening: false, dockDone: false, letter2: false, build: null, bottle: false, night: false, saved: false, ledger: newLedger(),
+    robots: [], mods: [], kits: { battery: 0, solar: 0 }, jobs: [], stock: emptyStock(), boat: null, storm: null, phys: null, opening: false, dockDone: false, letter2: false, build: null, bottle: false, night: false, saved: false, ledger: newLedger(),
     dial: { year: 1, creditThin: [1, 0.9, 0.6, 0.3, 0.1], note: 'stored for later years, not used on day 1' } };
 }
 const boatOf = o => { const K = root.LI_BOAT_DRIVE; return K && K.sanitize ? K.serializeBoat(K.sanitize(o)) : (o && typeof o === 'object' ? JSON.parse(JSON.stringify(o)) : null); };
@@ -206,7 +221,7 @@ function State(o) {
   s.kits = { battery: Math.round(num(o.kits && o.kits.battery, 0, 0, 9)), solar: Math.round(num(o.kits && o.kits.solar, 0, 0, 9)) };
   s.jobs = Array.isArray(o.jobs) ? o.jobs.slice(0, 4).map(j => (stockById(j) ? j : null)) : [];
   s.stock = emptyStock(); if (o.stock && typeof o.stock === 'object') for (const k in s.stock) s.stock[k] = Math.round(num(o.stock[k], 0, 0, STOCK_CAP));
-  s.orders = Array.isArray(o.orders) ? o.orders.filter(q => q && itemById(q.item) && Number.isFinite(q.due)).slice(0, 40).map(q => ({ id: String(q.id).slice(0, 12), item: q.item, placed: num(q.placed, 0, 0, 1e5), due: num(q.due, 0, 0, 1e5), delays: Math.round(num(q.delays, 0, 0, 9)), delayH: num(q.delayH, 0, 0, 999), delivered: bool(q.delivered) })) : [];
+  s.orders = Array.isArray(o.orders) ? o.orders.filter(q => q && itemById(q.item) && Number.isFinite(q.due)).slice(0, 40).map(q => ({ id: String(q.id).slice(0, 12), item: q.item, placed: num(q.placed, 0, 0, 1e5), due: num(q.due, 0, 0, 1e5), delays: Math.round(num(q.delays, 0, 0, 9)), delayH: num(q.delayH, 0, 0, 999), delivered: bool(q.delivered), taken: bool(q.taken) })) : [];
   s.delivered = Array.isArray(o.delivered) ? o.delivered.filter(x => itemById(x)).slice(0, 40) : [];
   { const PH = root.LI_PHYS; s.phys = PH && PH.sanitize ? PH.sanitize(o.phys) : null; if (s.phys && PH.restoreStock) s.stock = PH.restoreStock(s.stock, s.phys); }   /* the physical layer's part of the save (physical.js sanitises it; a unit in a robot's hand goes back on the heap) */
   const L = o.ledger;
@@ -272,7 +287,7 @@ const handRate = () => 60 / HAND_UNIT_S;
 function rateText(stockId) { return 'By hand: about ' + rateStr(handRate()) + ' a minute.' + (stockId && ROBOT_RATE[stockId] ? ' This robot on ' + stockById(stockId).short + ': about ' + rateStr(ROBOT_RATE[stockId]) + ' a minute.' : ''); }
 /* one frame of a hold: progress seconds in, whole units out */
 function handStep(p, dt, holding) { if (!holding) return { p, units: 0 }; p += dt; let u = 0; while (p >= HAND_UNIT_S) { p -= HAND_UNIT_S; u++; } return { p, units: u }; }
-const CORE = { ROBOT_RATE, HAND_UNIT_S, LITTER_UNITS, litterStock, rateText, handRate, handStep, STOCKS, BUILD_NEEDS, UNITS_PER_TRIP, STOCK_CAP, emptyStock, missing, needText, addHaul, setJob, START_CASH, START_CREDIT, START_HOUR, BASE_YEARLY, CATALOGUE, BUILDS, BOTTLES, FINDS, SHELTERS, LETTER1, LETTER2, STAGES, STAGE_LABEL, WEATHER_DELAY, SAVE_KEY, SAVE_VERSION,
+const CORE = { KITS, FIT_S, CAMP_CAP, modsOf, partsText, batteryLine, fitKit, ROBOT_RATE, HAND_UNIT_S, LITTER_UNITS, litterStock, rateText, handRate, handStep, STOCKS, BUILD_NEEDS, UNITS_PER_TRIP, STOCK_CAP, emptyStock, missing, needText, addHaul, setJob, START_CASH, START_CREDIT, START_HOUR, BASE_YEARLY, CATALOGUE, BUILDS, BOTTLES, FINDS, SHELTERS, LETTER1, LETTER2, STAGES, STAGE_LABEL, WEATHER_DELAY, SAVE_KEY, SAVE_VERSION,
   pound, signed, newLedger, spend, recent, entryLine, creditYears, creditNote, itemById, etaFor, placeOrder, resolveDelivery, etaText, bottleIndex, bottleMessage, pickFinds,
   newState, stageOf, progress, jobsDone, serialize, deserialize, validState, canned, hintFor, canBuild, doBuild, hashStr, mulberry };
 if (typeof module !== 'undefined' && module.exports) module.exports = CORE;
@@ -699,7 +714,7 @@ function targets() {
   const rt = C.li().campstart && C.li().campstart.rt(); let bots = []; try { bots = rt ? rt.robots() : []; } catch (e) { bots = []; }
   bots.forEach(b => { if (b.ready) { const sc = screenOf(b.x, b.y + .9, b.z); if (sc) T.push({ id: 'bot' + b.id, x: sc.x, y: sc.y, r: 60 }); } });
   try { if (BDP() && BDP().targets) BDP().targets().forEach(t => T.push(t)); } catch (e) { G.err.push('boat targets ' + e.message); }
-  try { handTargets().forEach(t => T.push(t)); } catch (e) { G.err.push('hand targets ' + e.message); }
+  try { if (G.fit && fitReady() && O.post) { const sc = screenOf(O.post.position.x, groundY(O.post.position.x, O.post.position.z) + 1.5, O.post.position.z); if (sc) T.push({ id: 'fitpost', x: sc.x, y: sc.y, r: 64 }); } handTargets().forEach(t => T.push(t)); } catch (e) { G.err.push('hand targets ' + e.message); }
   try { if (PHYS()) PHYS().targets().forEach(t => T.push(t)); } catch (e) { G.err.push('phys targets ' + e.message); }
   try { if (SHP()) SHP().targets().forEach(t => T.push(t)); } catch (e) { G.err.push('storm targets ' + e.message); }
   if (O.bottle && O.bottle.visible && G.bottleOn) { const p = O.bottle.position; const sc = screenOf(p.x, p.y + .2, p.z); if (sc) T.push({ id: 'bottle', x: sc.x, y: sc.y, r: 56 }); }
@@ -720,6 +735,7 @@ const INSPECT = [
   { re: /^crate\d+$/, f: (s, id) => { const c = G.crates[parseInt(id.slice(5), 10) - 1] || {}, n = c.n || id.slice(5); return { name: 'Crate number ' + n, use: c.letter2 ? 'The evening boat left it. A letter lies on top.' : c.item ? 'A delivery from the boat: ' + ((itemById(c.item) || {}).name || 'goods') + '.' : 'Supplies from the boat.', needs: c.phys && c.phys.heavy ? 'A robot and you together' : null, action: c.letter2 && !s.letter2 ? 'Open it' : 'Open' }; } },
   { re: /^bot\d+$/, f: (s, id) => { const i = parseInt(id.slice(3), 10), b = robotState(i), on = s.robots[i], note = PHYS() && PHYS().robotNote ? PHYS().robotNote(i) : null; if (note) return Object.assign({ name: 'Carrier ' + (i + 1) }, note); return { name: 'Carrier ' + (i + 1), use: on ? 'An old machine that gathers washed-up stock for the yard. Its light shows how it is.' : 'An old machine, switched off. Dust in the tracks, one worn link.', needs: on ? (b && typeof b.charge === 'number' ? 'Battery ' + Math.round(b.charge * 100) + ' percent. ' : '') + (((s.jobs || [])[i]) ? 'Order: ' + (stockById((s.jobs || [])[i]) || {}).name : 'No order yet') : 'A track link (parts: ' + s.parts + ')', action: on ? 'Give an order' : 'Fit a part', locked: !on && !s.parts ? 'It needs a track link first' : null }; } },
   { re: /^bottle$/, f: () => ({ name: 'The bottle', use: 'A message in a bottle.', needs: null, action: 'Read it' }) },
+  { re: /^fitpost$/, f: () => ({ name: 'The charging post', use: 'The carrier stands in its bay. Hold here while the old part comes out and the new one goes in.', needs: 'Your hands, a few seconds', action: 'Hold to fit' }) },
   { re: /^litter\d+$/, f: () => ({ name: 'Shore litter', use: 'Washed-up scraps. A robot on a matching order gathers them; you can too.', needs: 'Hold: ' + rateText(null), action: 'Hold to gather' }) },
   { re: /^(hulk|heap\d+)$/, f: () => ({ name: 'Washed-up stock', use: 'What the storm left on the shore.', needs: 'A robot with an order, or your hands', action: 'Look' }) },
   { re: /^boat$/, f: () => ({ name: 'Your rowing boat', use: 'Row to the supplies, the skerry and the landings.', needs: null, action: 'Board' }) }
@@ -772,7 +788,7 @@ function onTap(cx, cy) {
 function wireInput() {
   const el = C.renderer.domElement, pts = new Map(); let down = null, multi = false;
   el.addEventListener('pointerdown', e => { pts.set(e.pointerId, 1); if (pts.size > 1) multi = true; down = { x: e.clientX, y: e.clientY, t: e.timeStamp }; ensureAudio();
-    if (pts.size === 1 && !G.cardOpen) { try { const T = targets().filter(t => /^(litter|heap)\d+$/.test(t.id)); let best = null, bd = 1e9; for (const t of T) { const d = Math.hypot(t.x - e.clientX, t.y - e.clientY); if (d < t.r * 1.15 && d < bd) { bd = d; best = t; } } if (best) handStart(best.id, e.clientX, e.clientY); } catch (x) { /* a courtesy */ } } }, true);
+    if (pts.size === 1 && !G.cardOpen) { try { const T = targets().filter(t => /^(litter|heap)\d+$/.test(t.id) || t.id === 'fitpost'); let best = null, bd = 1e9; for (const t of T) { const d = Math.hypot(t.x - e.clientX, t.y - e.clientY); if (d < t.r * 1.15 && d < bd) { bd = d; best = t; } } if (best) handStart(best.id, e.clientX, e.clientY); } catch (x) { /* a courtesy */ } } }, true);
   el.addEventListener('pointerup', e => { handStop(); pts.delete(e.pointerId); const d = down; if (!pts.size) { down = null; const was = multi; multi = false; if (d && !was && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 10 && e.timeStamp - d.t < 700) onTap(e.clientX, e.clientY); } }, true);
   el.addEventListener('pointercancel', e => { handStop(); pts.delete(e.pointerId); if (!pts.size) { down = null; multi = false; } }, true);
   el.addEventListener('pointermove', e => { if (G.hand && G.hand.down && Math.hypot(e.clientX - G.hand.sx, e.clientY - G.hand.sy) > 18) handStop(); try { inspectMove(e); } catch (x) { /* the layer is a courtesy */ } }, true);
@@ -797,12 +813,14 @@ function handInfo(id) {   /* what a pile or heap is, for the hand: { stock, x, z
   if (/^heap\d+$/.test(id) && SHP() && SHP().heaps) { const hp = SHP().heaps().find(z => 'heap' + z.id === id); if (!hp || hp.rem <= 0) return null; return { id, stock: hp.stock, x: hp.x, z: hp.z, units: hp.rem, kind: 'heap', i: hp.id }; }
   return null;
 }
-function handStart(id, sx, sy) { const inf = handInfo(id); if (!inf) return false; if ((G.s.stock[inf.stock] || 0) >= STOCK_CAP) { toast(stockById(inf.stock).name + ': the stock is full (' + STOCK_CAP + '). Build something first.', 3600); return false; } if (!handOk(inf.x, inf.z, true)) return false;
+function handStart(id, sx, sy) { if (id === 'fitpost') { if (!fitReady()) return false; G.hand = { id, down: true, p: G.fit.p || 0, fit: true, sx, sy, stock: null }; handHud(true); return true; } const inf = handInfo(id); if (!inf) return false; if ((G.s.stock[inf.stock] || 0) >= STOCK_CAP) { toast(stockById(inf.stock).name + ': the stock is full (' + STOCK_CAP + '). Build something first.', 3600); return false; } if (!handOk(inf.x, inf.z, true)) return false;
   const h0 = G.hand && G.hand.id === id ? G.hand : null; G.hand = { id, down: true, p: h0 ? h0.p : 0, got: h0 ? h0.got : 0, sx, sy, stock: inf.stock }; handHud(true); return true; }
 function handStop() { if (G.hand) G.hand.down = false; handHud(false); }
-function handHud(on) { let e = G.ui.handbar; if (!e) { e = G.ui.handbar = h('div', 'gd-pill'); e.id = 'gd-hand'; e.style.cssText = 'position:absolute;left:50%;bottom:210px;transform:translateX(-50%);display:none;font-size:15px;pointer-events:none;min-width:190px;text-align:center'; e.innerHTML = '<span id="gd-hand-t"></span><div style="height:6px;border-radius:3px;background:rgba(255,255,255,.25);margin-top:5px"><div id="gd-hand-b" style="height:6px;border-radius:3px;background:#e8c070;width:0"></div></div>'; G.ui.root.appendChild(e); } e.style.display = on ? 'block' : 'none'; if (on && G.hand) { const t = document.getElementById('gd-hand-t'); if (t) t.textContent = 'Gathering ' + stockById(G.hand.stock).name.toLowerCase() + '. Keep holding.'; } }
+function handHud(on) { let e = G.ui.handbar; if (!e) { e = G.ui.handbar = h('div', 'gd-pill'); e.id = 'gd-hand'; e.style.cssText = 'position:absolute;left:50%;bottom:210px;transform:translateX(-50%);display:none;font-size:15px;pointer-events:none;min-width:190px;text-align:center'; e.innerHTML = '<span id="gd-hand-t"></span><div style="height:6px;border-radius:3px;background:rgba(255,255,255,.25);margin-top:5px"><div id="gd-hand-b" style="height:6px;border-radius:3px;background:#e8c070;width:0"></div></div>'; G.ui.root.appendChild(e); } e.style.display = on ? 'block' : 'none'; if (on && G.hand) { const t = document.getElementById('gd-hand-t'); if (t) t.textContent = G.hand.fit ? 'Fitting the part. Keep holding.' : 'Gathering ' + stockById(G.hand.stock).name.toLowerCase() + '. Keep holding.'; } }
 function handTick(dt) {
-  const H = G.hand; litRing(); if (!H || !H.down) return; const inf = handInfo(H.id); if (!inf || !handOk(inf.x, inf.z, true) || (G.s.stock[inf.stock] || 0) >= STOCK_CAP) { handStop(); return; }
+  const H = G.hand; litRing(); fitFx(!!G.fit && fitReady());
+  if (H && H.down && H.fit) { if (!fitReady()) { handStop(); return; } H.p += dt; G.fit.p = H.p; const b = document.getElementById('gd-hand-b'); if (b) b.style.width = Math.round(100 * Math.min(1, H.p / FIT_S)) + '%'; if (H.p >= FIT_S) { handStop(); G.hand = null; finishFit(); } return; }
+  if (!H || !H.down) return; const inf = handInfo(H.id); if (!inf || !handOk(inf.x, inf.z, true) || (G.s.stock[inf.stock] || 0) >= STOCK_CAP) { handStop(); return; }
   const r = handStep(H.p, dt, true); H.p = r.p; const b = document.getElementById('gd-hand-b'); if (b) b.style.width = Math.round(100 * (H.p / HAND_UNIT_S)) + '%';
   for (let u = 0; u < r.units; u++) {
     if (inf.kind === 'heap') { const t = SHP().handUnit(inf.i); if (!t) { handStop(); return; } addStockUnits(t.stock, 1); toast('+1 ' + stockById(t.stock).short.toLowerCase() + ' by hand.', 1800); }
@@ -860,6 +878,7 @@ function activate(id) {
   if (id === 'wreck') return wreckCard();
   if (id.startsWith('find')) return takeFind(parseInt(id.slice(4), 10));
   if (id.startsWith('crate')) return deliveryCrate(parseInt(id.slice(5), 10));
+  if (id === 'fitpost') { toast('Hold on the charging post while the part is swapped in.', 3600); return; }
   if (/^litter\d+$/.test(id)) { const inf = handInfo(id); toast(inf ? 'Hold on it to gather by hand. ' + rateText(null) : 'Nothing here now.', 4200); return; }
   if (id === 'hulk' || /^heap\d+$/.test(id)) { if (SHP()) SHP().activate(id); return; }
   if (id === 'bottle') return readBottle();
@@ -979,16 +998,22 @@ function deliveryCrate(n) {
   } else if (cr.letter2) { readLetter2(); }
   else if (cr.l9) { if (SHP()) SHP().readL9(); }
   else {
-    const it = itemById(cr.item); const c = card('cn', '<h2>Crate number ' + n + '</h2><p>' + (it ? it.name + '. ' + it.use : 'A parcel.') + '</p>'); c.appendChild(xbtn()); c.appendChild(row(btn('Close', closeCard, 'pri')));
+    const it = itemById(cr.item);
+    if (it && it.kit) { const o = s.orders.find(q => q.delivered && q.item === it.id && !q.taken), done = cr.opened || !o;
+      const c = card('cn', '<h2>Kit crate: ' + it.name + '</h2><p>' + (done ? 'Empty now. The kit is in the yard.' : it.use) + '</p><p><small>' + (done ? 'Open a carrier\'s card to fit it.' : 'Take it out, then fit it at the charging post: hold there while the old part comes out and the new one goes in.') + '</small></p>'); c.appendChild(xbtn());
+      c.appendChild(row(...(done ? [] : [btn('Take the kit', () => { cr.opened = true; o.taken = true; const kits = Object.assign({}, G.s.kits); kits[it.id] = (kits[it.id] || 0) + 1; setS({ kits }); closeCard(); toast(it.name + ' kit taken. Open a carrier\'s card to fit it.', 5200); afterChange(); }, 'pri')]), btn('Close', closeCard)));
+    } else { const c = card('cn', '<h2>Crate number ' + n + '</h2><p>' + (it ? it.name + '. ' + it.use : 'A parcel.') + '</p>'); c.appendChild(xbtn()); c.appendChild(row(btn('Close', closeCard, 'pri'))); }
   }
 }
 function catalogueCard() {
-  const s = G.s, L = s.ledger, c = card('cat', '<h2>Catalogue</h2><p><small>Ten small things. Paid from delivery credit (' + pound(L.credit) + ' left). Credit buys things, not land. The boat brings them ' + 'by next morning, and weather can slow it.</small></p>'); c.appendChild(xbtn());
+  const s = G.s, L = s.ledger, c = card('cat', '<h2>Catalogue</h2><p><small>Ten small things and two robot kits. Paid from delivery credit (' + pound(L.credit) + ' left). Credit buys things, not land. The boat brings them ' + 'by next morning, and weather can slow it.</small></p>'); c.appendChild(xbtn());
   CATALOGUE.forEach(it => {
     const eta = etaText(etaFor(s.gh, it.extra), s.gh), ordered = s.orders.filter(o => o.item === it.id && !o.delivered).length;
     const d = h('div', 'gd-item'); d.innerHTML = '<div><b>' + it.name + '</b> &middot; ' + pound(it.price) + '<small>' + it.use + ' Arrives ' + eta + '.' + (ordered ? ' (' + ordered + ' on the way)' : '') + '</small></div>';
     d.appendChild(btn('Order', () => orderItem(it.id), 'pri', it.price > L.credit)); c.appendChild(d);
   });
+  const kh = h('p', '', '<small><b>Robot kits.</b> A named kit crate comes by the same boat. Fit it at the charging post.</small>'); c.appendChild(kh);
+  KITS.forEach(it => { const ordered = s.orders.filter(o => o.item === it.id && !o.delivered).length, d = h('div', 'gd-item'); d.innerHTML = '<div><b>' + it.name + '</b> &middot; ' + pound(it.price) + '<small>' + it.use + ' Arrives ' + etaText(etaFor(s.gh, it.extra), s.gh) + '.' + (ordered ? ' (' + ordered + ' on the way)' : '') + ((s.kits || {})[it.id] ? ' In the yard now: ' + s.kits[it.id] + '.' : '') + '</small></div>'; d.appendChild(btn('Order', () => orderItem(it.id), 'pri', it.price > L.credit)); c.appendChild(d); });
   c.appendChild(row(btn('Close', closeCard)));
 }
 function orderItem(id) {
@@ -1010,6 +1035,7 @@ function robotCard(i) {
   const job = (s.jobs || [])[i], jn = job ? stockById(job).name.toLowerCase() : null;
   const c = card('bot', '<h2>' + (on ? 'Old carrier' : 'Old carrier. Needs a part.') + '</h2><p>' + (on ? (jn ? 'Order: ' + jn + '. It works the tideline and brings the pile to the yard. <small>' + rateText(job) + '</small>' : 'Running, but it has no order. It waits at its post.') : 'Switched off. Dust in the tracks, one worn link.') + '</p>' + (on ? '<p><small>Status light: ' + (LAMP_WORDS[b.lamp] || b.lamp || 'on') + '. A small mark is stamped on the chassis. You have seen it on the letter.</small> ' + mark(22) + '</p>' : '<p><small>Parts in hand: ' + s.parts + '. ' + (s.parts ? '' : 'The missing part is a track link: it is in the first crate from the boat, or in the old hull on the shore.') + '</small></p>')); c.appendChild(xbtn());
   if (on) STOCKS.forEach(k => { const d = h('div', 'gd-item'); d.innerHTML = '<div><b>' + k.name + '</b></div>'; d.appendChild(btn(job === k.id ? 'Ordered' : 'Gather', () => giveOrder(i, k.id), job === k.id ? '' : 'pri', job === k.id)); c.appendChild(d); });
+  if (on) { const m = modsOf(s, i); c.appendChild(h('p', '', '<small>' + batteryLine(m, b.charge) + '</small>')); KITS.forEach(k => { const key = k.id === 'battery' ? 'bat' : 'solar', have = (s.kits || {})[k.id] || 0; if (have || m[key]) c.appendChild(row(btn(m[key] ? k.name + ': fitted' : 'Fit ' + k.name.toLowerCase() + ' (' + have + ' kit)', () => startFit(i, k.id), 'pri', !!m[key]))); }); if (G.fit && G.fit.i === i) c.appendChild(h('p', '', '<small>Hold on the charging post to swap the part in.</small>')); }
   const bs = []; if (!on) bs.push(btn('Fit a part (' + s.parts + ')', () => startRobot(i), 'pri', s.parts < 1)); if (on) bs.push(btn('Stock and builds', robotsCard)); bs.push(btn('Close', closeCard)); c.appendChild(row(...bs));
 }
 function giveOrder(i, id) {
@@ -1021,7 +1047,7 @@ function stockLine(st) { return STOCKS.map(k => k.short + ' ' + (st[k.id] || 0))
 function robotsCard() {
   const s = G.s, c = card('stock', '<h2>Robots and stock</h2><p><small>Stock in the yard: ' + stockLine(s.stock) + '. Each trip from the shore brings ' + UNITS_PER_TRIP + '. ' + rateText(null) + ' Hold on a pile on the shore or a heap, day or night (at night, inside the lit ring).</small></p>'); c.appendChild(xbtn());
   const nb = (() => { try { return C.li().campstart.rt().robots().length; } catch (e) { return 0; } })();
-  for (let i = 0; i < nb; i++) { const b = robotState(i), on = s.robots[i], job = (s.jobs || [])[i]; const d = h('div', 'gd-item'); d.innerHTML = '<div><b>Carrier ' + (i + 1) + '</b><small>' + (on ? (job ? 'Gathering ' + stockById(job).name.toLowerCase() + '. Light: ' + (b && b.lamp) + '.' : 'No order.') : 'Switched off. Needs a part.') + '</small></div>'; if (on) d.appendChild(btn('Order', () => robotCard(i))); c.appendChild(d); }
+  for (let i = 0; i < nb; i++) { const b = robotState(i), on = s.robots[i], job = (s.jobs || [])[i]; const d = h('div', 'gd-item'); d.innerHTML = '<div><b>Carrier ' + (i + 1) + '</b><small>' + (on ? (job ? 'Gathering ' + stockById(job).name.toLowerCase() + '. Light: ' + (b && b.lamp) + '. ' + rateText(job) : 'No order.') + ' ' + batteryLine(modsOf(s, i), b && b.charge) : 'Switched off. Needs a part.') + '</small></div>'; if (on) d.appendChild(btn('Order', () => robotCard(i))); c.appendChild(d); }
   const t = h('div'); t.innerHTML = '<p><small>What each build needs</small></p>' + BUILDS.map(b => '<p style="margin:2px 0"><b>' + b.name.replace(' (finish the repair)', '') + '</b>: ' + needText(b.needs) + (Object.keys(missing(s.stock, b.needs)).length ? '' : ' (ready)') + '</p>').join(''); c.appendChild(t);
   c.appendChild(row(btn('Close', closeCard, 'pri')));
 }
@@ -1030,12 +1056,29 @@ function startRobot(i) {
   const rt = C.li().campstart.rt(); try { const r = rt.sim().robots[i]; if (r) { r.timer = 1e9; r.charge = .95; r.state = 'bay'; } } catch (e) { G.err.push('robot ' + e.message); }
   toast('It starts. A lamp, a hum. Give it an order: what should it gather?', 6500); afterChange(); setTimeout(() => { if (!G.cardOpen) robotCard(i); }, 900);
 }
+/* FITTING A KIT (Job 6b): the card sets G.fit; the carrier is called home; when it stands in its bay, a hold on the charging post swaps the part in, with a visible part and the old one left beside the post. */
+function startFit(i, kit) {
+  const r = fitKit(G.s, i, kit); if (!r.ok) return toast(r.why, 3600); G.fit = { i, kit, p: 0 }; closeCard();
+  const b = robotState(i); toast(b && b.state === 'bay' ? 'Hold on the charging post to fit the ' + KITS.find(k => k.id === kit).name.toLowerCase() + '.' : 'Carrier ' + (i + 1) + ' is coming home. Then hold on the charging post.', 5200); G.sig = null; renderUi();
+}
+const fitReady = () => { if (!G.fit) return false; const b = robotState(G.fit.i); return !!(b && b.state === 'bay' && G.objs.post); };
+function fitFx(on) {
+  const O = G.objs; if (!G.fit && !O.fitPart) return; const T = THREE;
+  if (on && G.fit) { const b = robotState(G.fit.i); if (!b) return; if (!O.fitPart) { O.fitPart = new T.Mesh(new T.BoxGeometry(.34, .2, .26), new T.MeshLambertMaterial({ color: 0x4a6a8a })); G.root.add(O.fitPart); }
+    O.fitPart.material.color.setHex(G.fit.kit === 'solar' ? 0x2f4f8f : 0x3d5a40); O.fitPart.scale.set(G.fit.kit === 'solar' ? 1.6 : 1, G.fit.kit === 'solar' ? .25 : 1, G.fit.kit === 'solar' ? 1.4 : 1); const k = Math.min(1, (G.fit.p || 0) / FIT_S); O.fitPart.visible = true; O.fitPart.position.set(b.x, groundY(b.x, b.z) + 1.0 + .5 * (1 - k) + Math.sin(performance.now() / 160) * .04, b.z); O.fitPart.rotation.y = k * 3; }
+  else if (O.fitPart) O.fitPart.visible = false;
+}
+function finishFit() {
+  const f = G.fit; if (!f) return; const r = fitKit(G.s, f.i, f.kit); G.fit = null; fitFx(false); if (!r.ok) return toast(r.why, 3600); G.s = r.state; const b = robotState(f.i), O = G.objs;
+  if (b) { const T = THREE, old = new T.Mesh(new T.BoxGeometry(.3, .18, .22), new T.MeshLambertMaterial({ color: 0x5a5148 })); const a = (O.oldParts = O.oldParts || []).length, x = b.x + .9 + a * .35, z = b.z + 1.2; old.position.set(x, groundY(x, z) + .1, z); old.rotation.y = a * 1.1; G.root.add(old); O.oldParts.push(old); if (O.oldParts.length > 4) { G.root.remove(O.oldParts.shift()); } }
+  toast('Fitted: ' + KITS.find(k => k.id === f.kit).name.toLowerCase() + ' on carrier ' + (f.i + 1) + '. The old part lies by the post.', 5200); afterChange();
+}
 /* the robots, every frame: the unstarted ones are held in their bays; a started one with no order waits; one with an order goes out. Each finished trip adds stock. */
 function holdRobots() {
   let rt = null; try { rt = C.li().campstart.rt(); } catch (e) { return; } if (!rt) return;
   try { const sim = rt.sim(); G.deliv = G.deliv || [];
     sim.robots.forEach((r, i) => {
-      sim.shifts = true; r.off = !G.s.robots[i]; { const m = (G.s.mods || [])[i] || {}; r.cap = m.bat ? CAMP_CAP : 1; r.solar = !!m.solar; }   /* Job 6b: night shifts and the fitted parts */
+      sim.shifts = true; r.off = !G.s.robots[i]; { const m = (G.s.mods || [])[i] || {}; r.cap = m.bat ? CAMP_CAP : 1; r.solar = !!m.solar; r.fit = !!(G.fit && G.fit.i === i); }   /* Job 6b: night shifts and the fitted parts */
       if (!G.s.robots[i]) { r.state = 'bay'; r.timer = 1e9; r.charge = Math.min(r.charge, .3); r.load = false; r.want = undefined; G.deliv[i] = r.delivered; return; }
       const job = (G.s.jobs || [])[i], st = job && stockById(job);
       r.want = st ? st.site : undefined;
@@ -1117,7 +1160,7 @@ function sleepToMorning() {
 function pulse(which) { G.pulse = which; setTimeout(() => { if (G.pulse === which) G.pulse = null; renderUi(); }, 9000); renderUi(); }
 function renderUi() {
   if (!G.ui.strip) return; const s = G.s, stage = stageOf(s);
-  const sig = [stage, jobsDone(s), s.plank, s.letter1, s.letter2, s.build, s.ledger.cash, s.ledger.credit, s.parts, s.water, G.pulse, G.helpPlank, G.crates.length, dayNo(), s.dry, s.crate1, s.finds.length, s.shipSeen, s.bottle, s.robots.join(), stockLine(s.stock), (s.jobs || []).join(), s.ordered, G.bottleOn, s.night, (PHYS() && PHYS().buildLine && PHYS().buildLine()) || ''].join('|');
+  const sig = [stage, jobsDone(s), s.plank, s.letter1, s.letter2, s.build, s.ledger.cash, s.ledger.credit, s.parts, s.water, G.pulse, G.helpPlank, G.crates.length, dayNo(), s.dry, s.crate1, s.finds.length, s.shipSeen, s.bottle, s.robots.join(), stockLine(s.stock), (s.jobs || []).join(), s.ordered, G.bottleOn, s.night, (PHYS() && PHYS().buildLine && PHYS().buildLine()) || '', JSON.stringify(s.mods || []), JSON.stringify(s.kits || {}), G.fit ? G.fit.i + G.fit.kit : ''].join('|');
   const tm = document.getElementById('gd-time'); if (tm) tm.textContent = hhmm(s.gh);
   const wx = document.getElementById('gd-wx'); if (wx && wx.textContent !== weatherState()) wx.textContent = weatherState();
   const bp = document.getElementById('gd-barrel'); if (bp) bp.textContent = 'Barrel: ' + Math.round(G.barrel || 0) + ' of 40 litres';   /* updated in place: a rebuilt HUD every frame while it rains made buttons impossible to press */
@@ -1182,7 +1225,7 @@ function applyWorldToState() {
   G.crates.forEach(c => G.root.remove(c.mesh)); G.crates = [];
   if (s.crate1) { const m = addDeliveryCrate(1, false); G.crates[0].opened = true; m.userData.lid.position.set(.2, .98, -.32); m.userData.lid.rotation.x = -.9; }
   if (s.letter2 || stageOf(s) === 'evening') { const n = G.crates.length + 1; addDeliveryCrate(n, false); G.crates[n - 1].letter2 = true; }
-  s.orders.filter(o => o.delivered).forEach(o => { const n = G.crates.length + 1; addDeliveryCrate(n, false); G.crates[n - 1].item = o.item; });
+  s.orders.filter(o => o.delivered).forEach(o => { const n = G.crates.length + 1; addDeliveryCrate(n, false); G.crates[n - 1].item = o.item; G.crates[n - 1].opened = !!o.taken; });
   S.finds.forEach((f, i) => { f.taken = s.finds.length > 0 && i < s.finds.length; O.finds[i].visible = !f.taken; });
   Object.keys(O.builds).forEach(k => { O.builds[k].visible = s.build === k; }); if (s.build === 'jetty') showBuilt('jetty');
   O.ship.visible = false; O.tender.visible = false; G.dlv = null; G.bottleOn = false; O.bottle.visible = false; G.bottleToast = false; G.nightT = 0;
@@ -1310,6 +1353,7 @@ function init(ctx) {
     focus, clockMode: () => G.clockMode, weather: () => G.weather, hornCount: () => G.hornCount || 0, dlv: () => G.dlv && G.dlv.phase, barrel: () => G.barrel, crates: () => G.crates.map(c => ({ n: c.n, item: c.item || null, letter2: !!c.letter2, l9: !!c.l9 })),
     heavy: () => ({ ar: !!G.ar, seals: G.objs.seals.length, stumpKit: !!G.objs.stumpKit, finds: G.spots.finds.length, stumpScript: !!document.querySelector('script[src*="stump_b64"]') }),
     handHold: (id, sec) => { const st0 = Object.assign({}, G.s.stock); if (!handStart(id, 0, 0)) return { ok: false, got: 0 }; for (let t = 0; t < sec && G.hand && G.hand.down; t += .25) handTick(.25); handStop(); const st1 = G.s.stock; return { ok: true, got: STOCKS.reduce((n, k) => n + (st1[k.id] || 0) - (st0[k.id] || 0), 0) }; }, litterNow: () => litterNow(), phaseNow, litCircle, handOk: (x, z) => handOk(x, z, false), ringShown: () => !!(G.ring && G.ring.visible), setPhase: p => { G.phaseOverride = p; },
+    deliverNow: id => { orderItem(id); const o = G.s.orders[G.s.orders.length - 1]; if (o) o.delivered = true; G.arrivals = (G.arrivals || []).concat([id]); }, openCrate: n => deliveryCrate(n), robotCardOpen: i => robotCard(i), startFit: (i, k) => startFit(i, k), fitState: () => G.fit && { i: G.fit.i, kit: G.fit.kit, ready: fitReady() }, cardText: () => (document.querySelector('.gd-card') || {}).textContent || '', clickBtn: txt => { const b = [...document.querySelectorAll('.gd-card button')].find(q => q.textContent.indexOf(txt) >= 0 && !q.disabled); if (b) { b.click(); return true; } return false; },
     speedUp: k => { G.fast = k; }, inspect: id => { const t = targets().find(q => q.id === id); return t ? inspectInfo(id) : null; }, inspectAt: (cx, cy, touch) => { INS.coarse = !!touch; const t = nearestTarget(cx, cy); if (!t) { hideInspect(); return null; } showInspect(t, !!touch); return { id: t.id, info: inspectInfo(t.id), cls: inspectCls(t.id, inspectInfo(t.id) || {}), card: INS.el && INS.el.style.display !== 'none' ? INS.el.textContent : '' }; }, goldId: () => goldId(), targetsNow: () => targets(), insTable: () => INSPECT.map(q => String(q.re)), setHour: g => { G.s.gh = g; clockSet(g); }, uiRoot: () => G.ui.root, phys: () => PHYS(), addStock: (id, n) => addStockUnits(id, n),   /* test handle: stock without waiting for the shore */ userWeather: () => USER_WEATHER, objs: () => G.objs, nightT: () => G.nightT
   };
   return G;

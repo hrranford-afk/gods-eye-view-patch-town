@@ -210,7 +210,7 @@ function shiftPlan(sim) {
 }
 const lowOf = sim => nightOn(sim) ? NIGHT.floor : LOW_CHARGE;   /* at night the turn-taking sends them home; only an almost flat robot goes by itself */
 const sheltered = (sim, r) => !!(sim.env.rain || (sim.env.night && (!sim.shifts || r.nc)));
-function wantHome(sim, r) { return sheltered(sim, r) || r.charge < lowOf(sim) || !sim.pl.work.some((w, i) => dryNow(sim, w) && !sim.litter[i].taken && litSite(sim, w)); }
+function wantHome(sim, r) { return r.fit || sheltered(sim, r) || r.charge < lowOf(sim) || !sim.pl.work.some((w, i) => dryNow(sim, w) && !sim.litter[i].taken && litSite(sim, w)); }
 function decide(sim, r, R) {
   if (wantHome(sim, r)) { r.state = ST.HOME; setPath(r, pathHome(sim, r)); return; }
   const i = pickSite(sim, r, R);
@@ -242,16 +242,16 @@ function simStep(sim, dt, env) {
         const bay = sim.YP.bays[r.bay]; r.x = bay.x; r.z = bay.z; r.yaw = bay.yaw;
         r.charge = Math.min(1, r.charge + (sim.env.night ? (sim.shifts ? NIGHT.intake : CHARGE.night) : sim.env.rain ? CHARGE.rain : CHARGE.sun) * (1 + .5 * (cap - 1)) / cap * dt);
         r.timer -= dt;
-        if (r.timer <= 0 && !shelter && r.charge >= (nt ? NIGHT.workMin : .85)) { decide(sim, r, R); if (r.state === ST.OUT) r.since = 0; else r.timer = 4; }
+        if (r.timer <= 0 && !shelter && !r.fit && r.charge >= (nt ? NIGHT.workMin : .85)) { decide(sim, r, R); if (r.state === ST.OUT) r.since = 0; else r.timer = 4; }
         break; }
       case ST.OUT: case ST.CARRY: case ST.HOME: {
         r.charge = Math.max(0, r.charge - DRAIN.move * dk * dt); r.moving = true;
         /* a robot out on the shore turns for home when the charge is low, at dusk or in rain; one that carries a load takes it to the heap first */
-        if (r.state === ST.OUT && wantHome(sim, r) && (shelter || r.charge < lowOf(sim))) { r.state = ST.HOME; setPath(r, pathHome(sim, r)); r.siteI = r.siteI; }
+        if (r.state === ST.OUT && wantHome(sim, r) && (shelter || r.fit || r.charge < lowOf(sim))) { r.state = ST.HOME; setPath(r, pathHome(sim, r)); r.siteI = r.siteI; }
         moving.push(r); break; }
       case ST.WORK: {
         r.charge = Math.max(0, r.charge - DRAIN.work * dk * dt); r.timer -= dt * wk;
-        if (shelter || r.charge < lowOf(sim)) { r.state = ST.HOME; setPath(r, pathHome(sim, r)); break; }
+        if (shelter || r.fit || r.charge < lowOf(sim)) { r.state = ST.HOME; setPath(r, pathHome(sim, r)); break; }
         if (r.timer <= 0) { const w = sim.pl.work[r.siteI]; r.load = true; r.kindLoad = w.kind; sim.litter[r.siteI].taken = true; sim.litter[r.siteI].back = 120 + R() * 60; r.state = ST.CARRY; setPath(r, pathToHeap(sim, r, w.kind)); }
         break; }
       case ST.DROP: {
