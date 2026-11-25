@@ -301,6 +301,7 @@ const CSS = `
 body.dev-touch #gd .gd-btn{min-height:52px;min-width:52px;font-size:17px}
 #gd .gd-btn.pri{background:#2f6fe6;border-color:#2f6fe6;color:#fff}
 #gd .gd-btn[disabled]{opacity:.45;cursor:default}
+#gd .gd-btn.dim{opacity:.55}
 #gd .gd-btn.pulse{animation:gdp 1.6s ease-in-out infinite}
 @keyframes gdp{0%,100%{box-shadow:0 0 0 0 rgba(47,111,230,.0)}50%{box-shadow:0 0 0 7px rgba(47,111,230,.28)}}
 #gd-strip{position:absolute;left:50%;top:68px;transform:translateX(-50%);display:flex;gap:4px;align-items:center;padding:5px 8px;max-width:calc(100vw - 24px);overflow:hidden}
@@ -690,18 +691,76 @@ function targets() {
   if (O.bottle && O.bottle.visible && G.bottleOn) { const p = O.bottle.position; const sc = screenOf(p.x, p.y + .2, p.z); if (sc) T.push({ id: 'bottle', x: sc.x, y: sc.y, r: 56 }); }
   return T;
 }
+
+/* ---------------- the INSPECT layer (OWNER 25 Nov: "anything you can interact with should light up and tell you exactly what it is and what it is used for") ----------------
+   Desktop: hover an object and a soft ring and a small card show its name, what it is for, what it needs and what the action is. Touch: a first tap opens the same card with the action button, the second tap on the
+   action (or on the object again) does it; a tap elsewhere closes it. Three classes: GOLD = the one next thing that needs you (a pulsing soft gold ring), WHITE = interactive, not urgent (a soft white ring, on hover or tap),
+   LOCKED = it cannot be used yet: a dim ring and the reason, never a glow. The words are in ONE table (INSPECT below; physical.js has the same kind of table for its own objects, info(id)): id pattern, name, use, needs, action. */
+const INSPECT = [
+  { re: /^crate0$/, f: s => ({ name: 'The crate', use: 'Washed up on the beach. A brass key hangs from the lid.', needs: null, action: s.letter1 ? 'Read the letter again' : 'Lift the lid' }) },
+  { re: /^hut$/, f: s => ({ name: 'The hut', use: 'Your shelter. The door sticks.', needs: 'The brass key from the crate', action: 'Look inside' }) },
+  { re: /^lean$/, f: () => ({ name: 'The lean-to', use: 'A dry place out of the rain.', needs: null, action: 'Look' }) },
+  { re: /^barrel$/, f: () => ({ name: 'Water barrel', use: 'Catches rain. Rain is the only water on this island.', needs: null, action: 'Check it' }) },
+  { re: /^find\d+$/, f: () => ({ name: 'Something on the shore', use: 'A small find washed up by the tide.', needs: null, action: 'Pick it up' }) },
+  { re: /^wreck$/, f: s => ({ name: 'The old hull', use: 'An old hull on the shore. A track link may be inside.', needs: null, action: 'Look' }) },
+  { re: /^crate\d+$/, f: (s, id) => { const c = G.crates[parseInt(id.slice(5), 10) - 1] || {}, n = c.n || id.slice(5); return { name: 'Crate number ' + n, use: c.letter2 ? 'The evening boat left it. A letter lies on top.' : c.item ? 'A delivery from the boat: ' + ((itemById(c.item) || {}).name || 'goods') + '.' : 'Supplies from the boat.', needs: c.phys && c.phys.heavy ? 'A robot and you together' : null, action: c.letter2 && !s.letter2 ? 'Open it' : 'Open' }; } },
+  { re: /^bot\d+$/, f: (s, id) => { const i = parseInt(id.slice(3), 10), b = robotState(i), on = s.robots[i]; return { name: 'Carrier ' + (i + 1), use: on ? 'An old machine that gathers washed-up stock for the yard. Its light shows how it is.' : 'An old machine, switched off. Dust in the tracks, one worn link.', needs: on ? (b && typeof b.charge === 'number' ? 'Battery ' + Math.round(b.charge * 100) + ' percent. ' : '') + (((s.jobs || [])[i]) ? 'Order: ' + (stockById((s.jobs || [])[i]) || {}).name : 'No order yet') : 'A track link (parts: ' + s.parts + ')', action: on ? 'Give an order' : 'Fit a part', locked: !on && !s.parts ? 'It needs a track link first' : null }; } },
+  { re: /^bottle$/, f: () => ({ name: 'The bottle', use: 'A message in a bottle.', needs: null, action: 'Read it' }) },
+  { re: /^(hulk|heap\d+)$/, f: () => ({ name: 'Washed-up stock', use: 'What the storm left on the shore.', needs: 'A robot with an order, or your hands', action: 'Look' }) },
+  { re: /^boat$/, f: () => ({ name: 'Your rowing boat', use: 'Row to the supplies, the skerry and the landings.', needs: null, action: 'Board' }) }
+];
+function inspectInfo(id) {
+  const s = G.s; let i = null;
+  try { if (PHYS() && PHYS().info) i = PHYS().info(id); } catch (e) { i = null; }
+  if (!i) { const e = INSPECT.find(q => q.re.test(id)); if (e) { try { i = e.f(s, id); } catch (x) { i = null; } } }
+  if (!i) return null; return Object.assign({ id, needs: null, action: null, locked: null }, i);
+}
+function goldId() { try { const g = PHYS() && PHYS().goldId && PHYS().goldId(); if (g) return g; } catch (e) { /* none */ } const s = G.s; if (!s.letter1 && !G.crateDone) return 'crate0'; return null; }
+const INS = { hov: null, hovT: 0, sel: null, el: null, ring: null, gring: null, mx: -1, my: -1, coarse: false };
+function inspectDom() {
+  if (INS.el) return; const d = (cls, css) => { const e = document.createElement('div'); e.className = cls; e.style.cssText = css; document.body.appendChild(e); return e; };
+  INS.el = d('gd-ins', 'position:fixed;z-index:9;display:none;max-width:236px;padding:8px 11px;border-radius:12px;background:rgba(251,246,236,.96);border:2px solid #cdbb98;color:#2b2118;font:13px/1.3 Georgia,serif;pointer-events:none;box-shadow:0 2px 10px rgba(40,25,10,.25)');
+  INS.ring = d('gd-ring', 'position:fixed;z-index:6;display:none;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;pointer-events:none;border:2px solid rgba(255,255,255,.85);box-shadow:0 0 14px 4px rgba(255,255,255,.55),inset 0 0 12px 2px rgba(255,255,255,.35)');
+  INS.gring = d('gd-ring gold', 'position:fixed;z-index:6;display:none;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;pointer-events:none;border:2px solid rgba(255,208,80,.95);box-shadow:0 0 16px 5px rgba(255,200,60,.6),inset 0 0 12px 2px rgba(255,200,60,.35);animation:gdp 1.6s ease-in-out infinite');
+}
+function inspectCls(id, info) { if (info.locked) return 'locked'; return id === goldId() ? 'gold' : 'white'; }
+function showInspect(t, touch) {
+  inspectDom(); const info = inspectInfo(t.id); if (!info) { hideInspect(); return false; } const cls = inspectCls(t.id, info), el = INS.el;
+  el.innerHTML = '<b style="font-size:14px">' + info.name + '</b>' + (cls === 'gold' ? ' <span style="color:#a67800;font-size:11px;font-weight:700">NEXT</span>' : '') + (cls === 'locked' ? ' <span style="color:#7a6a58;font-size:11px;font-weight:700">LOCKED</span>' : '') + '<div>' + info.use + '</div>' + (info.locked ? '<div style="color:#8a4a2a"><small>' + info.locked + '</small></div>' : info.needs ? '<div><small>Needs: ' + info.needs + '</small></div>' : '') + (info.action ? '<div style="margin-top:4px;font-weight:700;color:' + (info.locked ? '#7a6a58' : '#1f4fb0') + '">' + (touch ? '' : 'Click: ') + info.action + '</div>' : '');
+  if (touch && info.action && !info.locked) { const b = btn(info.action, () => { hideInspect(); activate(t.id); }, 'pri'); b.style.cssText = 'margin-top:6px;min-height:46px;width:100%'; b.id = 'gd-ins-act'; el.appendChild(b); el.style.pointerEvents = 'auto'; } else el.style.pointerEvents = 'none';
+  el.style.display = 'block'; INS.sel = { id: t.id, touch }; INS.cur = t; inspectPlace(t); return true;
+}
+function inspectPlace(t) {
+  const el = INS.el; if (!el || el.style.display === 'none') return; const w = el.offsetWidth || 220, h2 = el.offsetHeight || 80, W = innerWidth, H = innerHeight;
+  let x = t.x - w / 2, y = t.y - h2 - 44; if (y < 110) y = t.y + 40; x = Math.max(10, Math.min(W - w - 10, x)); y = Math.max(110, Math.min(H - h2 - 150, y)); el.style.left = x + 'px'; el.style.top = y + 'px';
+}
+function hideInspect() { INS.sel = null; INS.cur = null; if (INS.el) INS.el.style.display = 'none'; if (INS.ring) INS.ring.style.display = 'none'; }
+function nearestTarget(cx, cy) { let best = null, bd = 1e9; for (const t of targets()) { const d = Math.hypot(t.x - cx, t.y - cy), lim = t.r * (INS.coarse ? 1.15 : 1) * (C.ui ? Math.max(1, C.ui()) : 1); if (d < lim && d < bd) { bd = d; best = t; } } return best; }
+function inspectMove(e) {
+  if (INS.coarse || e.pointerType === 'touch' || G.cardOpen) return; INS.mx = e.clientX; INS.my = e.clientY; if (e.buttons) return;
+  const t = nearestTarget(e.clientX, e.clientY); if (!t) { if (INS.hov) { INS.hov = null; hideInspect(); } return; } if (!INS.hov || INS.hov.id !== t.id) { INS.hov = t; showInspect(t, false); }
+}
+function inspectTick(dt) {
+  if (!INS.el) return; const t = INS.cur; if (t && INS.sel) { const fresh = targets().find(q => q.id === t.id); if (fresh) { INS.cur = fresh; inspectPlace(fresh); INS.ring.style.left = fresh.x + 'px'; INS.ring.style.top = fresh.y + 'px'; const info = inspectInfo(fresh.id), cls = info && inspectCls(fresh.id, info); INS.ring.style.display = 'block'; INS.ring.style.opacity = cls === 'locked' ? '.35' : '1'; } else hideInspect(); }
+  const gid = goldId(), gt = gid && !G.cardOpen ? targets().find(q => q.id === gid) : null; if (gt) { INS.gring.style.left = gt.x + 'px'; INS.gring.style.top = gt.y + 'px'; INS.gring.style.display = 'block'; } else INS.gring.style.display = 'none';
+}
 function onTap(cx, cy) {
   if (PHYS() && PHYS().swallowTap()) return;   /* a hold that just ended is not a tap */
   if (G.cardOpen && G.cardOpen !== 'tip') return;
   const T = targets(), coarse = document.body.classList.contains('dev-touch') || matchMedia('(pointer:coarse)').matches; let best = null, bd = 1e9;
   for (const t of T) { const d = Math.hypot(t.x - cx, t.y - cy), lim = t.r * (coarse ? 1.15 : 1) * (C.ui ? Math.max(1, C.ui()) : 1); if (d < lim && d < bd) { bd = d; best = t; } }
-  if (best) { G.idle = 0; activate(best.id); }
+  if (best) { G.idle = 0; INS.coarse = coarse;
+    if (coarse && !(INS.sel && INS.sel.id === best.id)) { if (showInspect(best, true)) return; }   /* touch: the first tap shows what it is; the second does it */
+    hideInspect(); activate(best.id); }
+  else if (INS.sel) hideInspect();
 }
 function wireInput() {
   const el = C.renderer.domElement, pts = new Map(); let down = null, multi = false;
   el.addEventListener('pointerdown', e => { pts.set(e.pointerId, 1); if (pts.size > 1) multi = true; down = { x: e.clientX, y: e.clientY, t: e.timeStamp }; ensureAudio(); }, true);
   el.addEventListener('pointerup', e => { pts.delete(e.pointerId); const d = down; if (!pts.size) { down = null; const was = multi; multi = false; if (d && !was && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 10 && e.timeStamp - d.t < 700) onTap(e.clientX, e.clientY); } }, true);
   el.addEventListener('pointercancel', e => { pts.delete(e.pointerId); if (!pts.size) { down = null; multi = false; } }, true);
+  el.addEventListener('pointermove', e => { try { inspectMove(e); } catch (x) { /* the layer is a courtesy */ } }, true);
+  el.addEventListener('pointerleave', () => { if (INS.hov) { INS.hov = null; hideInspect(); } }, true);
 }
 
 /* ---------------- audio: one fog horn, made in the browser ---------------- */
@@ -966,7 +1025,7 @@ function buildCard() {
   BUILDS.filter(b => !(PHYS() && b.id === 'jetty')).forEach(b => {
     const ok = PHYS() ? PHYS().canCommit(s, b.id) : canBuild(s, b.id), d = h('div', 'gd-item'); const done = s.build === b.id;
     d.innerHTML = '<div><b>' + b.name + '</b> &middot; ' + pound(b.total) + ' (' + pound(b.credit) + ' credit + ' + pound(b.cash) + ' cash)<small>' + b.earns + '</small><small>Year ahead: ' + b.year + '</small><small>Needs: ' + needText(b.needs) + ' (you have ' + stockLine(s.stock) + ').</small><small>Arrives ' + b.hours + '. Model: ' + b.kit + '.</small>' + (ok.ok || done ? '' : '<small>' + ok.why + '</small>') + '</div>';
-    d.appendChild(btn(done ? 'Chosen' : 'Build', () => confirmBuild(b.id), 'pri', !ok.ok)); c.appendChild(d);
+    d.appendChild(btn(done ? 'Chosen' : 'Build', () => { if (!ok.ok) { toast(ok.why, 5600); return; } confirmBuild(b.id); }, 'pri' + (ok.ok || done ? '' : ' dim'), done)); c.appendChild(d);   /* OWNER bug: a card that cannot be chosen is dim, not dead: a tap says why (and where to get what is missing) */
   });
   c.appendChild(row(btn('Not yet', closeCard)));
 }
@@ -1003,7 +1062,7 @@ function sleepToMorning() {
 function pulse(which) { G.pulse = which; setTimeout(() => { if (G.pulse === which) G.pulse = null; renderUi(); }, 9000); renderUi(); }
 function renderUi() {
   if (!G.ui.strip) return; const s = G.s, stage = stageOf(s);
-  const sig = [stage, jobsDone(s), s.plank, s.letter1, s.letter2, s.build, s.ledger.cash, s.ledger.credit, s.parts, s.water, G.pulse, G.helpPlank, G.crates.length, dayNo(), s.dry, s.crate1, s.finds.length, s.shipSeen, s.bottle, s.robots.join(), stockLine(s.stock), (s.jobs || []).join(), s.ordered, G.bottleOn, s.night].join('|');
+  const sig = [stage, jobsDone(s), s.plank, s.letter1, s.letter2, s.build, s.ledger.cash, s.ledger.credit, s.parts, s.water, G.pulse, G.helpPlank, G.crates.length, dayNo(), s.dry, s.crate1, s.finds.length, s.shipSeen, s.bottle, s.robots.join(), stockLine(s.stock), (s.jobs || []).join(), s.ordered, G.bottleOn, s.night, (PHYS() && PHYS().buildLine && PHYS().buildLine()) || ''].join('|');
   const tm = document.getElementById('gd-time'); if (tm) tm.textContent = hhmm(s.gh);
   const wx = document.getElementById('gd-wx'); if (wx && wx.textContent !== weatherState()) wx.textContent = weatherState();
   const bp = document.getElementById('gd-barrel'); if (bp) bp.textContent = 'Barrel: ' + Math.round(G.barrel || 0) + ' of 40 litres';   /* updated in place: a rebuilt HUD every frame while it rains made buttons impossible to press */
@@ -1014,7 +1073,7 @@ function renderUi() {
   if (s.letter1) { const led = btn('<small style="display:block;font-weight:600;opacity:.7">Ledger</small>Cash ' + pound(s.ledger.cash) + '<br>Credit ' + pound(s.ledger.credit), ledgerCard, G.pulse === 'ledger' ? 'pulse' : ''); led.id = 'gd-ledger-btn'; led.style.textAlign = 'right'; led.style.lineHeight = '1.25'; mk.ledger = led; }
   if (s.letter1 && stage === 'jobs') { const b = btn('Notebook', notebook); b.id = 'gd-notes-btn'; mk.notes = b; if (G.helpPlank && !s.plank) { const fb = btn('Fit one plank', fitOnePlank, 'pri'); fb.id = 'gd-plank-btn'; mk.plank = fb; } }
   if (s.crate1 || G.crates.length) { const b = btn('Catalogue', catalogueCard); b.id = 'gd-cat-btn'; mk.cat = b; }
-  if (s.letter2) { const b = btn(s.build ? 'Built: ' + BUILDS.find(x => x.id === s.build).name : 'Build menu', buildCard, G.pulse === 'build' ? 'pulse' : ''); b.id = 'gd-build-btn'; mk.build = b; }
+  if (s.letter2) { const bl = PHYS() && PHYS().buildLine && PHYS().buildLine(); const b = btn(bl ? 'Build<small style="display:block;font-weight:600;opacity:.75;font-size:11px;max-width:150px;white-space:normal">' + bl + '</small>' : (s.build ? 'Built: ' + BUILDS.find(x => x.id === s.build).name : GD_CLEAN ? 'Build' : 'Build menu'), buildCard, G.pulse === 'build' ? 'pulse' : ''); b.id = 'gd-build-btn'; mk.build = b; }
   if (stage === 'done' && dayNo() === 1) { const b = btn('Sleep until morning', sleepToMorning, 'pri'); b.id = 'gd-sleep-btn'; mk.sleep = b; }
   const sk = h('select', 'gd-sel'); sk.id = 'gd-skip'; sk.setAttribute('aria-label', 'Skip to'); sk.innerHTML = '<option value="">Skip to...</option>' + ['arrive', 'jobs', 'delivery', 'yard', 'evening', 'night', 'done'].map(x => '<option value="' + x + '">' + (STAGE_LABEL[x] || 'Day 1 done') + '</option>').join('') + '<option value="day2">Day 2 morning</option><option value="storm">The storm (now)</option><option value="new">New game (forget the save)</option>';
   sk.addEventListener('change', () => { const v = sk.value; sk.value = ''; skipTo(v); });
@@ -1030,8 +1089,9 @@ function renderUi() {
     if (mk.ledger) R.appendChild(mk.ledger);
     if (mk.plank) R.appendChild(mk.plank);
     if (main && mk[main]) R.appendChild(mk[main]);
+    if (mk.build && main !== 'build') R.appendChild(mk.build);   /* OWNER 25 Nov: the Build button is permanent once the letter is read, not behind Menu */
     const mb = btn(G.menuOpen ? 'Close menu' : 'Menu', () => { G.menuOpen = !G.menuOpen; document.body.classList.toggle('gd-menuopen', G.menuOpen); G.sig = null; renderUi(); }); mb.id = 'gd-menu-btn'; R.appendChild(mb);
-    const mn = h('div', 'gd-pill'); mn.id = 'gd-menu'; ['notes', 'cat', 'build', 'sleep'].forEach(k => { if (mk[k] && k !== main) mn.appendChild(mk[k]); }); mn.appendChild(sk);
+    const mn = h('div', 'gd-pill'); mn.id = 'gd-menu'; ['notes', 'cat', 'sleep'].forEach(k => { if (mk[k] && k !== main) mn.appendChild(mk[k]); }); mn.appendChild(sk);
     const dv = btn(document.body.classList.contains('gd-showdev') ? 'Hide test controls' : 'Test controls', () => { document.body.classList.toggle('gd-showdev'); G.sig = null; renderUi(); }); dv.id = 'gd-dev-btn'; mn.appendChild(dv); R.appendChild(mn);
   }
   const L = G.ui.left; L.innerHTML = '';
@@ -1094,7 +1154,7 @@ function skipTo(v) {
 /* ---------------- the frame ---------------- */
 function tick(dt) {
   if (!G.ready || !G.root) return;
-  const s = G.s; G.idle += dt;
+  const s = G.s; G.idle += dt; try { inspectTick(dt); } catch (e) { if (G.err.length < 20) G.err.push('inspect ' + e.message); }
   if (G.root.parent !== C.scene) C.scene.add(G.root);
   clockTick(dt); weatherTick(); try { if (SHP()) SHP().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('storm ' + e.message); } holdRobots(); chargePost(); plankWatch(); try { if (PHYS()) PHYS().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('phys ' + e.message); } deliveriesTick(); deliveryTick(dt); nightTick(dt); focusTick(dt);
   try { const bd = BDP(); if (bd && bd.tick) { bd.tick(dt); if (!G.boatRev && s.ordered) { G.boatRev = true; if (bd.reveal) bd.reveal(); } } } catch (e) { if (G.err.length < 20) G.err.push('boat ' + e.message); }
@@ -1152,7 +1212,7 @@ function stormCtx() {
 }
 function attachPhys() {
   const K = root.LI_PHYS; if (!K || !K.attach || G.physAttached || Q0.get('physical') === '0') return; G.physAttached = true;
-  const ok = K.attach({ C: () => C, THREE: () => THREE, S: () => G.s, patch: o => setS(o), save: () => save(), afterChange, toast, card, closeCard, btn, row, xbtn, focus, screenOf, spots: () => G.spots, groot: () => G.root, objs: () => G.objs, crates: () => G.crates, root: () => G.ui.root,
+  const ok = K.attach({ C: () => C, THREE: () => THREE, S: () => G.s, patch: o => setS(o), save: () => save(), afterChange, toast, card, closeCard, btn, row, xbtn, focus, screenOf, spots: () => G.spots, groot: () => G.root, objs: () => G.objs, crates: () => G.crates, pulse, root: () => G.ui.root,
     isAR, groundY, dlv: () => G.dlv && G.dlv.phase, H: (x, z) => C.H(x, z), slope: slopeAt, free: (x, z, r) => free(G.spots.S, x, z, r), renderUi, weatherState, isNight });
   G.physOn = !!ok; if (ok && K.page && K.page.begin) K.page.begin();
 }
@@ -1194,7 +1254,7 @@ function init(ctx) {
     ledger: ledgerCard, notebook, catalogue: catalogueCard, build: buildCard, letter1: readLetter1, letter2: readLetter2, fitPlank: fitOnePlank, order: orderItem, startRobot, giveOrder, robotsCard, doBuild: confirmBuild, post: () => G.objs.post && { x: G.objs.post.position.x, z: G.objs.post.position.z, lamp: G.objs.post.userData.lampCol }, bottle: readBottle, sleep: sleepToMorning,
     focus, clockMode: () => G.clockMode, weather: () => G.weather, hornCount: () => G.hornCount || 0, dlv: () => G.dlv && G.dlv.phase, barrel: () => G.barrel, crates: () => G.crates.map(c => ({ n: c.n, item: c.item || null, letter2: !!c.letter2, l9: !!c.l9 })),
     heavy: () => ({ ar: !!G.ar, seals: G.objs.seals.length, stumpKit: !!G.objs.stumpKit, finds: G.spots.finds.length, stumpScript: !!document.querySelector('script[src*="stump_b64"]') }),
-    speedUp: k => { G.fast = k; }, setHour: g => { G.s.gh = g; clockSet(g); }, uiRoot: () => G.ui.root, phys: () => PHYS(), addStock: (id, n) => addStockUnits(id, n),   /* test handle: stock without waiting for the shore */ userWeather: () => USER_WEATHER, objs: () => G.objs, nightT: () => G.nightT
+    speedUp: k => { G.fast = k; }, inspect: id => { const t = targets().find(q => q.id === id); return t ? inspectInfo(id) : null; }, inspectAt: (cx, cy, touch) => { INS.coarse = !!touch; const t = nearestTarget(cx, cy); if (!t) { hideInspect(); return null; } showInspect(t, !!touch); return { id: t.id, info: inspectInfo(t.id), cls: inspectCls(t.id, inspectInfo(t.id) || {}), card: INS.el && INS.el.style.display !== 'none' ? INS.el.textContent : '' }; }, goldId: () => goldId(), targetsNow: () => targets(), insTable: () => INSPECT.map(q => String(q.re)), setHour: g => { G.s.gh = g; clockSet(g); }, uiRoot: () => G.ui.root, phys: () => PHYS(), addStock: (id, n) => addStockUnits(id, n),   /* test handle: stock without waiting for the shore */ userWeather: () => USER_WEATHER, objs: () => G.objs, nightT: () => G.nightT
   };
   return G;
 }

@@ -134,7 +134,8 @@ c0 = K.placeUnit(K.takeUnit(c0, cp).b, cp).b; ok(K.drawn(c0, cp, 2) > 0 && K.dra
 {
   const fs = await import('node:fs'); const src = fs.readFileSync(new URL('../physical.js', import.meta.url), 'utf8');
   const words = (src.match(/'[^'\n]{12,}'/g) || []).join(' ');
-  ok(!/blood|gore|corpse|dead|kill|drown|face|eyes|smile|feel(s|ing)?\b|happy|sad\b|afraid/i.test(words.replace(/no faces/gi, '')), 'no gore, no faces, no feelings in the layer\'s texts');
+  /* OWNER 25 Nov: robots may have lamp eyes (a lens strip, a blink, dim and bright); still no mouths, no speech, no human faces, no written feelings */
+  ok(!/blood|gore|corpse|dead|kill|drown|mouth|smile|speaks?\b|says\b|human face|feel(s|ing)?\b|happy|sad\b|afraid/i.test(words.replace(/no faces/gi, '')), 'no gore, no mouths, no speech, no feelings in the layer\'s texts');
   ok(!/Math\.random|Date\.now/.test(src.split('PART B: the page layer')[0].replace(/\/\*[\s\S]*?\*\//g, '')), 'the pure part uses no random and no wall clock');
 }
 console.log('\n' + (n - fails) + ' of ' + n + ' checks passed'); process.exit(fails ? 1 : 0);

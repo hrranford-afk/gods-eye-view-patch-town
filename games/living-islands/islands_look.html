@@ -2123,7 +2123,8 @@ const cam={...HOME},cur={...HOME};
 let snap=true;
 function applyCam(dt){const k=snap?1:1-Math.pow(.0005,dt);for(const key of(CKON?['theta','phi','dist','tx','tz','ty','fov']:['theta','phi','dist','tx','tz']))cur[key]+=(cam[key]-cur[key])*k;snap=false;
   const cp=Math.cos(cur.phi),sp=Math.sin(cur.phi);
-  camera.position.set(cur.tx+Math.sin(cur.theta)*cp*cur.dist,sp*cur.dist,cur.tz+Math.cos(cur.theta)*cp*cur.dist);if(CKON&&Math.abs(camera.fov-cur.fov)>1e-3){camera.fov=cur.fov;camera.updateProjectionMatrix();}camera.lookAt(cur.tx,CKON?cur.ty:0,cur.tz);}
+  camera.position.set(cur.tx+Math.sin(cur.theta)*cp*cur.dist,sp*cur.dist,cur.tz+Math.cos(cur.theta)*cp*cur.dist);
+  if(window.LI_GIFT&&LI_GIFT.on&&!window.__bowCam){const gyy=Math.max(H(camera.position.x,camera.position.z)+1.2,tide+.6);if(camera.position.y<gyy)camera.position.y=gyy;}   /* OWNER 25 Nov: on a gift page the free camera never goes under the ground or the sea (the owner looked up at the underside of the headland); the bow view and cutaway.html are not touched */if(CKON&&Math.abs(camera.fov-cur.fov)>1e-3){camera.fov=cur.fov;camera.updateProjectionMatrix();}camera.lookAt(cur.tx,CKON?cur.ty:0,cur.tz);}
 function clampCam(){cam.phi=clamp(cam.phi,CKON?.03:.2,1.5);cam.dist=clamp(cam.dist,9,WORLD?580:420);const r=Math.hypot(cam.tx,cam.tz),rl=82*WS;if(r>rl){cam.tx*=rl/r;cam.tz*=rl/r;}}
 function setupControls(el){const ptr=new Map();let last=null;
   el.addEventListener('pointerdown',e=>{el.setPointerCapture(e.pointerId);ptr.set(e.pointerId,{x:e.clientX,y:e.clientY,b:e.button,s:e.shiftKey});last=null;});

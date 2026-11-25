@@ -95,7 +95,7 @@ const rl = K.deserialize(K.serialize(K.setJob(Object.assign(K.canned('yard', 3),
 const rl2 = K.deserialize(K.serialize(K.addHaul(K.canned('yard', 3), 'planks', 4))); ok(rl2 && rl2.stock.planks === 8, 'stock survives a save and load');
 const bad = JSON.parse(K.serialize(K.canned('yard', 3))); bad.stock = { planks: -5, rope: 'x', glass: 1e9, metal: 2 }; bad.jobs = ['zzz', 'planks', 'planks', 'planks', 'planks'];
 const rb = K.validState(bad); ok(rb && rb.stock.planks === 0 && rb.stock.rope === 0 && rb.stock.glass === K.STOCK_CAP && rb.jobs.length === 4 && rb.jobs[0] === null, 'a damaged stock or order list is clamped on load');
-ok(!/\b(feel|happy|sad|says|smile|face|eyes|hello)\b/i.test(K.STOCKS.map(x => x.name).join(' ') + JSON.stringify(K.BUILDS.map(b => b.needs))), 'robot and stock text has no speech, faces or feelings');
+ok(!/\b(feel|happy|sad|says|speaks|smile|mouth|hello)\b/i.test(K.STOCKS.map(x => x.name).join(' ') + JSON.stringify(K.BUILDS.map(b => b.needs))), 'robot and stock text has no speech, mouths or feelings (lamp eyes are allowed since 25 Nov)');
 
 /* ---- bottle by seed ---- */
 eq(K.BOTTLES.length, 6, 'six bottle messages');
