@@ -217,3 +217,12 @@ Read from `origin/gh-pages`, folder `living-islands-lab/castle-sound/` (`game.js
 | Multi-player | relay (local) | none |
 
 **Use of it:** take Castle Sound's turn rules, rigs, bell win rule, relay and Grand ramparts as the game layer; take Rubble's ground, materials, tide and replay as the physics layer. Merge job (section 7, job 10) should be done once, for both. [medium]
+
+## 11. Pictures (`rubble/shots/`, software GL, 1180 x 760, honest captions)
+- `rubble-1-start`: the start, 250 pieces. Flaws: the wash-up sits on a visible 0.8 m grid (jittered but still dotted); the beach is very pale; the frame is 160 ms because it is software GL.
+- `rubble-2-volley`, `rubble-3-rods`: shots in flight and a big-rod hit on the brick block. Flaws: stills show little motion; the launcher is cut off by the buttons on a short screen.
+- `rubble-4-rock-hightide`: ground forced to all rock, tide +0.80. Flaw: the whole island turns one salmon colour, which is the point, but the sea is a flat plane with no foam.
+- `rubble-5-ipad-tier`: iPad tier, 250 pieces, 40 live shots. `rubble-6-radeon-4000`: 3948 pieces, 322,850 triangles, 18 draw calls. Flaws: at high tide most of the lower wash-up floats, so it reads as a mess; the test left the tide at +0.80.
+- `rubble-7-replay`: the replay banner. Flaw: the test replay was only a few steps long because software GL runs few steps; the long replay is proved in Node (560 steps).
+- `rubble-8-bench-warning`, `rubble-9-bench-report`: the warning and a finished software-GL report. Flaw: panels overlap the scene behind them.
+- `rubble-10-procedural`: the procedural fallback. Flaw: it is flat and plain; the first version sat below sea level and was drawn all under water, fixed.

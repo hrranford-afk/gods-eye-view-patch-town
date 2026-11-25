@@ -156,7 +156,7 @@
   /* a procedural beach with the same layout and a similar slope, for when the world file is not there */
   function proceduralSite(opts) {
     opts = opts || {};
-    var isl = { h: function (x, z) { return 1.15 - 0.075 * (z + 29 - 20) + 0.12 * Math.sin((x + 23) * 0.09) + 0.2 * Math.sin((z + 29) * 0.07 + (x + 23) * 0.03) * 0.5; } };
+    var isl = { h: function (x, z) { return 1.0 - 0.083 * (z - 29) + 0.12 * Math.sin((x + 23) * 0.09) + 0.1 * Math.sin(z * 0.2 + (x + 23) * 0.03); } };
     isl.baseGround = function (x, z) { var zz = z - 29; return zz > 10 ? SAND : zz > -4 ? SAND : TURF; };
     var s = leeSite(isl, opts); s.notes = ['procedural stand-in ground (the world file was not loaded)']; s.procedural = true; return s;
   }
