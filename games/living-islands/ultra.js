@@ -166,5 +166,19 @@
     if (d.notes && d.notes.length) L.push('notes: ' + d.notes.join('; '));
     return L.join('\n');
   }
-  return { cleanGpuName, classifyGpu, gpuLine, INTEGRATED_HINT, options, tierFrom, planFor, degrade, createDynRes, percentile, benchVerdict, benchReport };
+  /* ---------- 5. the preset step-down (the owner's iPad measurement: device=radeon on an iPad ran at 28.6 fps; see research/RADEON_FIRST_MEASUREMENT.md) ----------
+     device = the preset asked for, gpuRaw = the browser's GPU string (may be empty), ua = the user agent, touch = navigator.maxTouchPoints, o.off = the &stepdown=0 switch.
+     Only radeon and desktop step down, and only on a built-in or mobile GPU (an iPad, a phone, an integrated chip): to the ipad preset, with a one-line note. A real graphics card, software rendering and every other preset are left alone. */
+  function deviceStepDown(device, gpuRaw, ua, touch, o) {
+    const none = { step: false, to: device, note: '', why: '' };
+    if ((device !== 'radeon' && device !== 'desktop') || (o && o.off)) return none;
+    const c = classifyGpu(gpuRaw), u = String(ua || '');
+    const phone = /iPad|iPhone|iPod|Android|Mobile/i.test(u) || (/Macintosh/.test(u) && (touch | 0) > 1);   /* an iPad that asks for the desktop site says Macintosh but has touch points */
+    const integrated = c.kind === 'integrated';
+    if (c.kind === 'software' || c.kind === 'discrete') return none;
+    if (!phone && !integrated) return none;
+    const what = phone ? 'a mobile device' : 'a built-in GPU (' + (c.name || 'unknown') + ')';
+    return { step: true, to: 'ipad', why: phone ? 'mobile' : 'integrated', note: 'This looks like ' + what + ', so the iPad preset is used instead of ' + device + '. Add &stepdown=0 to keep ' + device + '.' };
+  }
+  return { cleanGpuName, classifyGpu, gpuLine, INTEGRATED_HINT, options, tierFrom, planFor, degrade, createDynRes, percentile, benchVerdict, benchReport, deviceStepDown };
 }));
