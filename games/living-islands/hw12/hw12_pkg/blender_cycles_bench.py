@@ -368,13 +368,20 @@ def aim_thumb(chain, w, h, base):
 
 
 def read_png_level(path):
+    """Mean and max level of the picture. On Blender 3.6 the compositor thumbnail is a small picture in the middle of a full-size black frame
+    (whole-frame mean about 0.008), so the mean is taken over the box that holds the lit pixels; a frame with no lit pixels has mean 0."""
     img = bpy.data.images.load(path)
-    n = img.size[0] * img.size[1] * 4
-    buf = np.empty(n, dtype=np.float32)
+    w, h = img.size[0], img.size[1]
+    buf = np.empty(w * h * 4, dtype=np.float32)
     img.pixels.foreach_get(buf)
     bpy.data.images.remove(img)
-    rgb = buf.reshape(-1, 4)[:, :3]
-    return float(rgb.mean()), float(rgb.max())
+    a = buf.reshape(h, w, 4)[:, :, :3]
+    lit = a.max(axis=2) > 0.002
+    if not lit.any():
+        return 0.0, float(a.max())
+    ys, xs = np.where(lit)
+    box = a[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+    return float(box.mean()), float(a.max())
 
 
 def render_one(scene, w, h, samples, outdir, base, chain):

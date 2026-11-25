@@ -97,7 +97,7 @@ class Stats(unittest.TestCase):
 class Planning(unittest.TestCase):
     def test_bandwidth_sizes(self):
         s = H.plan_bandwidth_sizes(4 * H.GB, 16 * H.GB)
-        self.assertEqual(s, [256 * H.MB, 512 * H.MB, 1 * H.GB, 2 * H.GB, 4 * H.GB])
+        self.assertEqual(s, [256 * H.MB, 512 * H.MB, 1 * H.GB, 2 * H.GB, 3584 * H.MB])  # 4 GiB itself fails on the Radeon VII (HW-12 run)
         self.assertEqual(H.plan_bandwidth_sizes(1 * H.GB, 16 * H.GB), [256 * H.MB, 512 * H.MB, 1 * H.GB])
         self.assertEqual(H.plan_bandwidth_sizes(8 * H.GB, 4 * H.GB), [256 * H.MB, 512 * H.MB, 1 * H.GB])  # two copies must fit 90% of memory
         self.assertEqual(H.plan_bandwidth_sizes(64 * H.MB, 16 * H.GB), [])

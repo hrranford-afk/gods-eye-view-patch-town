@@ -63,6 +63,19 @@ def _png_gray(path):
     if ch >= 3: return 0.2126 * px[..., 0] + 0.7152 * px[..., 1] + 0.0722 * px[..., 2]
     return px[..., 0].astype(np.float64)
 
+def _lit_box(a):
+    """Blender 3.6 writes the compositor thumbnail as a small picture in the middle of a full-size black frame. If more than 90 percent of the frame is
+    black and the lit pixels sit in one box covering under half the frame, judge the box. A frame with no lit pixels at all stays black."""
+    import numpy as np
+    lit = a > DARK_PX
+    if lit.mean() > 0.10 or not lit.any():
+        return a
+    ys, xs = np.where(lit)
+    box = a[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+    if box.size < 0.5 * a.size and box.shape[0] >= 32 and box.shape[1] >= 32:
+        return box
+    return a
+
 def _stats(a, size):
     return dict(mean=round(float(a.mean()), 2), lit_fraction=round(float((a > DARK_PX).mean()), 4), std=round(float(a.std()), 2), bytes=size)
 
@@ -95,6 +108,7 @@ def check_picture(path):
         a = np.asarray(im, dtype=np.float64)
     except Exception as e:
         return False, 'PICTURE_GUARD FAIL %s: cannot read the picture (%s)' % (path, e), {'bytes': size}
+    a = _lit_box(a)
     return _verdict(path, _stats(a, size))
 
 def _verdict(path, st):

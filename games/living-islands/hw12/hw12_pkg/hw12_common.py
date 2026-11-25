@@ -131,11 +131,13 @@ def plan_bandwidth_sizes(max_alloc, global_mem, smoke=False, need_buffers=2):
     need_buffers copies exceed 15.5 GB or 90 percent of global memory. Smoke mode: 1 MB and 4 MB."""
     if smoke:
         return [s for s in (1 * MB, 4 * MB) if s <= max_alloc]
-    lim = min(max_alloc, 4 * GB, VRAM_CAP_BYTES // need_buffers, int(0.9 * global_mem) // need_buffers if global_mem else 4 * GB)
+    lim = min(max_alloc, 3584 * MB, VRAM_CAP_BYTES // need_buffers, int(0.9 * global_mem) // need_buffers if global_mem else 4 * GB)
     out, s = [], 256 * MB
     while s <= lim:
         out.append(s)
         s *= 2
+    if lim >= 3584 * MB and 3584 * MB not in out:
+        out.append(3584 * MB)      # biggest single buffer that fits under the 4 GiB limit (HW-12 run: 4092 MB ok, 4096 MB fails)
     return out
 
 
