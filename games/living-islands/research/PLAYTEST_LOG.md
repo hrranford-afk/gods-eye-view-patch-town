@@ -14,7 +14,7 @@ Status key: FIXED (live in the Lab), IN PROGRESS (a builder has it), QUEUED (in 
 | 7 | It is not clear how to get back to building. | FIXED: permanent Build button, pulses after delivery. |
 | 8 | At night everything halts because the robots charge. | QUEUED (Job 6): shifts, battery and solar upgrades, wait for dawn, hand gathering at night inside the lantern light. |
 | 9 | I skipped to night because nothing was happening; the hint says build the rain system but I cannot collect parts; is there enough stuff? | IN PROGRESS: hint matches reality; starter buffer for the cistern; Skip sets sensible stock; dead-time test (no stretch over about two game minutes). |
-| 10 | Fine if you can collect by hand: you learn how laborious it is and why robots matter. | QUEUED: hand rate about one robot; readout of both rates. |
+| 10 | Fine if you can collect by hand: you learn how laborious it is and why robots matter. | FIXED (Job 6b item 2, live 19:05): hold to gather by hand, about one robot's rate, readout of both rates. |
 | 11 | It is not clear how to explore. | QUEUED: first destination marker, compass arrow, Chart button. |
 | 12 | Anything you can interact with should light up on hover and say what it is and what it is for. | IN PROGRESS: inspect layer (first version live, not fully tested). |
 | 13 | Show what is contributing and taking away from planks, rope, glass and metal, per hour, by robot or human, so we see the supply chain problems. | QUEUED (Job 7, first item): Supply panel. |
