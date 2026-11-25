@@ -26,3 +26,11 @@ FIXED rules kept in every step: hopeful; mild trouble only; robots are relics (n
 | 2.7 | CHANGED | flag notes `uncle_no_record`, `uncle_no_record_visit`, `stamp_papers` in the registry | they said "no such man" and "the uncle's papers" |
 | 2.8 | KEEP | the internal deck `kind: "uncle"` and flag names `uncle_*` | internal tags, never shown; renaming would touch many ids and tests for no player benefit |
 | 2.9 | NEW TEST | `test_no_official_voice_asserts_a_relation` | no office or helper line may name a relation; P1 and P2 never say "relative" |
+
+## Step 3. No saving-humanity speech; the limits of kindness
+| # | Status | Line | Reason |
+|---|---|---|---|
+| 3.1 | CHANGED | Voice guide (spine section 6) and `GIFT_LETTERS.md` "What the letters never do": a new rule, no speech about saving anyone or anything (no humanity, world, future, mission, purpose) | the critic: the twist works only if the helper never explains its grand reason; it behaves like a good neighbour |
+| 3.2 | KEEP | L1 to L12 wording | none contains such a speech already (the new test proves it) |
+| 3.3 | CHANGED | five new limits-of-kindness events: `a1_limit_hinge` (the shed door arrives with hinges a size too small), `a1_limit_thick_rope`, `a2_limit_late_nails`, `a2_limit_rain_label`, `a3_limit_old_chart` | kindness that is never wrong feels managed; small honest misfits make it feel like a person's hand. Two are mild trouble, three in-between; each costs an afternoon, none punishes |
+| 3.4 | NEW TEST | `test_no_saving_humanity_speech` (also counts the five `_limit_` events) | keeps the rule from drifting |

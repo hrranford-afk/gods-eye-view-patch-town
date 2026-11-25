@@ -50,6 +50,7 @@ Variant (trust): *You have used what was given well.* Variant (distrust): *You h
 Bottle messages are separate from letters: different hands, different voices, a few slightly too well informed. They live with the drift table and were written earlier by the town. Letters never contradict them.
 
 ## What the letters never do
+Never make a speech about saving anyone or anything: no humanity, no world, no future, no mission, no purpose (v2 rule, critic review). Its kindness is practical and has limits: a boat can arrive with the wrong hinge, a rope can be too thick for the cleats, a chart can be a year old. It helps the way a good neighbour helps, with the thing in hand.
 Never say what the helper is. Never ask the player to do anything. Never threaten. Never mention money as a reward. Never mention a robot's feelings. Never name a place or person. Never promise it will all be fine, and never say it will not.
 
 ## How to use them in the build

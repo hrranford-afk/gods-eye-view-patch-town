@@ -403,6 +403,15 @@ class Content(unittest.TestCase):
         for t in ("p0_P1", "p0_P2"): self.assertNotIn("relative", BY_ID[t]["text"].lower())
         self.assertIn("incomplete", BY_ID["a2_uncle_reply"]["text"]); self.assertIn("either way", BY_ID["a2_uncle_reply"]["text"])
 
+    def test_no_saving_humanity_speech(self):
+        # critic review v2: neither voice makes a speech about saving anyone; the helper's kindness has practical limits
+        bad = r"\b(humanity|mankind|human race|save the world|saving the world|save the planet|save us|saving us|save you|saving you|mission|purpose|destiny|the future of)\b"
+        for e in EVENTS:
+            blob = e["text"] + " " + " ".join(e.get("variants", {}).values()) + " " + " ".join(c["label"] for c in e.get("choices", []))
+            self.assertIsNone(re.search(bad, blob, re.I), e["id"] + " makes a saving speech")
+        limits = [e for e in EVENTS if e["id"].find("_limit_") > 0]
+        self.assertGreaterEqual(len(limits), 5, "need five limits-of-kindness events")
+
     def test_helper_voice_vs_office(self):
         # the office is formal and says "this office" or "we"; the helper's letters are plain, second person, never say "this office"
         for e in EVENTS:
