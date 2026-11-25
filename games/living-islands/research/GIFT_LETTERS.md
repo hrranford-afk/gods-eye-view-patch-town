@@ -61,7 +61,7 @@ Letters are data, not code: a small JSON list (id, trigger, text, optional varia
 3. Should the stamp change slightly each year (a hint that it grows)? My default: no, constant.
 
 ## Prelude letters (owner direction, 25 Nov): the inheritance
-Owner: it needs to be worded as an inheritance, maybe an apology for never meeting you in person, saying it has been helping you from afar. Two letters arrive together through the door. Own words, no real names. The helper never lies but does not say everything: it says 'someone who has always thought of you as family', never 'I am your relative'.
+Owner: it needs to be worded as an inheritance, maybe an apology for never meeting you in person, saying it has been helping you from afar. Two letters arrive together through the door. Own words, no real names. The helper never lies but does not say everything: it says at most 'someone who has always thought of you as family', never 'I am your relative'. v2 rule: no official voice (the office, the helper, the deed) ever states a relation as fact; the family inference belongs to the player, a neighbour or the town.
 
 **P1. The cover letter, from New Life Inheritance** (formal, a little dull, a little suspicious; the office's voice)
 > Dear beneficiary,
@@ -75,4 +75,4 @@ Owner: it needs to be worded as an inheritance, maybe an apology for never meeti
 > Whatever you make of it will be right.
 > With love, from a distance.
 
-Notes: (1) 'helped from a distance' is literally true of the helper, so a second reading changes the meaning; (2) 'it was always easier to send something than to turn up' is a small human oddity that hints something is off (and explains why everything arrives by hatch and crate, never by hand); (3) the last line of P1 is the first sign of 'it cannot tell you'; (4) later clue for the investigate path: the phrasing and the stamp of P2 match L1 to L12 exactly, and no such relative is in any record; (5) P2 replaces nothing in L1 to L12: L1 (the key) still arrives at the crate on the island. Taste question for the owner: how warm should P2 be (default: warm but restrained)?
+Notes: (1) 'helped from a distance' is literally true of the helper, so a second reading changes the meaning; (2) 'it was always easier to send something than to turn up' is a small human oddity that hints something is off (and explains why everything arrives by hatch and crate, never by hand); (3) the last line of P1 is the first sign of 'it cannot tell you'; (4) later clue for the investigate path: the phrasing and the stamp of P2 match L1 to L12 exactly, and the office archive is incomplete: no record either way; (5) P2 replaces nothing in L1 to L12: L1 (the key) still arrives at the crate on the island. Taste question for the owner: how warm should P2 be (default: warm but restrained)?

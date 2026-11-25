@@ -13,3 +13,16 @@ FIXED rules kept in every step: hopeful; mild trouble only; robots are relics (n
 | 1.4 | CHANGED | `a2_door_no_handle`: no longer echoes a letter line. The hut door has no outside handle (art clue, kept) and a small delivery hatch sits beside it | its tie is now "easier to send than to turn up": things arrive by hatch |
 | 1.5 | CHANGED | `a3_hatches`: "made by someone who preferred not to be seen coming" becomes "built for things to be sent in rather than people to turn up" | same echo, same reason |
 | 1.6 | CHANGED | Spine clue 27, the fingerprint table (prelude row) and the lantern-gate TASTE note | they quoted the old line |
+
+## Step 2. The uncle fix: nobody official states a relation
+| # | Status | Line | Reason |
+|---|---|---|---|
+| 2.1 | KEEP | P1: "an estate that has named you" | it asserts an estate, not a relative; it was already right |
+| 2.2 | CHANGED | P2 carries no family word at all (the old "families" went with the front door line). The helper may say "someone who has always thought of you as family" at most, and the test allows exactly that phrase | the critic: the helper never lies, and a relation is a claim it cannot make |
+| 2.3 | CHANGED | `a2_uncle_reply`: "no such relative in any register" becomes "our archive is incomplete: we hold no record of the matter either way" | the office cannot deny a relative any more than assert one; the archive is simply incomplete |
+| 2.4 | CHANGED | `a3_stranger_asks_uncle`: the visitor (the town) makes the guess, "so you have family with an island"; cause line says she makes her own guess | the family inference belongs to a neighbour or the town, never to the office or the helper |
+| 2.5 | KEEP | the blank brass plate on the office door; the office closing its file in year four; the coat, chair and shelf | objects and papers only; nothing asserts a person |
+| 2.6 | CHANGED | spine headlines, section 1 rule, act-two line, fingerprint table, clue 21, clue 39, the FIXED check, changelog row 1; `GIFT_LETTERS.md` rule and note (4) | each said "no such relative" or "a relative nobody can find" |
+| 2.7 | CHANGED | flag notes `uncle_no_record`, `uncle_no_record_visit`, `stamp_papers` in the registry | they said "no such man" and "the uncle's papers" |
+| 2.8 | KEEP | the internal deck `kind: "uncle"` and flag names `uncle_*` | internal tags, never shown; renaming would touch many ids and tests for no player benefit |
+| 2.9 | NEW TEST | `test_no_official_voice_asserts_a_relation` | no office or helper line may name a relation; P1 and P2 never say "relative" |

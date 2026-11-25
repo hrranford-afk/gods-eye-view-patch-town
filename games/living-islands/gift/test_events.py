@@ -391,6 +391,18 @@ class Content(unittest.TestCase):
         # the uncle is only papers and objects: no event shows him
         for e in uncle: self.assertIsNone(re.search(r"\b(his face|he said|he smiled|he walked|he stood)\b", e["text"], re.I))
 
+    def test_no_official_voice_asserts_a_relation(self):
+        # critic review v2: the office and the helper never state a relation as fact; the guess belongs to the player, a neighbour or the town
+        rel = r"\b(uncle|aunt|auntie|relative|relatives|kin|kinsman|great-uncle|nephew|niece|cousin|brother|sister|father|mother|parent|parents|grandfather|grandmother|grandparent|family|families)\b"
+        official = [e for e in EVENTS if e["voice"] in ("office", "helper")] + [BY_ID[i] for i in ("p0_P1", "p0_P2", "p0_office")]
+        for e in official:
+            blob = e["text"] + " " + " ".join(e.get("variants", {}).values())
+            blob = blob.replace("someone who has always thought of you as family", "")        # the most a helper line may say
+            self.assertIsNone(re.search(rel, blob, re.I), e["id"] + " an official voice names a relation")
+            self.assertIsNone(re.search(r"no such (relative|man|person|uncle)", blob, re.I), e["id"])
+        for t in ("p0_P1", "p0_P2"): self.assertNotIn("relative", BY_ID[t]["text"].lower())
+        self.assertIn("incomplete", BY_ID["a2_uncle_reply"]["text"]); self.assertIn("either way", BY_ID["a2_uncle_reply"]["text"])
+
     def test_helper_voice_vs_office(self):
         # the office is formal and says "this office" or "we"; the helper's letters are plain, second person, never say "this office"
         for e in EVENTS:
