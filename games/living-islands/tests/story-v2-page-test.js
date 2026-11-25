@@ -16,6 +16,17 @@ for (const [label, qs, w, h] of [['desktop 1280x720', '', 1280, 720], ['ipad 834
     const c = await p.evaluate(() => __gift.calendar()); ok(c.label === '1 May' && c.season === 'spring' && c.year === 1, label + ': day 1 is ' + c.long);
     await p.evaluate(() => __gift.setHour(24 * 30 + 8)); await p.waitForTimeout(1500); const c2 = await p.evaluate(() => ({ c: __gift.calendar(), t: (document.querySelector('#gd-strip b') || {}).title })); ok(c2.c.label === '1 June' && c2.t === c2.c.long, label + ': day 31 is ' + c2.c.label + ' and the Day chip says "' + c2.t + '"');
   }
+  if (want(3)) {
+    const k0 = await p.evaluate(() => ({ i: __gift.keyInfo(), m: __gift.keyMeshes(), ins: __gift.inspect('key'), t: __gift.targetsNow().some(t => t.id === 'key') }));
+    ok(k0.m === 1 && k0.i.count === 1 && k0.t && k0.ins && k0.ins.name === 'The brass key' && /no second key/.test(k0.ins.use), label + ': one key mesh on the lid, shown in the inspect layer: "' + (k0.ins && k0.ins.use) + '"');
+    await p.evaluate(() => __gift.letter1()); await p.waitForTimeout(500);
+    await p.evaluate(() => { const b = [...document.querySelectorAll('#gd-layer button')].find(x => /Keep it/.test(x.textContent)); if (b) b.click(); }); await p.waitForTimeout(900);
+    const k1 = await p.evaluate(() => ({ i: __gift.keyInfo(), m: __gift.keyMeshes(), t: __gift.targetsNow().some(t => t.id === 'key') }));
+    ok(k1.i.where === 'yours' && k1.m === 1 && !k1.t, label + ': after the lid is lifted the key is yours, still one, no key on the lid');
+    await p.evaluate(() => { __gift.closeCard(); __gift.notebook(); }); await p.waitForTimeout(500);
+    const nb = await p.evaluate(() => { const c = document.querySelector('#gd-layer .gd-card'); return c ? c.textContent : ''; });
+    ok(/The brass key/.test(nb) && /no second key/.test(nb), label + ': the notebook lists the one key');
+  }
   ok(errs.length === 0, label + ': no console errors' + (errs[0] ? ' ' + errs[0] : '')); await p.close();
 }
 await browser.close(); console.log(fails ? fails + ' FAILED of ' + n : 'all ' + n + ' passed'); process.exit(fails ? 1 : 0);

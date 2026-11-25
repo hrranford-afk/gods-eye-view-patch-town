@@ -215,7 +215,7 @@ function validState(o) {
 }
 function State(o) {
   const base = newState(o.seed >>> 0), s = base, num = (v, d, lo, hi) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d), bool = v => v === true;
-  s.gh = num(o.gh, s.gh, 0, 24 * 400); s.letter1 = bool(o.letter1); s.keyUsed = bool(o.keyUsed); s.hutOpen = bool(o.hutOpen);
+  s.gh = num(o.gh, s.gh, 0, 24 * 400); s.letter1 = bool(o.letter1); s.hutOpen = bool(o.hutOpen) && s.letter1; s.keyUsed = bool(o.keyUsed) && s.hutOpen;   /* one key: the hut cannot be open before the lid was lifted */
   s.dry = ['leanto', 'tarp', 'hut'].includes(o.dry) ? o.dry : null; s.water = bool(o.water);
   s.finds = Array.isArray(o.finds) ? o.finds.filter(x => FINDS.some(f => f.id === x)).slice(0, 8) : [];
   s.plank = bool(o.plank); s.shipSeen = bool(o.shipSeen); s.crate1 = bool(o.crate1); s.parts = Math.round(num(o.parts, 0, 0, 99)); s.partFrom = ['crate', 'wreck'].includes(o.partFrom) ? o.partFrom : null;
@@ -353,7 +353,15 @@ function calOf(day) {
 /* when each letter may arrive, in game days (the trigger is still the event; this is the earliest and latest day): L3 follows the first storm (never before day 3), L4 is the first winter (day 211), L9 only in year three from day 842 */
 const LETTER_DAYS = { L1: { from: 1 }, L2: { from: 1 }, L3: { from: 3 }, L4: { from: 211 }, L9: { from: 842, to: 1080 } };
 const letterOk = (id, day) => { const r = LETTER_DAYS[id]; return !!r && day >= r.from && (r.to === undefined || day <= r.to); };
-const CORE = { CAL_MONTHS, CAL_SEASONS, CAL_YEAR, CAL_MONTH, calOf, LETTER_DAYS, letterOk, STOP_ICONS, arrowDeg, PLACES, AMBIENT, ambientStep, STARTER, missingText, WAIT, waitStep, KITS, FIT_S, CAMP_CAP, modsOf, partsText, batteryLine, fitKit, ROBOT_RATE, HAND_UNIT_S, LITTER_UNITS, litterStock, rateText, handRate, handStep, STOCKS, BUILD_NEEDS, UNITS_PER_TRIP, STOCK_CAP, emptyStock, missing, needText, addHaul, setJob, START_CASH, START_CREDIT, START_HOUR, BASE_YEARLY, CATALOGUE, BUILDS, BOTTLES, FINDS, SHELTERS, LETTER1, LETTER2, STAGES, STAGE_LABEL, WEATHER_DELAY, SAVE_KEY, SAVE_VERSION,
+/* ---------------- STORY V2 ONE BRASS KEY (Job 6e item 3): there is exactly one brass key. It is never stored as a count or an item you can drop: where it is and what it has opened are read from two save flags (letter1: the lid is lifted and the key is yours; hutOpen: it turned in the hut door), so it cannot be lost, spent or duplicated. ---------------- */
+const KEY_USES = [{ id: 'crate', text: 'the lidded crate at the dock' }, { id: 'hut', text: 'the hut door' }, { id: 'drawer', text: 'the drawer in the hut table (a later day)' }];
+function keyOf(s) {
+  const mine = !!(s && s.letter1), opened = [mine, !!(s && s.hutOpen), false];
+  const used = KEY_USES.filter((u, i) => opened[i]).map(u => u.text), next = KEY_USES.find((u, i) => !opened[i]);
+  return { id: 'brass_key', count: 1, where: mine ? 'yours' : 'lid', name: 'The brass key',
+    use: mine ? 'The one brass key, on its string in your pocket. ' + (used.length ? 'It has opened ' + used.join(', and ') + '. ' : '') + (next ? 'Next: ' + next.text + '.' : '') + ' There is no second key.' : 'The one brass key. It hangs from the crate lid on a string. There is no second key.' };
+}
+const CORE = { KEY_USES, keyOf, CAL_MONTHS, CAL_SEASONS, CAL_YEAR, CAL_MONTH, calOf, LETTER_DAYS, letterOk, STOP_ICONS, arrowDeg, PLACES, AMBIENT, ambientStep, STARTER, missingText, WAIT, waitStep, KITS, FIT_S, CAMP_CAP, modsOf, partsText, batteryLine, fitKit, ROBOT_RATE, HAND_UNIT_S, LITTER_UNITS, litterStock, rateText, handRate, handStep, STOCKS, BUILD_NEEDS, UNITS_PER_TRIP, STOCK_CAP, emptyStock, missing, needText, addHaul, setJob, START_CASH, START_CREDIT, START_HOUR, BASE_YEARLY, CATALOGUE, BUILDS, BOTTLES, FINDS, SHELTERS, LETTER1, LETTER2, STAGES, STAGE_LABEL, WEATHER_DELAY, SAVE_KEY, SAVE_VERSION,
   pound, signed, newLedger, spend, recent, entryLine, creditYears, creditNote, itemById, etaFor, placeOrder, resolveDelivery, etaText, bottleIndex, bottleMessage, pickFinds,
   newState, stageOf, progress, jobsDone, serialize, deserialize, validState, canned, hintFor, canBuild, doBuild, hashStr, mulberry };
 if (typeof module !== 'undefined' && module.exports) module.exports = CORE;
@@ -731,7 +739,7 @@ function buildWorld() {
   const O = G.objs = {};
   /* the crate with the key, the hut */
   O.crate = place(mkCrate(0), sites.crate, 0.4); O.crate.userData.num = 0; root.add(O.crate);
-  const key = mkKey(); key.position.set(-.25, .86, .0); key.rotation.z = .3; O.crate.add(key); O.key = key;
+  const key = mkKey(); key.position.set(-.25, .86, .0); key.rotation.z = .3; O.crate.add(key); key.userData.brassKey = true; O.key = key;
   O.hut = place(mkHut(), sites.hut, sites.hutYaw); root.add(O.hut);
   O.tarp = place(mkTarp(), { x: sites.hut.x + Math.cos(sites.hutYaw) * 4.4, z: sites.hut.z - Math.sin(sites.hutYaw) * 4.4 }, sites.hutYaw); O.tarp.visible = false; root.add(O.tarp);
   /* placeholder barrel only when the kit barrel is not in this tier */
@@ -783,6 +791,7 @@ function targets() {
   const T = [], S = G.spots, s = G.s, O = G.objs; if (!S) return T;
   const add = (id, p, up, rad, ok) => { if (ok === false) return; const sc = screenOf(p.x, groundY(p.x, p.z) + up, p.z); if (sc) T.push({ id, x: sc.x, y: sc.y, r: rad }); };
   add('crate0', S.crate, .5, 52, !s.letter1 || !G.crateDone);
+  add('key', S.crate, 1.05, 26, !s.letter1);   /* the one brass key, while it hangs on the lid */
   add('hut', S.hut, 1.3, 70);
   if (S.lean) add('lean', S.lean, 1.2, 56);
   add('barrel', S.barrel, .6, 48);
@@ -807,7 +816,8 @@ function targets() {
    LOCKED = it cannot be used yet: a dim ring and the reason, never a glow. The words are in ONE table (INSPECT below; physical.js has the same kind of table for its own objects, info(id)): id pattern, name, use, needs, action. */
 const INSPECT = [
   { re: /^crate0$/, f: s => ({ name: 'The crate', use: 'Washed up on the beach. A brass key hangs from the lid.', needs: null, action: s.letter1 ? 'Read the letter again' : 'Lift the lid' }) },
-  { re: /^hut$/, f: s => ({ name: 'The hut', use: 'Your shelter. The door sticks.', needs: 'The brass key from the crate', action: 'Look inside' }) },
+  { re: /^key$/, f: s => { const k = keyOf(s); return { name: k.name, use: k.use, needs: null, action: 'Look' }; } },
+  { re: /^hut$/, f: s => ({ name: 'The hut', use: 'Your shelter. The door sticks.', needs: s.hutOpen ? 'The brass key (the door is open now)' : 'The one brass key from the crate' + (s.letter1 ? ' (you have it)' : ''), action: 'Look inside' }) },
   { re: /^lean$/, f: () => ({ name: 'The lean-to', use: 'A dry place out of the rain.', needs: null, action: 'Look' }) },
   { re: /^barrel$/, f: () => ({ name: 'Water barrel', use: 'Catches rain. Rain is the only water on this island.', needs: null, action: 'Check it' }) },
   { re: /^find\d+$/, f: () => ({ name: 'Something on the shore', use: 'A small find washed up by the tide.', needs: null, action: 'Pick it up' }) },
@@ -975,6 +985,7 @@ function activate(id) {
   if (PHYS() && PHYS().activate(id)) return;
   if (id === 'dest') { const i = exploreInfo(); if (i) toast(i.line + ' Follow the gold arrow, ' + Math.round(i.dist) + ' m.', 4800); return; }
   if (id === 'boat') { if (BDP()) BDP().activate('boat'); return; }
+  if (id === 'key') { toast(keyOf(G.s).use, 6500); return; }
   if (id === 'crate0') return openKeyCrate();
   if (id === 'hut') return hutCard();
   if (id === 'lean') return shelterCard();
@@ -1015,6 +1026,7 @@ function notebook() {
   job(s.water, 'Find water', s.water ? 'The barrel is out. No spring on this island: rain only.' : 'Not every island has a spring. This one does not.', s.water ? null : btn('Look', barrelCard));
   job(s.finds.length >= 2, 'Look along the shore', 'Finds taken: ' + s.finds.length + ' of 2. Seals keep to the far rocks.', null);
   job(s.plank, 'Fit one plank of the old jetty', s.plank ? 'One plank is in. The tender can land a little closer.' : 'Drag a loose plank to a gap, or tap a plank and then a gap.', s.plank ? null : btn('Show me', showJetty));
+  if (s.letter1) { const k = keyOf(s); c.appendChild(h('div', 'gd-item', '<div><b>' + k.name + '</b><small>' + k.use + '</small></div>')); }
   { const L = stopLines(10); if (L.length) { c.appendChild(h('p', '', '<b>Recent stops</b> <small>(the last ' + L.length + ')</small>')); L.forEach(q => c.appendChild(h('div', 'gd-stopline', '<small>' + q.text + '</small>'))); } }
   c.appendChild(xbtn()); c.appendChild(row(btn('Close', closeCard, 'pri')));
 }
@@ -1557,7 +1569,7 @@ function init(ctx) {
     state: () => JSON.parse(JSON.stringify(G.s)), stage: () => stageOf(G.s), core: CORE, err: () => G.err.slice(), spots: () => G.spots && { crate: G.spots.crate, hut: G.spots.hut, tender: G.spots.tender, build: G.spots.build, stump: G.spots.stump, shore: G.spots.shore, wreck: G.spots.wreck, barrel: G.spots.barrel, finds: G.spots.finds.map(f => ({ id: f.id, x: f.x, z: f.z, taken: f.taken })), ship: G.spots.ship },
     targets: () => targets(), tap: (cx, cy) => onTap(cx, cy), act: id => activate(id), skipTo, card: () => G.cardOpen, closeCard, toast: () => G.toast, hint: () => hintFor(G.s), save: () => save(false), load: () => load(), wipe: wipeSave, saveOk: SAVE_OK,
     ledger: ledgerCard, notebook, catalogue: catalogueCard, build: buildCard, letter1: readLetter1, letter2: readLetter2, fitPlank: fitOnePlank, order: orderItem, startRobot, giveOrder, robotsCard, doBuild: confirmBuild, post: () => G.objs.post && { x: G.objs.post.position.x, z: G.objs.post.position.z, lamp: G.objs.post.userData.lampCol }, bottle: readBottle, sleep: sleepToMorning,
-    focus, calendar: () => calOf(dayNo()), clockMode: () => G.clockMode, weather: () => G.weather, hornCount: () => G.hornCount || 0, dlv: () => G.dlv && G.dlv.phase, barrel: () => G.barrel, crates: () => G.crates.map(c => ({ n: c.n, item: c.item || null, letter2: !!c.letter2, l9: !!c.l9 })),
+    focus, calendar: () => calOf(dayNo()), keyInfo: () => keyOf(G.s), keyMeshes: () => { let n = 0; G.root && G.root.traverse(o => { if (o.userData && o.userData.brassKey) n++; }); return n; }, clockMode: () => G.clockMode, weather: () => G.weather, hornCount: () => G.hornCount || 0, dlv: () => G.dlv && G.dlv.phase, barrel: () => G.barrel, crates: () => G.crates.map(c => ({ n: c.n, item: c.item || null, letter2: !!c.letter2, l9: !!c.l9 })),
     heavy: () => ({ ar: !!G.ar, seals: G.objs.seals.length, stumpKit: !!G.objs.stumpKit, finds: G.spots.finds.length, stumpScript: !!document.querySelector('script[src*="stump_b64"]') }),
     handHold: (id, sec) => { const st0 = Object.assign({}, G.s.stock); if (!handStart(id, 0, 0)) return { ok: false, got: 0 }; for (let t = 0; t < sec && G.hand && G.hand.down; t += .25) handTick(.25); handStop(); const st1 = G.s.stock; return { ok: true, got: STOCKS.reduce((n, k) => n + (st1[k.id] || 0) - (st0[k.id] || 0), 0) }; }, litterNow: () => litterNow(), stockSet: st => { G.s = Object.assign({}, G.s, { stock: Object.assign(emptyStock(), st) }); G.sig = null; }, bays: () => { const B = G.objs.bays; return B && B.list ? B.list.map(b => ({ id: b.id, x: b.x, z: b.z, step: B.step[b.id], shown: b.stack.filter(m => m.visible).length })) : []; }, bayInfo: id => bayInfo(id), baysTris: () => { const B = G.objs.bays; let t = 0; if (B && B.grp) B.grp.traverse(m => { if (m.isMesh && m.visible) t += m.geometry.index ? m.geometry.index.count / 3 : m.geometry.attributes.position.count / 3; }); return t; }, wrack: () => { try { const s = C.li().campstart.rt().sim(); return { k: s.wrackK || 1, w: s.wrack || null }; } catch (e) { return null; } }, phaseNow, litCircle, handOk: (x, z) => handOk(x, z, false), ringShown: () => !!(G.ring && G.ring.visible), setPhase: p => { G.phaseOverride = p; },
     deliverNow: id => { orderItem(id); const o = G.s.orders[G.s.orders.length - 1]; if (o) o.delivered = true; G.arrivals = (G.arrivals || []).concat([id]); }, openCrate: n => deliveryCrate(n), robotCardOpen: i => robotCard(i), startFit: (i, k) => startFit(i, k), fitState: () => G.fit && { i: G.fit.i, kit: G.fit.kit, ready: fitReady() }, cardText: () => (document.querySelector('.gd-card') || {}).textContent || '', clickBtn: txt => { const b = [...document.querySelectorAll('.gd-card button')].find(q => q.textContent.indexOf(txt) >= 0 && !q.disabled); if (b) { b.click(); return true; } return false; },

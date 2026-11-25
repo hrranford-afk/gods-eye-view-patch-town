@@ -65,4 +65,23 @@ const env = (seed, small) => ({ seed, H, half: 64, step: .8, tableR: 60, hw: A.S
   ok(![].concat(K.CAL_MONTHS, K.LETTER1, K.LETTER2).some(t => bad.test(t)), 'no real place names or brands in the months or letters');
   ok(K.calOf(7).long === '7 May, year 1, spring', 'the Day tooltip text: ' + K.calOf(7).long);
 }
+
+/* ---- 3. one brass key ---- */
+{
+  const K = globalThis.LI_GIFT.core;
+  const s0 = K.newState(5), s1 = Object.assign({}, s0, { letter1: true }), s2 = Object.assign({}, s1, { hutOpen: true, keyUsed: true });
+  for (const [nm, s] of [['before the lid', s0], ['lid lifted', s1], ['hut open', s2]]) ok(K.keyOf(s).count === 1 && K.keyOf(s).id === 'brass_key', nm + ': exactly one brass key');
+  ok(K.keyOf(s0).where === 'lid' && /hangs from the crate lid/.test(K.keyOf(s0).use) && /no second key/.test(K.keyOf(s0).use), 'before the lid is lifted it hangs on the crate lid and says there is no second key');
+  ok(K.keyOf(s1).where === 'yours' && /opened the lidded crate/.test(K.keyOf(s1).use) && /Next: the hut door/.test(K.keyOf(s1).use), 'then it is yours, has opened the crate, and the hut door is next');
+  ok(/opened the lidded crate at the dock, and the hut door/.test(K.keyOf(s2).use) && /drawer/.test(K.keyOf(s2).use), 'after the hut it lists the crate and the hut door, and the drawer is later');
+  /* it cannot be lost or duplicated: it is read from flags, and a save cannot make the hut open without the key being yours */
+  const bad = K.deserialize(K.serialize(Object.assign({}, s0, { hutOpen: true, keyUsed: true })));
+  ok(bad && !bad.hutOpen && !bad.keyUsed && K.keyOf(bad).count === 1 && K.keyOf(bad).where === 'lid', 'a save with the hut open but the lid never lifted loads with the hut shut (no key used before it was found)');
+  const rt = K.deserialize(K.serialize(s2)); ok(rt.hutOpen && rt.keyUsed && rt.letter1 && K.keyOf(rt).count === 1, 'a save round trip keeps the one key and what it opened');
+  for (const st of ['arrive', 'jobs', 'delivery', 'yard', 'evening', 'night', 'done']) { const c = K.canned ? K.canned(st, 3) : null; if (c) ok(K.keyOf(c).count === 1, 'canned state ' + st + ': one key'); }
+  const src = fs.readFileSync(path.join(dir, 'gift_day.js'), 'utf8');
+  ok((src.match(/mkKey\(\)/g) || []).length === 2, 'the key model is built in one place only (one definition, one call)');
+  ok(!/second key|spare key|duplicate key/i.test(src.replace(/There is no second key/g, '').replace(/no second key/g, '')), 'no code or text hands out a second key');
+}
+
 console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
