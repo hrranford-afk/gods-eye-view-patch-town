@@ -165,9 +165,10 @@ function pickFinds(seed, n) {
 function newState(seed) {
   return { v: SAVE_VERSION, seed: seed >>> 0, gh: START_HOUR, stage: 'arrive', letter1: false, keyUsed: false, hutOpen: false,
     dry: null, water: false, finds: [], plank: false, shipSeen: false, crate1: false, parts: 0, partFrom: null, ordered: false, orders: [], delivered: [],
-    robots: [], jobs: [], stock: emptyStock(), letter2: false, build: null, bottle: false, night: false, saved: false, ledger: newLedger(),
+    robots: [], jobs: [], stock: emptyStock(), boat: null, letter2: false, build: null, bottle: false, night: false, saved: false, ledger: newLedger(),
     dial: { year: 1, creditThin: [1, 0.9, 0.6, 0.3, 0.1], note: 'stored for later years, not used on day 1' } };
 }
+const boatOf = o => { const K = root.LI_BOAT_DRIVE; return K && K.sanitize ? K.serializeBoat(K.sanitize(o)) : (o && typeof o === 'object' ? JSON.parse(JSON.stringify(o)) : null); };
 const jobsDone = s => (s.dry ? 1 : 0) + (s.water ? 1 : 0) + (s.finds.length >= 2 ? 1 : 0);
 /* the stage from the flags alone (pure) */
 function stageOf(s) {
@@ -196,6 +197,7 @@ function State(o) {
   s.ordered = bool(o.ordered); s.letter2 = bool(o.letter2); s.bottle = bool(o.bottle); s.night = bool(o.night); s.saved = bool(o.saved);
   s.build = BUILDS.some(b => b.id === o.build) ? o.build : null;
   s.robots = Array.isArray(o.robots) ? o.robots.slice(0, 4).map(bool) : [];
+  s.boat = o.boat && typeof o.boat === 'object' ? boatOf(o.boat) : null;   /* the boat's part of the save (boat_drive.js sanitises it; absent = no boat yet) */
   s.jobs = Array.isArray(o.jobs) ? o.jobs.slice(0, 4).map(j => (stockById(j) ? j : null)) : [];
   s.stock = emptyStock(); if (o.stock && typeof o.stock === 'object') for (const k in s.stock) s.stock[k] = Math.round(num(o.stock[k], 0, 0, STOCK_CAP));
   s.orders = Array.isArray(o.orders) ? o.orders.filter(q => q && itemById(q.item) && Number.isFinite(q.due)).slice(0, 40).map(q => ({ id: String(q.id).slice(0, 12), item: q.item, placed: num(q.placed, 0, 0, 1e5), due: num(q.due, 0, 0, 1e5), delays: Math.round(num(q.delays, 0, 0, 9)), delayH: num(q.delayH, 0, 0, 999), delivered: bool(q.delivered) })) : [];
@@ -267,7 +269,7 @@ const USER_WEATHER = Q0.has('weather') ? Q0.get('weather') : null;
 /* THE HOME ISLAND is one swap point: this world id (landform/worlds/seed<id>/) plus the page's own landing and camp scan, which place every story piece. A level can replace it with ?giftworld=<id> or by changing this one constant. */
 const GIFT_WORLD = Q0.get('giftworld') || '9001';
 if (GIFT) {
-  const need = { world: GIFT_WORLD, start: 'camp', repair: '1', clock: '1', weather: 'auto', cd: '121', ch: String(START_HOUR), cspeed: '0.2', cm: '9', clat: '46' };
+  const need = { world: GIFT_WORLD, start: 'camp', repair: '1', clock: '1', weather: 'auto', cd: '121', ch: String(START_HOUR), cspeed: '0.2', cm: '9', clat: '46', boatkit: '1' };   /* boatkit: the kit dinghy is the boat you drive (boat_drive.js); &boatkit=0 keeps the old hulls */
   let changed = false; for (const k in need) if (!Q0.has(k)) { Q0.set(k, need[k]); changed = true; }
   if (changed) { try { history.replaceState(null, '', location.pathname + '?' + Q0.toString() + location.hash); } catch (e) { /* the page still works on its own switches */ } }
 }
@@ -626,6 +628,7 @@ function loadStump(p, y) {   /* the kit's lighthouse stump (live level) from its
 }
 
 /* ---------------- targets and taps ---------------- */
+const BDP = () => root.LI_BOAT_DRIVE && root.LI_BOAT_DRIVE.page;   /* the boat layer, when boat_drive.js is on the page */
 const _v = () => new THREE.Vector3();
 function screenOf(x, y, z) {
   const v = _v().set(x, y, z); C.camera.updateMatrixWorld(); v.project(C.camera); if (v.z > 1 || v.z < -1) return null;
@@ -643,6 +646,7 @@ function targets() {
   G.crates && G.crates.forEach((c, i) => { if (c.mesh && c.mesh.visible) add('crate' + (i + 1), c.pos, .5, 52); });
   const rt = C.li().campstart && C.li().campstart.rt(); let bots = []; try { bots = rt ? rt.robots() : []; } catch (e) { bots = []; }
   bots.forEach(b => { if (b.ready) { const sc = screenOf(b.x, b.y + .9, b.z); if (sc) T.push({ id: 'bot' + b.id, x: sc.x, y: sc.y, r: 60 }); } });
+  try { if (BDP() && BDP().targets) BDP().targets().forEach(t => T.push(t)); } catch (e) { G.err.push('boat targets ' + e.message); }
   if (O.bottle && O.bottle.visible && G.bottleOn) { const p = O.bottle.position; const sc = screenOf(p.x, p.y + .2, p.z); if (sc) T.push({ id: 'bottle', x: sc.x, y: sc.y, r: 56 }); }
   return T;
 }
@@ -694,6 +698,7 @@ function onStage(now) {
 }
 function activate(id) {
   const s = G.s, S = G.spots;
+  if (id === 'boat') { if (BDP()) BDP().activate('boat'); return; }
   if (id === 'crate0') return openKeyCrate();
   if (id === 'hut') return hutCard();
   if (id === 'lean') return shelterCard();
@@ -967,7 +972,7 @@ function renderUi() {
   sk.addEventListener('change', () => { const v = sk.value; sk.value = ''; skipTo(v); }); R.appendChild(sk);
   const L = G.ui.left; L.innerHTML = '';
   if (s.water) { const w = h('div', 'gd-pill', 'Barrel: ' + Math.round(G.barrel || 0) + ' of 40 litres'); w.id = 'gd-barrel'; w.style.fontSize = '14px'; L.appendChild(w); }
-  if (s.robots.some(Boolean)) { const w = btn(stockLine(s.stock), robotsCard); w.id = 'gd-stock-btn'; w.style.fontSize = '14px'; w.style.textAlign = 'left'; L.appendChild(w); }
+  if (s.robots.some(Boolean) || STOCKS.some(k => (s.stock[k.id] || 0) > 0)) { const w = btn(stockLine(s.stock), robotsCard); w.id = 'gd-stock-btn'; w.style.fontSize = '14px'; w.style.textAlign = 'left'; L.appendChild(w); }
   if (s.parts) { const w = h('div', 'gd-pill', 'Parts: ' + s.parts); w.style.fontSize = '14px'; L.appendChild(w); }
 }
 
@@ -985,6 +990,7 @@ function applyWorldToState() {
   O.ship.visible = false; O.tender.visible = false; G.dlv = null; G.bottleOn = false; O.bottle.visible = false; G.bottleToast = false; G.nightT = 0;
   if (s.plank) { try { const rp = C.li().repair; if (rp && rp.count().fitted < 1) { const so = rp.sockets().filter(q => !q.filled && q.kind === 'plank'), bo = rp.bodies().filter(b => b.kind === 'plank' && b.state === 'dyn' && !b.lost); if (so.length && bo.length) { rp.teleport(bo[0].id, so[so.length - 1].p.slice()); rp.fit(bo[0].id); rp.step(30); } } } catch (e) { /* later */ } }
   G.weather = ''; clockSet(s.gh); renderUi();
+  try { const bd = BDP(); if (bd && bd.resync) { bd.resync(); G.boatRev = !!(s.ordered); } } catch (e) { G.err.push('boat resync ' + e.message); }
 }
 function clockSet(gh) { const c = ck(); if (!c) return; if (G.clk0 === undefined) G.clk0 = clk0(); c.setHours(G.clk0 + gh); c.freeze(true); G.clockMode = 'hold'; }
 function skipTo(v) {
@@ -1005,11 +1011,12 @@ function tick(dt) {
   const s = G.s; G.idle += dt;
   if (G.root.parent !== C.scene) C.scene.add(G.root);
   clockTick(dt); weatherTick(); holdRobots(); chargePost(); plankWatch(); deliveriesTick(); deliveryTick(dt); nightTick(dt); focusTick(dt);
+  try { const bd = BDP(); if (bd && bd.tick) { bd.tick(dt); if (!G.boatRev && s.ordered) { G.boatRev = true; if (bd.reveal) bd.reveal(); } } } catch (e) { if (G.err.length < 20) G.err.push('boat ' + e.message); }
   const O = G.objs, tide = C.tide();
   /* barrel fills in rain */
   if (s.water) { if (isRaining()) G.barrel = Math.min(40, (G.barrel || 0) + dt * 1.6); }
   /* seals slip into the water when the view comes near their rock */
-  O.seals.forEach(sl => { const near = Math.hypot(C.cam.tx - sl.position.x, C.cam.tz - sl.position.z) < 34 && C.cam.dist < 120; const target = near ? -.8 : sl.userData.base; sl.position.y += (target - sl.position.y) * Math.min(1, dt * 2); sl.visible = sl.position.y > -.6; });
+  O.seals.forEach(sl => { const near = (Math.hypot(C.cam.tx - sl.position.x, C.cam.tz - sl.position.z) < 34 && C.cam.dist < 120) || !!sl.userData.boatFlee; const target = near ? -.8 : sl.userData.base; sl.position.y += (target - sl.position.y) * Math.min(1, dt * 2); sl.visible = sl.position.y > -.6; });
   /* the stump lamp at night, a slow flicker */
   if (O.stumpGlow) { const night = isNight() ? 1 : 0; G.lamp = (G.lamp || 0) + (night - (G.lamp || 0)) * Math.min(1, dt * .8); O.stumpGlow.material.opacity = G.lamp * (.8 + .15 * Math.sin(performance.now() / 380) + .05 * Math.sin(performance.now() / 91)); O.stumpGlow.visible = G.lamp > .01; }
   /* no person is drawn in the gift: the camp's three figures and the jetty marker stay hidden (people are counted, not shown) */
@@ -1023,6 +1030,7 @@ function tick(dt) {
 }
 function hintTarget() {
   const s = G.s, S = G.spots, st = stageOf(s); if (!S) return null;
+  try { const bd = BDP(), t = bd && bd.hintTarget && bd.hintTarget(); if (t && st !== 'arrive' && st !== 'jobs') return t; } catch (e) { /* none */ }
   if (st === 'arrive') return { x: S.crate.x, z: S.crate.z, r: 1.7 };
   if (st === 'jobs') { if (!s.dry) return { x: S.hut.x, z: S.hut.z, r: 3 }; if (!s.water) return { x: S.barrel.x, z: S.barrel.z, r: 1.4 }; const f = S.finds.find(q => !q.taken); if (s.finds.length < 2 && f) return { x: f.x, z: f.z, r: 1.3 }; if (!s.plank && S.S.jetty) return { x: S.S.jetty.ox, z: S.S.jetty.oz, r: 3 }; }
   if (st === 'delivery' && G.crates[0]) return { x: G.crates[0].pos.x, z: G.crates[0].pos.z, r: 1.7 };
@@ -1032,6 +1040,12 @@ function hintTarget() {
   return null;
 }
 
+/* ---------------- the boat layer (boat_drive.js) gets a small handle on this page ---------------- */
+function attachBoat() {
+  const K = root.LI_BOAT_DRIVE; if (!K || !K.attach || G.boatAttached) return; G.boatAttached = true;
+  K.attach({ C: () => C, THREE: () => THREE, S: () => G.s, patch: o => setS(o), save: () => save(), afterChange, toast, card, closeCard, btn, row, xbtn, weatherState, isNight, isAR, dayNo, hhmm, spots: () => G.spots, seals: () => (G.objs.seals || []), root: () => G.ui.root,
+    screenOf, focus, focusing: () => !!G.focusT, cardOpen: () => !!G.cardOpen, targets: () => targets(), stockLine, STOCKS: () => STOCKS });
+}
 /* ---------------- start ---------------- */
 function start() {
   if (!G.s) { G.s = newState(C.seed); G.crates = []; G.barrel = 0; }
@@ -1043,7 +1057,7 @@ function start() {
   else if (qd && parseInt(qd, 10) >= 2) { G.s = canned('done', seed); G.s.gh = 31.2; G.s.orders.forEach(o => { o.delivered = true; }); G.s.delivered = G.s.orders.map(o => o.item); }
   else if (loaded) G.s = loaded;
   G.s.seed = seed >>> 0; G.s.stage = stageOf(G.s);
-  G.ready = true; applyWorldToState();
+  G.ready = true; attachBoat(); applyWorldToState();
   const sp = G.spots, dd = C.W.camp.dir, th = Math.atan2(-dd[0], -dd[1]) + .55; if (!qs && !loaded && Q0.get('glide') === '0') Object.assign(C.cam, { tx: sp.crate.x, tz: sp.crate.z, dist: 30, phi: .5, theta: th });
   else if (!qs && !loaded) { /* BOLD-1 dawn glide: the view starts out over the water and settles on the crate (switch off: &glide=0) */ Object.assign(C.cam, { tx: sp.shore.x + (sp.shore.x - sp.crate.x) * 1.2, tz: sp.shore.z + (sp.shore.z - sp.crate.z) * 1.2, dist: 85, phi: .95, theta: th }); focus(sp.crate.x, sp.crate.z, 30, th, .5); G.focusT.slow = true; } else focus(sp.crate.x, sp.crate.z, 36, th, .55);
   if (G.s.stage === 'night' && !G.s.bottle) startNight();
