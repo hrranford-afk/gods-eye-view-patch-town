@@ -1,0 +1,2 @@
+# Job 6d: where things come from (owner playtest 25 Nov). One line per pushed item.
+1. WRACK-LINE TIMBER: camp_start.js (wrackOf, sim.wrack counted per arrival, sim.wrackK speed after a storm, rope drawn as thin tan lengths), gift_day.js (the card text 'Washed up at the tide line' on the pill, the robots card, the robot card and the pile). Economy unchanged (same timers, ROBOT_RATE, UNITS_PER_TRIP). Test: tests/wrack-test.js (9, pure node); also gift-day 115, night 57, deadtime 10, physical 92, storm, camp, boat-drive 97, hud 66 (default page 8d962c0c, 88,790), glow 21.

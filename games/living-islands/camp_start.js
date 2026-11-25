@@ -226,11 +226,14 @@ function advance(r, dist) {
   }
   return !r.path || r.pi >= r.path.length;
 }
+/* what a shore pile is made of, for the player: wood is planks, every second plastic pile is rope (the page's litterStock says the same), the rest is not wrack timber */
+function wrackOf(w, i) { return !w ? null : w.kind === 'wood' ? 'planks' : (w.kind === 'plastic' && i % 2 === 0) ? 'rope' : null; }
 function simStep(sim, dt, env) {
   if (env) { if (env.night !== undefined) sim.env.night = !!env.night; if (env.rain !== undefined) sim.env.rain = !!env.rain; if (env.tide !== undefined) sim.env.tide = env.tide; }
   const R = sim.R || (sim.R = mulberry32((sim.pl.seed >>> 0) * 53 + 3));
   sim.t += dt; if (nightOn(sim)) shiftPlan(sim); else for (const r of sim.robots) r.nc = false;
-  sim.litter.forEach((l, i) => { if (l.taken) { l.back -= dt; if (l.back <= 0) l.taken = false; } });
+  /* Job 6d item 1: timber and rope arrive with the tide. A piece that comes back is a wash-up: counted by kind, logged, faster after a storm (sim.wrackK). The timer itself is the old one, so the economy is unchanged. */
+  sim.litter.forEach((l, i) => { if (l.taken) { l.back -= dt * (sim.wrackK || 1); if (l.back <= 0) { l.taken = false; const k = wrackOf(sim.pl.work[i], i); if (k) { const W = sim.wrack || (sim.wrack = { n: 0, by: {}, log: [] }); W.n++; W.by[k] = (W.by[k] || 0) + 1; l.arr = sim.t; W.log.push({ t: sim.t, i, stock: k }); if (W.log.length > 200) W.log.shift(); } } } });
   const moving = [];
   for (const r of sim.robots) {
     r.yield = false;
@@ -493,11 +496,12 @@ function create(o) {
   }
   /* litter on the shore sites: what the robots come for; one small mesh each, hidden while the robot has it and back after the tide */
   pl.work.forEach((w, i) => {
-    const pb = new PB(), RR = mulberry32(i * 31 + pl.seed), pcs = { plastic: [colors.blue, colors.white, colors.orange, colors.green].map(c => c.map(v => v * .75)), metal: [colors.steel, colors.rust, colors.steelD], wood: [colors.wood, colors.woodD] }[w.kind];
+    const pb = new PB(), RR = mulberry32(i * 31 + pl.seed), pcs = (w.kind === 'plastic' && i % 2 === 0) ? [colors.wood, colors.woodD] : { plastic: [colors.blue, colors.white, colors.orange, colors.green].map(c => c.map(v => v * .75)), metal: [colors.steel, colors.rust, colors.steelD], wood: [colors.wood, colors.woodD] }[w.kind];
     const gy = (x, z) => H(x, z);
     for (let q = 0; q < 5; q++) { const a = RR() * TAU, d = RR() * 1.1, x = w.x + Math.cos(a) * d, z = w.z + Math.sin(a) * d, c = pcs[q % pcs.length];
       if (w.kind === 'wood') pb.box(x, gy(x, z) + .05, z, .9 + RR() * .5, .08, .1, RR() * 3, c);
       else if (w.kind === 'metal') { blob(pb, x, gy(x, z) + .06, z, .14, .1, .1, RR() * 6, 300 + q, () => c, .3, .6); }
+      else if (wrackOf(w, i) === 'rope') pb.box(x, gy(x, z) + .03, z, .55 + RR() * .35, .05, .05, RR() * 3, c);   /* rope: thin tan lengths */
       else blob(pb, x, gy(x, z) + .04, z, .08 + RR() * .06, .05, .07 + RR() * .05, RR() * 6, 310 + q, () => c, .3, .5); }
     meshes.litter.push(addMesh(pb, false));
   });
@@ -715,7 +719,7 @@ function create(o) {
 /* the tier of a plan made for 'high': fewer pieces, bays and work sites for low and AR (the page plans once, so a quality change rebuilds from the same plan) */
 function forTier(pl, tier) { const mt = TIER_PIECES[tier] || 3, nb = Math.min(pl.nBays, TIER_BOTS[tier] || 3);
   return Object.assign({}, pl, { tier, nBays: nb, yard: Object.assign({}, pl.yard, { nBays: nb }), pieces: pl.pieces.filter(p => PIECES[p.kind].tier <= mt), work: pl.work.slice(0, { high: 7, low: 5, ar: 3 }[tier] || 7) }); }
-const API = { STOPS, STOP_CODES, stopReason, stopSay, placeOf, noteStop, stopTrack, NIGHT, CAP_BIG, SOLAR, shiftPlan, litSite, litRadius, nightOn, rectDist, yardDims, PIECES, TIER_PIECES, TIER_BOTS, DRY_MIN, LOW_CHARGE, ST, KIND_V, ROLE_BY_KIND, plan, yardPoints, yardRadius, toWorld, ringStats, fcWorld, simCreate, simStep, simRun, inYard, shelterHook, forTier, create, pickBots, DEFAULT_RECIPES, E_ROBOT, mulberry32, hash2, DRAIN, CHARGE, BAY_SPACING };
+const API = { wrackOf, STOPS, STOP_CODES, stopReason, stopSay, placeOf, noteStop, stopTrack, NIGHT, CAP_BIG, SOLAR, shiftPlan, litSite, litRadius, nightOn, rectDist, yardDims, PIECES, TIER_PIECES, TIER_BOTS, DRY_MIN, LOW_CHARGE, ST, KIND_V, ROLE_BY_KIND, plan, yardPoints, yardRadius, toWorld, ringStats, fcWorld, simCreate, simStep, simRun, inYard, shelterHook, forTier, create, pickBots, DEFAULT_RECIPES, E_ROBOT, mulberry32, hash2, DRAIN, CHARGE, BAY_SPACING };
 if (typeof module !== 'undefined' && module.exports) module.exports = API;
 root.LI_CAMP = Object.assign(root.LI_CAMP || {}, API);
 })(typeof window !== 'undefined' ? window : globalThis);
