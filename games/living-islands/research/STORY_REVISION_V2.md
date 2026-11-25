@@ -152,3 +152,20 @@ Rewritten lightly into our voice; ids unique; mood split ten good, seven in-betw
 | 12.4 | KEEP | FIXED rule 10: the home island has no spring; the woods spring is the long answer | realistic water |
 | 12.5 | KEEP | no score, no grade: the mark is not tracked against anything | people and play styles are counted, never ranked |
 | 12.6 | NEEDS PAGE | save key `beach_mark` (kind, day, first build), a placement UI for the four marks, a card at the year-four report | listed under Needs the page builder |
+
+## Step 13. Tests, the deck notes and the simulation
+| # | Status | Line | Reason |
+|---|---|---|---|
+| 13.1 | CHANGED | `gift/test_events.py`: 29 tests, all green. New: P2 sentence, no official relation, no saving speech and five limits, five world kindnesses, refusal scene, no parental reassurance, causal seal counts, carpet reappears, one key, L9 only in year three, L3 early, small first storm | the rules cannot drift |
+| 13.2 | CHANGED | `gift/EVENTS.md` counts, mood split, simulation report (dead stretches 1.2 a run, 14 of 40 runs none, year three and four the thin spots), a v2 rules and tests section | kept in sync with the deck |
+| 13.3 | CHANGED | spine section 5 counts and simulation bullets, headline counts | same |
+| 13.4 | KEEP | mood split: 117 good (47 percent), 96 mid (38 percent), 37 mild trouble (15 percent) of 250 drawn events | the target of about a half, a third and a sixth holds, and the test bands (good 40 to 56, mid 28 to 40, mild 12 to 22) still pass |
+
+## Totals
+Deck: 257 records (7 prelude, 250 drawn: act 1 73, act 2 77, act 3 60, act 4 40), up from 201. Added 56 drawn events: 5 limits of kindness, 5 world kindnesses, 11 clues (10 from the critic and the unstamped plank), 6 goals for years two and three, 20 seasonal events, 3 refusal-scene events, 6 for the three questions. Clue map rows 62 (was 46). New tests: 9 (29 in all).
+
+## Open taste items for the owner (veto any line above)
+1. P2 "I think you will be good at it" and "Whatever you make of it will be right", and L2 "None of it is wrong" were kept (your words or a permission). Say the word and they go.
+2. P2 now has no family word at all. Restore "someone who has always thought of you as family" if you want that hint back.
+3. The decline in the refusal scene leans distrust by one point (soft). Say if it should lean nothing.
+4. The beach mark: four choices (stack, cairn, bench, painted board). Add or cut kinds.

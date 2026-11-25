@@ -7,10 +7,10 @@ Rails kept: hopeful; nothing gory or cruel; robots are relics with no faces, spe
 
 ## 0 Headlines
 1. The game asks one question: is help a gift or a leash? It never answers. Each year (act) presses on it from a new side: trust, doubt, shared use, standing alone.
-2. The helper is a schedule of fingerprints, not a character. 46 clues are placed on named spots of the Level 1 map. None is proof, and several contradict each other on purpose.
+2. The helper is a schedule of fingerprints, not a character. 62 clues (46 from v0, 5 world kindnesses and 11 critic clues in v2) are placed on named spots of the Level 1 map. None is proof, and several contradict each other on purpose.
 3. The prelude is an inheritance: two letters through the door, a formal office, and an estate nobody can place on a family tree. The office says it is "unable to answer questions". The helper's letters say it plainly and warmly, and never explain. The office and the helper are one hand in two voices.
 4. Week one (days 2 to 7) is built so that no counter moves without a visible cause, and each day has one job that needs the player and a robot together. The day-5 Hoard run gets a lantern gate: the robots cross only behind a light the player carries.
-5. The deck has 201 records: 194 drawn events (act 1: 54, act 2: 53, act 3: 49, act 4: 38), 7 prelude records. Mood of the drawn events: 46 percent good, 38 percent mid, 16 percent mild trouble. A four-year simulation gives about 710 events a run and a dead stretch (10 days of nothing) 1.6 times a run, none before day 100.
+5. The deck has 257 records: 250 drawn events (act 1: 73, act 2: 77, act 3: 60, act 4: 40), 7 prelude records. Mood of the drawn events: 47 percent good, 38 percent mid, 15 percent mild trouble. A four-year simulation gives about 766 events a run and a dead stretch (10 days of nothing) 1.2 times a run, none before day 100.
 6. Biggest gaps: the game does not read the deck yet; Job 5 (make it physical) is not built; there is no sound at all; the thinning is not shown on screen; distrust and share events are thin in the deck (23 and 27 tagged, against 105 for trust).
 
 ## 1 The prelude: the inheritance (before day 1, about 8 minutes)
@@ -305,13 +305,13 @@ Art-only and UI-only clues to add cheaply: a stone with the stamp under the top 
 Consistency with FIXED rules: the stamp is on crates, letters, papers, robots, floats and ribs (the same mark); the letters never ask or explain; no face or voice is shown; robots have no feelings words (the test blocks them); the helper is never named in act one; the office is never shown, only paper; no staff name is ever written (each is "a different name"); no relative is named, shown or asserted by any official voice.
 
 ## 5 The event deck (what is in `gift/events.json`)
-201 records. The schema and the draw procedure are in `gift/EVENTS.md`. The test file checks: schema; unique ids; flags and kinds registered; every act has enough (22, 20, 20, 16); the mood split (good 40 to 56, mid 28 to 40, mild 12 to 22 percent); forbidden words (brands, real places, robot feeling words, faces, gore, AI naming); the two prelude letters and the six town bottles are unedited; the helper never says "office", the office never speaks of the old machines; clue text never claims proof; each event is reachable on Level 1 (the Hoard needs the boat or a spring low from day 5, the woods the boat or a spring low from day 6, the reef, seals and the rock the boat); each trigger can be true on some day; and the simulation.
+257 records (v2). The schema and the draw procedure are in `gift/EVENTS.md`. The test file checks: schema; unique ids; flags and kinds registered; every act has enough (22, 20, 20, 16); the mood split (good 40 to 56, mid 28 to 40, mild 12 to 22 percent); forbidden words (brands, real places, robot feeling words, faces, gore, AI naming); the two prelude letters and the six town bottles are unedited; the helper never says "office", the office never speaks of the old machines; clue text never claims proof; each event is reachable on Level 1 (the Hoard needs the boat or a spring low from day 5, the woods the boat or a spring low from day 6, the reef, seals and the rock the boat); each trigger can be true on some day; and the simulation.
 | | Act 1 | Act 2 | Act 3 | Act 4 | All |
 |---|---|---|---|---|---|
-| Drawn events | 54 | 53 | 49 | 38 | 194 |
-| of which repeatable | 22 | 30 | 25 | 27 | 104 |
+| Drawn events | 73 | 77 | 60 | 40 | 250 |
+| of which repeatable | 25 | 40 | 26 | 27 | 118 |
 | Prelude records | 7 (act 0) | | | | 7 |
-| Good / mid / mild trouble | 46 / 38 / 16 percent overall | | | | |
+| Good / mid / mild trouble | 47 / 38 / 15 percent overall (117 / 96 / 37) | | | | |
 **v2 seasonal events (critic review, 20).** Four seasons, five each; ten good, seven in-between, three mild trouble. Spring: a1_spring_gutter_rain (good), a2_spring_bird_rack (mid), a1_spring_second_oar (good), a3_spring_roof_gust (mild), a2_spring_cuttings (good). Summer: a2_summer_seal_ledge (good), a1_summer_bench_halves (mid, two choices), a2_summer_supper_boat (good), a2_summer_picnic_rock (mid), a2_summer_speaker_tune (good; needs: speaker prop, conditional on flag `speaker_prop`). Autumn: a2_autumn_gate_on_beach (mid), a2_autumn_kelp_arc (mild), a3_autumn_crew_towline (good), a2_autumn_apple_swap (mid), a2_autumn_hull_lifts (good; needs: a repaired hull on a cradle, the skiff). Winter: a2_winter_warm_strip (mid), a2_winter_far_light (good), a1_winter_butt_frozen (mild), a2_winter_fog_horn (mid), a1_winter_last_sun (good). Every one has a physical cause; people and seals are counted, never followed.
 
 The letters L1 to L12 and where they fire:
@@ -331,10 +331,10 @@ The letters L1 to L12 and where they fire:
 | L12 | the year-four report opens (day 1425 on) | a4_L12_after |
 **Conflict found (v2: resolved in the design, open in the code).** `GIFT_STORM.md` already ships a "letter nine, the Great Wash" on the morning after the first storm (day 3), with wording that differs from `GIFT_LETTERS.md` L9. The spine puts the real Great Wash in year three, and L3 is the day-3 letter. Fix: rename the storm layer's day-3 letter L3 (use the GIFT_LETTERS wording) and keep L9 for year three. TASTE: or keep its beautiful words as a variant of L3.
 The simulation (40 seeded runs, four attitude styles; see `gift/test_events.py --report`):
-- About 713 events a run (690 to 728), most of them small and repeated; about one every two days.
-- Events per season: year one 47 to 63 (spring 63, summer 57, autumn 48, winter 47); year two 42 to 53; year three 33 to 42 (summer 33 is the thinnest); year four 36 to 42.
-- About 85 events fire more than once per run. Most repeated: a robot sorting its basket (about 25), shore finds in year four (24), hulk salvage (20), timber over the sill (20), driftwood (19).
-- **Dead stretches** (10 or more days with nothing): 1.6 per run on average; the longest 15 days; 8 of 40 runs had none. Over all 40 runs: 5 in year one, 19 in year two, 29 in year three, 10 in year four. None before day 100. The thin spots are year two and year three, where once-only beats run out and the repeatable filler is least.
+- About 766 events a run (752 to 786), most of them small and repeated; about one every two days.
+- Events per season: year one 50 to 67 (spring 67, summer 60, autumn 50, winter 50); year two 47 to 64; year three 36 to 46 (summer 36 is the thinnest); year four 36 to 44.
+- About 98 events fire more than once per run. Most repeated: a robot sorting its basket (about 25), shore finds in year four (23), driftwood (19), timber over the sill (19), hulk salvage (19).
+- **Dead stretches** (10 or more days with nothing): 1.2 per run on average (v0: 1.6); the longest 15 days; 14 of 40 runs had none (v0: 8). Over all 40 runs: 3 in year one, 6 in year two, 21 in year three, 19 in year four (v0: 5, 19, 29, 10). None before day 100. The thin spots are now year three and year four, where once-only beats run out and the repeatable filler is least (the v2 events mostly fill years one and two).
 - Every event fires at least once in 40 runs.
 - Honest limits: the stand-in player is crude (flags on fixed days, stock a random walk, weather by day), so the density (0.5 events a day) is only a tuning start. Drawing at a lower rate leaves the first week to the scripted beats.
 

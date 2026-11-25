@@ -5,7 +5,7 @@ Files: `events.json` (the deck), `test_events.py` (schema tests, tone tests, a f
 Run: `python3 gift/test_events.py` (tests, then a short simulation report) or `python3 gift/test_events.py --report`.
 
 ## What is in the deck
-201 events: 7 prelude records (act 0, scripted, never drawn: the two prelude letters P1 and P2 quoted exactly from GIFT_LETTERS.md, and five scenes) and 194 drawn events (act 1: 54, act 2: 53, act 3: 49, act 4: 38). 104 are repeatable, 28 are forced (they fire the moment their trigger is true: the letters, the week-one beats, the year reports). 12 are the letters L1 to L12. 33 are about the inheritance thread (the office, the personal letter, an unseen relative) (papers, objects, a coat, a telephone, a filing cabinet: never a person). Mood split of the drawn events: 46 percent good, 38 percent mid, 16 percent mild trouble (the target was about a half, a third and a sixth).
+257 events: 7 prelude records (act 0, scripted, never drawn: the two prelude letters P1 and P2 quoted exactly from GIFT_LETTERS.md, and five scenes) and 250 drawn events (act 1: 73, act 2: 77, act 3: 60, act 4: 40). 118 are repeatable, 41 are forced (they fire the moment their trigger is true: the letters, the week-one beats, the year reports). 12 are the letters L1 to L12. 33 are about the inheritance thread (the office, the personal letter, an unseen estate) (papers, objects, a coat, a telephone, a filing cabinet: never a person). Mood split of the drawn events: 47 percent good (117), 38 percent mid (96), 15 percent mild trouble (37) (the target is about a half, a third and a sixth). Story revision v2 (the critic's review, see `research/STORY_REVISION_V2.md`) added 56 drawn events to the 194 of v0: five limits of kindness, five world kindnesses, eleven clues, six year-two and year-three goals, twenty seasonal events, three refusal-scene events, six answers to the critic's three questions.
 
 ## File shape
 ```
@@ -27,7 +27,7 @@ Run: `python3 gift/test_events.py` (tests, then a short simulation report) or `p
 | `force` | true: fires as soon as eligible, outside the random draw (letters, scripted beats) |
 | `text` | the words shown, 25 to 260 characters (letters to 330), short and plain |
 | `variants` | optional, by attitude: a replacement line for a letter |
-| `choices` | optional (prelude only so far): `{id, label, effects}` |
+| `choices` | optional: `{id, label, effects}` (the prelude scenes; from v2 also the week-one refusal offer, the visitor weekend, the bench halves, the bad copy and the beach mark). The simulation's stand-in player applies one choice (a distrustful style takes a `decline` choice) |
 | `effects` | `stock` (planks, rope, glass, metal), `flags_set`, `flags_clear`, `attitude` (points), `credit_delta`, `cash_delta`, `counts` (seals, birds, guests), `food_days`, `delivery_delay_days` |
 | `cause` | required: what visibly happens on the map for the change to count (no counter moves without a cause) |
 | `tags` | `avenue` (holiday, sanctuary, homestead, workshop), `attitude` (trust, distrust, investigate, share), `mood` (good, mid, bad-mild) |
@@ -51,10 +51,10 @@ Home places are always reachable. The Hoard needs a boat, or `spring_low` on day
 
 ## The simulation (in `test_events.py`)
 A seeded stand-in player with an attitude style walks 1,440 days, with a spring and neap tide model fitted to the Level 1 table (days 1 to 14) and a season weather table. It is a guess at a player, not a player. Over 40 seeded runs:
-- about 713 events per run (690 to 728; a mean of one every 2 days; most are small ambient moments and repeats);
-- events per season (mean of 40 runs): 47 to 63 in year one, 42 to 53 in year two, 33 to 42 in year three, 36 to 42 in year four (summer of year three is the thinnest);
-- about 85 events fire more than once in a run; the most repeated are the robot and shore routines (a tin sorter about 25 times, shore finds 24, hulk salvage 20);
-- dead stretches (10 or more days with nothing): 1.6 per run on average, the longest 15 days, none before day 100 in any of 40 runs, and 8 of 40 runs had none. Over all 40 runs: 5 in year one, 19 in year two, 29 in year three, 10 in year four;
+- about 766 events per run (752 to 786; a mean of one every 1.9 days; most are small ambient moments and repeats);
+- events per season (mean of 40 runs): 50 to 67 in year one, 47 to 64 in year two, 36 to 46 in year three, 36 to 44 in year four (summer of year three and year four are the thinnest, 36);
+- about 98 events fire more than once in a run; the most repeated are the robot and shore routines (a tin sorter about 25 times, shore finds 23, driftwood and timber 19, hulk salvage 19);
+- dead stretches (10 or more days with nothing): 1.2 per run on average (v0: 1.6), the longest 15 days, none before day 100 in any of 40 runs, and 14 of 40 runs had none (v0: 8). Over all 40 runs: 3 in year one, 6 in year two, 21 in year three, 19 in year four (v0: 5, 19, 29, 10). The 56 new events fill year two best; years three and four remain the thin spots;
 - every drawn event fires in at least one of 40 runs.
 Flaws: the sim player is crude (flags and builds follow fixed days, the stock is a random walk), weather by day not by hour, and the draw rate is set by hand. Treat the numbers as a smoke test for dead stretches and repeats, not a forecast.
 
@@ -65,4 +65,9 @@ Beats are patterns only (see `research/GIFT_STORY_SOURCES.md`). The `source` fie
 Two hands, one source. The office (New Life Inheritance) writes dull, formal, third person ("this office"), hedges, and says the one thing it keeps saying: it is not permitted to say. The helper's letters L1 to L12 are plain, short, second person and grow a little warmer; they never explain and never ask. The tests keep them apart: the helper never says office, uncle or inheritance; the office never speaks of the old machines. "New Life Inheritance" is an invented name: `registries.human_check_names` flags it for a human to check it is not a real company before any public use. Clue rule: hints only, never proof; clues may contradict each other.
 
 ## Taste items in the deck
-The letter L4 now triggers at the first winter (its words speak of winter), not at the first change of season. The L9 letter is the Great Wash of year three; the storm layer's day-3 "letter nine" text should be renamed or reused for L3. See `research/GIFT_WEEK_ONE_AND_SPINE.md`.
+The letter L4 now triggers at the first winter (its words speak of winter), not at the first change of season. The L9 letter is the Great Wash of year three and never fires before day 842; the storm layer's day-3 "letter nine" text should be renamed or reused for L3. See `research/GIFT_WEEK_ONE_AND_SPINE.md`.
+
+## v2 rules and tests (critic review, 25 Nov)
+New tests in `test_events.py` (29 tests in all): P2 contains "Somehow it was always easier to send something than to turn up." and no front door; no office or helper line states a relation (`relative`, `family`, `uncle` and the like, and no "no such relative"); no saving-humanity speech and at least five `_limit_` events; five world kindnesses exist and none is a letter; the week-one refusal scene (offer, decline choice with a soft flag only, an afternoon of wet boards, the tender keeps its appointment); no parental reassurance lines; seal counts state a physical cause; the mainland carpet returns in the lens clue; one brass key only (no second, new, spare or extra key; the key is used on the dock crate, then the hut door, then the drawer); L9 only in year three (day 842 or later, once) and L3 inside day 12; a small first storm with no hulk.
+Needs-a-prop notes: an event that needs a thing the page does not yet have says "needs: ..." in its `source` and is conditional on a flag (for example `speaker_prop`, a game flag the stand-in player gets on day 70). The full list for the page builder is in `research/STORY_REVISION_V2.md`, section "Needs the page builder".
+Calendar: a 360-day year of four 90-day seasons, spring split (days 1 to 30 and 301 to 360); the storm layer's 90-day blocks from day 1 do not match it (page builder list, item 3).
