@@ -86,6 +86,17 @@ The **Storm** panel has a **Debris bench** button. It first shows a warning: *it
 | **A Storm panel and a top-bar Storm button, hidden unless `&debris` or `&stormpanel=1` or pressed** | The bench and slider need somewhere to live | none | none |
 | **Skip-to menu gets "The storm (now)"** | Testing and demonstration | none | none |
 
-## 9 Test results
+## 9 Pictures (software GL, 2400 wide, honest captions)
 
-(see the hand-back; filled in at the end of the job)
+* `shots/storm-1.png` the storm building: the barometer pill (1001 hPa, falling fast, "the robots are heading home"), yard and tents. FLAW: the sky and sea had not finished blending to the rain state when it was taken (software GL runs about 1 frame a second, so the 3.5 s blend takes minutes), so it looks calm and bright; the tiny barometer line is flat because the history had only just begun.
+* `shots/storm-2.png` the swirl with the surge up: foam and a dark disc off the shore, boards and a barrel floating in the raised water. FLAW: the swirl disc reads as a dark patch with foam edges, not clearly as spiral arms from this height; it sits close to the rocks.
+* `shots/storm-3.png` the haul on the shore after the water has gone: planks, crates, barrels, net heaps, seaweed on the beach by the camp. FLAW: a drift sits very close to the tents (the tent keep-clear circles were added after this picture).
+* `shots/storm-4.png` a close drift pile against a rock: planks, crates, orange floats, the bottles and weed.  FLAW: close-up shows flat shading and hard polygon edges; seaweed is crude.
+* `shots/storm-5.png` the hulk: taken in an early smoke run at 1200 px wide, the half-buried boat is at the upper right of the haul. FLAW: the 2400 px retakes missed it (the gift camera easing overrode the camera target in my script), and this picture is smaller and from before the surge slowed down.
+* `shots/storm-6.png` robots gathering: a tracked robot works beside a plank drift next to the camp. FLAW: the framing is crowded by a tent; the robot is small at the top centre.
+
+## 10 Test results
+
+* `tests/storm-test.js`: all pass (pure node).
+* `tests/storm-page-test.js` (software GL): sections 1 to 8 pass across runs (the default page is 8d962c0c and 88,790 triangles; full storm with 0 console errors; hand pick; robot gather; save and reload; letter nine; hulk; iPad 400 pieces, 9 batches, 93k triangles in all; AR 150 pieces, 9k haul triangles; desktop 3000, 20 batches, 246k haul triangles; Radeon 20000, 1.6M haul triangles per pass; the bench stops by itself at the knee).
+* `gift-day-page-test.js quick=1` 108 of 108, `gift-day-test.js` 115 of 115, `boat-drive-test.js` 89 of 89, `camp-test.js` pass.

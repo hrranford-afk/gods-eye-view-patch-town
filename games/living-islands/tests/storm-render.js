@@ -15,7 +15,7 @@ await p.waitForFunction(() => window.__li && window.__li.ready && window.__liFra
 await p.waitForFunction(() => window.__gift && window.__gift.spots() && window.__storm, null, { timeout: 300000 });
 await p.waitForFunction(() => __li.campstart.rt().ready(), null, { timeout: 300000 }).catch(() => { });
 const shot = async n => { const f = path.join(OUT, 'storm-' + n + '.png'); await p.screenshot({ path: f }); console.log('wrote', f); };
-const view = async (v, wait = 3500) => { await p.evaluate(v => __li.setView(v), v); await p.waitForTimeout(wait); };
+const view = async (v, wait = 3500) => { await p.evaluate(v => __gift.focus(v.tx, v.tz, v.dist, v.theta, v.phi), v); await p.waitForTimeout(wait + 5000); };   /* the gift's own camera ease (a raw setView is overridden by it) */
 const S = (f, ...a) => p.evaluate(([f, a]) => { const r = __storm[f](...a); return r === undefined ? null : r; }, [f, a]);
 await p.evaluate(() => { __gift.skipTo('evening'); }); await p.waitForTimeout(1500); await p.evaluate(() => __gift.closeCard());
 const camp = await p.evaluate(() => __li.camp()), dir = await p.evaluate(() => __li.camp && null);
