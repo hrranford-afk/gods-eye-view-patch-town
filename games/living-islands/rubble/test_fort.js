@@ -13,7 +13,7 @@ function f2(v) { return (+v).toFixed(2); }
 async function main() {
   var m = await import('file://' + path.join(__dirname, 'vendor/rapier-0.21-compat/rapier.mjs')), R = m.default || m; await R.init();
   var man = JSON.parse(fs.readFileSync(path.join(ROOT, 'landform/worlds/seed9001/manifest.json'), 'utf8'));
-  var lee = TR.leeSite(TR.islandFromBytes(man, fs.readFileSync(path.join(ROOT, 'landform/worlds/seed9001/world.bin'))));
+  var lee = TR.leeSite(TR.islandFromBytes(man, fs.readFileSync(path.join(ROOT, 'landform/worlds/seed9001/world.bin'))), { grand: true });
   results.numbers.padY = +f2(lee.padY);
 
   /* ---------- 1. the count is exact, for every shape and a spread of counts (design only, fast) ---------- */
@@ -23,10 +23,15 @@ async function main() {
       sh = SIM.FORT.SHAPES[si]; n = counts[ci]; var d = SIM.FORT.design(sh, n, 1, lee); tot++;
       bells = d.pieces.filter(function (p) { return p.k === 'bell'; }).length;
       if (d.count !== n || d.pieces.length !== n || bells !== 1) bad.push(sh + ' ' + n + ' gave ' + d.pieces.length + ' with ' + bells + ' bells');
-      if (!d.onPad && n <= 20000 && d.scale === 0.25) fit = fit && true;
+      if (d.scale !== 1 || d.pieces.some(function (p) { return !/^(brick|beam|bell)$/.test(p.k); })) bad.push(sh + ' ' + n + ' has a shrunk or odd piece kind');
+      if (d.pieces.some(function (p) { return p.y < lee.H(p.x, p.z) - 1e-6; })) bad.push(sh + ' ' + n + ' has a piece below the ground');
+      if (!d.onPad) bad.push(sh + ' ' + n + ' does not fit the levelled pad');
     }
     check('count: every shape at ' + counts.length + ' counts from 40 to 20000 gives exactly that many pieces and one bell (' + tot + ' designs)', bad.length === 0, bad.slice(0, 3).join('; '));
     var d2 = SIM.FORT.design('castle', 400, 1, lee), d3 = SIM.FORT.design('castle', 400, 1, lee);
+    check('item 1: full-size bricks at every count (0.30 m, no half or quarter size), the footprint fits the levelled pad, nothing starts below ground', bad.length === 0, bad.slice(0, 3).join('; '));
+    (function () { var big = SIM.FORT.design('castle', 20000, 1, lee), small = SIM.FORT.design('castle', 2000, 1, lee); results.numbers.footprint = { castle2000HalfM: [+f2(small.half.x), +f2(small.half.z)], castle20000HalfM: [+f2(big.half.x), +f2(big.half.z)], padHalfM: [lee.sculpt.pad.hw, lee.sculpt.pad.hd] };
+      check('more pieces means a bigger fort, not smaller bricks (castle 20000 is wider than castle 2000)', big.half.x > small.half.x && big.scale === 1, JSON.stringify(results.numbers.footprint)); })();
     check('design is deterministic: same shape, count and seed give the same pieces', JSON.stringify(d2.pieces) === JSON.stringify(d3.pieces), '');
     var d4 = SIM.FORT.design('castle', 400, 2, lee);
     check('a different seed gives a different bond pattern (same count)', JSON.stringify(d2.pieces) !== JSON.stringify(d4.pieces) && d4.count === 400, '');
@@ -35,7 +40,7 @@ async function main() {
   })();
 
   /* ---------- 2. each shape settles, sleeps, and stands ---------- */
-  var settleCounts = BENCH ? [250, 1000, 4000] : [100, 400, 1000];
+  var settleCounts = BENCH ? [250, 1000, 4000, 20000] : [100, 400, 1000, 2000];
   results.numbers.settle = [];
   for (var si = 0; si < SIM.FORT.SHAPES.length; si++) for (var ci = 0; ci < settleCounts.length; ci++) {
     var sh = SIM.FORT.SHAPES[si], n = settleCounts[ci], t0 = Date.now(), ses = SIM.makeSession(R, lee, { pieces: n, seed: 1, fort: sh }), sim = ses.sim, f = sim.fort, sc = ses.score();

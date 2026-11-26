@@ -4,16 +4,19 @@
    Plan positions are on a 0.30 m lattice (a module is 0.60 m) stretched by 1 percent so neighbours have a 2 to 3 mm gap and nothing starts inside anything.
    Courses are laid bottom up; walls are running bond (every second course shifted half a brick), towers and keeps alternate the brick direction each course, a beam course ties
    the walls together every fifth course, the top of a wall has crenels, the keep carries a two-beam deck and the bell stands on the deck. If the structure comes out short of n,
-   the rest is a footing of flat bricks laid round the foot (so the count is exact and the base is wider, which also helps it stand). */
+   the rest is a footing of flat bricks laid round the foot in a stepped skirt (so the count is exact and the base is wider, which also helps it stand).
+   Bricks are always full size (0.30 m): a bigger count means a bigger fort (a bigger footprint, thicker walls, more towers), never smaller bricks. The footprint is fitted to the levelled pad
+   (site.sculpt.pad); the 'grand' site of terrain.js levels a pad of 27 by 21 m for the biggest counts. */
 (function (root) {
   'use strict';
   var SXZ = 1.01, SY = 1.005, BELL_HH = 0.10;
-  /* the brick scale: 1 is the 0.30 m brick; 0.5 and 0.25 are smaller bricks (kinds brickh/beamh, brickq/beamq) used when the count is too big for the pad at full size */
+  /* the brick scale is always 1 (the 0.30 m brick); setScale stays only so a test can force a layout */
   var BL = 0.30, BW = 0.20, BH = 0.12, BEAML = 1.20, MOD = 0.6, SC = 1, SUF = '';
   function setScale(sc) { SC = sc; BL = 0.30 * sc; BW = 0.20 * sc; BH = 0.12 * sc; BEAML = 1.20 * sc; MOD = 0.6 * sc; SUF = sc === 1 ? '' : sc === 0.5 ? 'h' : 'q'; }
   function kn(k) { return k + SUF; }
   var MAXC = 15;                                        /* the most courses that stood in test (the solver holds taller stacks only with a lean) */
-  var PADX = 4.2, PADZ = 3.6, REACHX = 2.55, REACHZ = 2.35;
+  var PADX = 4.2, PADZ = 3.6, REACHX = 2.55, REACHZ = 2.35;     /* set from the site's pad in design(): the widest and deepest the structure may be, and how far the footing may reach */
+  var CAPW = 6, CAPK = 3;                                /* the most bricks thick a wall may grow (x2 on a big pad) and the keep size cap in modules, set in design() */
 
   /* a builder collects {k, x, z, c, a, g}: kind, plan position, course, a (0 long side along x, 1 along z), group (0 core, 1 outer, 2 footing) */
   function newB() { return { p: [], ph: 0, merlPhase: 0 }; }
@@ -80,16 +83,16 @@
   var SHAPES = {
     wall: { fn: shapeWall, start: function () { var m = mm(); return { wl: m + 4, pw: m, tw: 1, hw: 1, ph: 2 }; },
       inc: [function (p) { if (p.ph >= Math.min(p.hw + 6, 5 * p.pw / mm() + 6, MAXC)) return 0; p.ph++; return true; },
-        function (p) { if (p.pw >= 3 * mm()) return false; if (p.ph < 5 * p.pw / mm() + 3) return 0; p.pw++; return true; }, function (p) { if (p.hw >= Math.min(5 * p.tw + 2, MAXC - 1)) return false; if (p.hw + 1 > 5 * p.pw / mm() + 4) return 0; p.hw++; if (p.ph < p.hw + 1) p.ph = p.hw + 1; return true; },
-        function (p) { if (p.wl >= Math.floor(4.2 / MOD)) return false; p.wl++; return true; }, function (p) { if (p.tw >= 6 * Math.round(1 / SC)) return false; if (p.hw < 4 * p.tw / Math.round(1 / SC) + 1) return 0; p.tw++; return true; }] },
+        function (p) { if (p.pw >= CAPK * mm()) return false; if (p.ph < 5 * p.pw / mm() + 3) return 0; p.pw++; return true; }, function (p) { if (p.hw >= Math.min(5 * p.tw + 2, MAXC - 1)) return false; if (p.hw + 1 > 5 * p.pw / mm() + 4) return 0; p.hw++; if (p.ph < p.hw + 1) p.ph = p.hw + 1; return true; },
+        function (p) { if (p.wl >= Math.floor(PADX / MOD)) return false; p.wl++; return true; }, function (p) { if (p.tw >= CAPW) return false; if (p.hw < Math.min(4 * p.tw + 1, MAXC - 1)) return 0; p.tw++; return true; }] },
     tower: { fn: shapeTower, start: function () { return { s: mm(), h: 2 }; },
-      inc: [function (p) { if (p.h < Math.min(5 * p.s + 6, MAXC)) { p.h++; return true; } if (p.s >= Math.floor(4.2 / MOD)) return false; p.s++; return true; }] },
+      inc: [function (p) { if (p.h < Math.min(5 * p.s + 6, MAXC)) { p.h++; return true; } if (p.s >= Math.floor(Math.min(PADX, PADZ) / MOD)) return false; p.s++; return true; }] },
     castle: { fn: shapeCastle, start: function () { var m = mm(); return { wm: 3 * m, dm: 3 * m, ts: m, tw: 1, hw: 1, ht: 2, hk: 3, km: m }; },
       inc: [function (p) { if (p.hk >= Math.min(p.ht + 8, 5 * p.km + 6, MAXC)) return 0; p.hk++; return true; },
         function (p) { if (p.hw >= Math.min(5 * p.tw + 2, MAXC - 1)) return false; p.hw++; if (p.ht < p.hw + 1) p.ht = p.hw + 1; return true; },
         function (p) { if (p.wm >= Math.floor(PADX / MOD)) return false; p.wm++; return true; }, function (p) { if (p.dm >= Math.floor(PADZ / MOD)) return false; p.dm++; return true; },
-        function (p) { if (p.tw >= 6 * Math.round(1 / SC)) return false; if ((p.tw + 1) * BW > Math.min(p.wm, p.dm) * MOD / 2 - p.km * MOD / 2 - 0.25 * SC) return false; if (p.hw < 4 * p.tw / Math.round(1 / SC) + 1) return 0; p.tw++; return true; },
-        function (p) { if (p.km >= 3 * mm()) return false; if ((p.km + 1) * MOD / 2 > Math.min(p.wm, p.dm) * MOD / 2 - p.tw * BW - 0.25 * SC) return false; if (p.hk < 4 * p.km / mm() + 4) return 0; p.km++; return true; }] }
+        function (p) { if (p.tw >= CAPW) return false; if ((p.tw + 1) * BW > Math.min(p.wm, p.dm) * MOD / 2 - p.km * MOD / 2 - 0.25 * SC) return false; if (p.hw < Math.min(4 * p.tw + 1, MAXC - 1)) return 0; p.tw++; return true; },
+        function (p) { if (p.km >= CAPK * mm()) return false; if ((p.km + 1) * MOD / 2 > Math.min(p.wm, p.dm) * MOD / 2 - p.tw * BW - 0.25 * SC) return false; if (p.hk < Math.min(4 * p.km / mm() + 4, MAXC)) return 0; p.km++; return true; }] }
   };
   function clone(o) { var r = {}, k; for (k in o) r[k] = o[k]; return r; }
   function count(shape, p, ph, mph) { var B = newB(); B.ph = ph; B.merlPhase = mph; SHAPES[shape].fn(B, p); return B.p.length; }
@@ -118,7 +121,7 @@
         else row(tmp, c, 'z', bx + o, -bz, 2 * bz, false, false, false, 2);
         for (side = 0; side < tmp.p.length && B.p.length - before < need; side++) B.p.push(tmp.p[side]);
       }
-      ring++; if (ring >= 2) { ring = 0; c++; }
+      ring++; if (ring >= Math.max(2, 8 - 2 * c)) { ring = 0; c++; }
     }
   }
   function extents(arr) {
@@ -142,17 +145,19 @@
     if (need > 0) { footing(B, need, ex.x / SXZ, ex.z / SXZ); }
     var ex2 = extents(B.p);
     var fc = 0; for (i = 0; i < B.p.length; i++) if (B.p[i].g === 2 && B.p[i].c > fc) fc = B.p[i].c;
-    return { B: B, p: p, top: top, trimmed: trimmed, ex: ex2, fits: ex2.x <= REACHX && ex2.z <= REACHZ && fc <= 2, sc: sc, footLayers: fc + 1 };
+    return { B: B, p: p, top: top, trimmed: trimmed, ex: ex2, fits: ex2.x <= REACHX && ex2.z <= REACHZ, sc: sc, footLayers: fc + 1 };
   }
 
-  /* the whole design. site gives the ground. Returns {pieces, count, params, baseY, spread, bell, ...}. The first brick scale whose footing stays on the pad is used. */
+  /* the whole design. site gives the ground. Returns {pieces, count, params, baseY, spread, bell, ...}. Bricks are always full size. */
   function design(shape, n, seed, site, force, tight) {
-    var L = site.layout.wall, cx = L.x, cz = L.z, ph = (seed >>> 0) & 1, mph = (seed >>> 1) & 1, i, e, A = null, scales = [1, 0.5, 0.25], si;
+    var L = site.layout.wall, cx = L.x, cz = L.z, ph = (seed >>> 0) & 1, mph = (seed >>> 1) & 1, i, e, A = null, si;
     if (!SHAPES[shape]) shape = 'castle';
     SXZ = tight ? 1.003 : 1.01; SY = tight ? 1.002 : 1.005;
+    var pd = (site.sculpt && site.sculpt.pad) || { hw: 2.6, hd: 2.4 };       /* the levelled pad the fort stands on (half width, half depth, metres) */
+    PADX = 2 * (pd.hw - 0.5); PADZ = 2 * (pd.hd - 0.6); REACHX = pd.hw - 0.05; REACHZ = pd.hd - 0.05; CAPW = pd.hw > 5 ? 20 : 6; CAPK = pd.hw > 5 ? 8 : 3;
     n = Math.max(8, n | 0);
     if (force) { setScale(force.scale || 1); var BB = newB(); BB.ph = ph; BB.merlPhase = mph; var tp = SHAPES[shape].fn(BB, force.params); A = { B: BB, p: force.params, top: tp, trimmed: 0, ex: extents(BB.p), fits: true, sc: force.scale || 1 }; n = BB.p.length + 1; }
-    else for (si = 0; si < scales.length; si++) { A = attempt(shape, n, ph, mph, scales[si]); if (A.fits) break; }
+    else A = attempt(shape, n, ph, mph, 1);
     setScale(A.sc);
     var B = A.B, gmin = 1e9, gmax = -1e9, gx, gz, hh, fx = A.ex.x + 0.05, fz = A.ex.z + 0.05, pieces = [], baseY, bell;
     for (gx = -fx; gx <= fx + 1e-6; gx += 0.3) for (gz = -fz; gz <= fz + 1e-6; gz += 0.3) { hh = site.H(cx + gx, cz + gz); if (hh < gmin) gmin = hh; if (hh > gmax) gmax = hh; }

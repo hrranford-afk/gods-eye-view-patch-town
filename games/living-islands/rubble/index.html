@@ -93,10 +93,10 @@ var site, siteNote, WID = 9001;
   var man = window.LI_WORLDS && window.LI_WORLDS[WID];
   if (man && Q.get('terrain') !== 'proc') {
     var bin = atob(man.b64), u8 = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-    site = TR.leeSite(TR.islandFromBytes(man, u8));
+    site = TR.leeSite(TR.islandFromBytes(man, u8), { grand: true });
     siteNote = 'island seed 9001, lee beach: real heights and ground classes + a stand-in sculpt (gully, hollow, berm, rocks, pad)';
   } else {
-    site = TR.proceduralSite(); siteNote = 'PROCEDURAL stand-in ground (' + (Q.get('terrain') === 'proc' ? 'asked for' : 'the world file did not load') + ')';
+    site = TR.proceduralSite({ grand: true }); siteNote = 'PROCEDURAL stand-in ground (' + (Q.get('terrain') === 'proc' ? 'asked for' : 'the world file did not load') + ')';
   }
   $('siteNote').textContent = siteNote;
 })();
@@ -180,7 +180,7 @@ var seaPretty = new THREE.ShaderMaterial({ transparent: true, depthWrite: false,
 var decor = new THREE.Group(); scene.add(decor);
 var flagCloth = null, mill = null;
 (function () {
-  var wd = new THREE.MeshStandardMaterial({ color: 0x8a5a2b, roughness: 0.85 }), px = -3.1, pz = -5.3, py = site.H(px, pz), c = document.createElement('canvas'); c.width = 256; c.height = 160;
+  var wd = new THREE.MeshStandardMaterial({ color: 0x8a5a2b, roughness: 0.85 }), px = -4, pz = 7.5, py = site.H(px, pz), c = document.createElement('canvas'); c.width = 256; c.height = 160;
   var g = c.getContext('2d'), r = SIM.rng(9), i; g.fillStyle = '#d8553a'; g.fillRect(0, 0, 256, 160);
   for (i = 0; i < 40; i++) { g.fillStyle = r() < 0.5 ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.07)'; g.fillRect(0, r() * 160, 256, 2 + r() * 8); }
   g.fillStyle = '#fff6e2'; g.beginPath(); for (i = 0; i < 10; i++) { var a = i / 10 * 6.283 - 1.571, rr = i % 2 ? 20 : 44; g.lineTo(128 + Math.cos(a) * rr, 80 + Math.sin(a) * rr); } g.closePath(); g.fill();
@@ -189,7 +189,7 @@ var flagCloth = null, mill = null;
   var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 1.8, 6), wd); pole.position.set(px, py + 0.9, pz); pole.castShadow = true; decor.add(pole);
   var cg = new THREE.PlaneGeometry(0.75, 0.47, 10, 4); cg.translate(0.375, 0, 0);
   flagCloth = new THREE.Mesh(cg, new THREE.MeshStandardMaterial({ map: ft, side: THREE.DoubleSide, roughness: 0.9 })); flagCloth.position.set(px + 0.02, py + 1.52, pz); flagCloth.castShadow = true; flagCloth.userData = { w: 0.75, base: Float32Array.from(cg.attributes.position.array) }; decor.add(flagCloth);
-  var mx = -12, mz = -12, my = site.H(mx, mz), cream = new THREE.MeshStandardMaterial({ color: 0xece0c8, roughness: 0.9, flatShading: true }), roof = new THREE.MeshStandardMaterial({ color: 0x8c4a32, roughness: 0.9, flatShading: true });
+  var mx = -18, mz = -9, my = site.H(mx, mz), cream = new THREE.MeshStandardMaterial({ color: 0xece0c8, roughness: 0.9, flatShading: true }), roof = new THREE.MeshStandardMaterial({ color: 0x8c4a32, roughness: 0.9, flatShading: true });
   mill = new THREE.Group(); mill.position.set(mx, my, mz);
   var body = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.85, 2.6, 8), cream); body.position.y = 1.3; body.castShadow = true; mill.add(body);
   var cap = new THREE.Mesh(new THREE.ConeGeometry(0.75, 0.8, 8), roof); cap.position.y = 3.0; cap.castShadow = true; mill.add(cap);
@@ -237,7 +237,7 @@ function geoFor(K) {
   }
 }
 Object.keys(KINDS).forEach(function (k) {
-  var K = KINDS[k]; CAP[k] = k === 'acorn' ? 800 : /^brick/.test(k) ? 21000 : /^beam/.test(k) ? 2000 : k === 'bell' ? 4 : 1500; free[k] = []; nextSlot[k] = 0;
+  var K = KINDS[k]; CAP[k] = k === 'acorn' ? 800 : /^brick/.test(k) ? 21000 : /^beam/.test(k) ? 3000 : k === 'bell' ? 12 : 1500; free[k] = []; nextSlot[k] = 0;
   var mat = new THREE.MeshStandardMaterial({ color: K.col, roughness: k === 'lid' || k === 'can' ? 0.4 : k === 'marble' || k === 'float' || k === 'bottle' ? 0.2 : 0.8, metalness: k === 'lid' || k === 'can' ? 0.6 : 0 });
   if (k === 'bottle' || k === 'float') { mat.transparent = true; mat.opacity = 0.85; }
   var m = new THREE.InstancedMesh(geoFor(K), mat, CAP[k]); m.count = 0; m.frustumCulled = false; m.castShadow = true; m.receiveShadow = true;
@@ -313,7 +313,7 @@ function frameFort() {                                  /* the camera looks at t
 function aimAtBell() { var f = ses && ses.sim.fort; if (!f) return; aim.target = { x: f.design.bell.x, y: f.bellHome, z: f.design.bell.z }; aimUpdate(); }
 function fortUI() {
   var f = ses && ses.sim.fort; if (!f) { $('fortInfo').textContent = ''; return; }
-  var d = f.design, sc = d.scale === 1 ? 'full size' : d.scale === 0.5 ? 'half size' : 'quarter size';
+  var d = f.design, sc = 'full size (0.30 m)';
   $('fortInfo').textContent = f.shape + ': ' + f.count + ' pieces exactly (asked ' + f.requested + '), ' + sc + ' bricks, ' + (d.height).toFixed(1) + ' m tall' + (f.rubble ? ', plus ' + f.rubble + ' loose rubble' : '') +
     '. Settled in ' + f.settleSteps + ' steps, drift ' + (f.settleMax * 100).toFixed(1) + ' cm' + (ses.settleNote ? '. ' + ses.settleNote : '') + '.';
 }

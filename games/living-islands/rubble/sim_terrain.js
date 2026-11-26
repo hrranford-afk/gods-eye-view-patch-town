@@ -32,10 +32,6 @@
     stick:   { name: 'Stick',          shape: 'capsule', lay: 0.035, hh: 0.30, r: 0.035, dens: 600, fr: 0.60, rest: 0.10, roll: 1, rc: 0.335, rs: 0.035, role: 'debris', col: 0x9a7b55 },
     crate:   { name: 'Plastic crate',  shape: 'box', lay: 0.09, hx: 0.25, hy: 0.09, hz: 0.18, dens: 130, fr: 0.45, rest: 0.10, rs: 0.09, role: 'debris', col: 0xd05a3c }
   };
-  /* the smaller bricks used when a fort is too big for the pad at full size: half and quarter scale (same wood, same friction) */
-  [['h', 0.5], ['q', 0.25]].forEach(function (sc) {
-    ['brick', 'beam'].forEach(function (k) { var o = {}, b = KINDS[k], f; for (f in b) o[f] = b[f]; o.name = b.name + (sc[0] === 'h' ? ' (half size)' : ' (quarter size)'); o.hx = b.hx * sc[1]; o.hy = b.hy * sc[1]; o.hz = b.hz * sc[1]; o.lay = b.lay * sc[1]; KINDS[k + sc[0]] = o; });
-  });
   var AMMO = ['acorn', 'marble', 'coconut', 'lid', 'float', 'bottle', 'rod'];
   var BELL_DROP = 0.32, MOVED = 0.20;                    /* the bell counts as down after 0.32 m (Castle Sound's number; its bricks are the same 0.30 m ones, so its units are metres); a piece has moved after 0.20 m (a brick width) */
   var BOTTLE = { hh: 0.10, r: 0.045, nh: 0.05, nr: 0.02 };

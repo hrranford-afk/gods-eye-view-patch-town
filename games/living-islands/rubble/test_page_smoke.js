@@ -26,7 +26,7 @@ async function main() {
   var info = await page.evaluate(function () { var r = window.__rubble; return { pieces: r.ses.sim.bodies.length, note: document.getElementById('siteNote').textContent, proc: !!r.site.procedural, code: window.RSim.determinismCode(window.__rubble.ses.R, r.site), fcode: window.RSim.fortCode(window.__rubble.ses.R, r.site), fort: r.ses.sim.fort ? r.ses.sim.fort.count : 0, calls: r.renderer.info.render.calls }; });
   check('page loads the island ground (not the procedural stand-in)', !info.proc && /seed 9001/.test(info.note), info.note);
   check('page builds exactly 250 pieces (one castle, bricks, beams, one bell)', info.pieces === 250 && info.fort === 250, info.pieces + ' bodies, fort ' + info.fort);
-  var nodeCode = JSON.parse(fs.readFileSync(path.join(__dirname, 'test_results.json'), 'utf8')).numbers.determinismCode;
+  var nodeCode = JSON.parse(fs.readFileSync(path.join(__dirname, 'test_fort_results.json'), 'utf8')).numbers.determinismCode;      /* on the big levelled pad the page uses (test_fort.js builds the same site) */
   check('the page in Chromium gives the same replay code as Node', info.code === nodeCode, 'page ' + info.code + ', node ' + nodeCode);
   var fortCode = JSON.parse(fs.readFileSync(path.join(__dirname, 'test_fort_results.json'), 'utf8')).numbers.fortCode;
   check('the page in Chromium gives the same FORT replay code as Node', info.fcode === fortCode, 'page ' + info.fcode + ', node ' + fortCode);
