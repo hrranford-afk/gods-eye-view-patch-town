@@ -8,6 +8,7 @@
 (function (root) {
   'use strict';
   var TR = (typeof module !== 'undefined' && module.exports) ? require('./terrain.js') : root.RTerrain;
+  var FORT = (typeof module !== 'undefined' && module.exports) ? require('./fort.js') : root.RFort;
   var DT = 1 / 60, GRAV = -9.81, RHOW = 1025;
   var PI = Math.PI;
 
@@ -26,10 +27,17 @@
     float:   { name: 'Glass float',    shape: 'ball', lay: 0.15, r: 0.15, dens: 350, fr: 0.35, rest: 0.45, roll: 1, rc: 0.15, rs: 0.15, ccd: true, role: 'ammo', speed: 15, rate: 0.8, spread: 0.01, col: 0x6fd1b0, note: 'big, light, very bouncy, floats' },
     bottle:  { name: 'Bottle',         shape: 'bottle', lay: 0.045, dens: 900, fr: 0.30, rest: 0.20, roll: 1, rc: 0.15, rs: 0.045, ccd: true, role: 'ammo', speed: 16, rate: 1.5, spread: 0.02, align: true, col: 0x5aa07a, note: 'rolls in an arc because of its neck' },
     rod:     { name: 'Big rod (driftwood log)', shape: 'capsule', lay: 0.07, hh: 0.55, r: 0.07, dens: 650, fr: 0.60, rest: 0.10, roll: 1, rc: 0.62, rs: 0.07, ccd: true, role: 'ammo', speed: 14, rate: 0.7, spread: 0.01, align: true, col: 0x8a6a45, note: 'about 12 kg, 1.3 m, rolls straight and can wedge' },
+    beam:    { name: 'Beam',           shape: 'box', lay: 0.06, hx: 0.60, hy: 0.06, hz: 0.10, dens: 350, fr: 0.70, rest: 0.05, role: 'target', col: 0x7c4a22 },
+    bell:    { name: 'Bell',           shape: 'bell', lay: 0.10, hh: 0.10, r: 0.11, rt: 0.05, dens: 2000, fr: 0.60, rest: 0.10, role: 'target', col: 0xd9a441 },
     stick:   { name: 'Stick',          shape: 'capsule', lay: 0.035, hh: 0.30, r: 0.035, dens: 600, fr: 0.60, rest: 0.10, roll: 1, rc: 0.335, rs: 0.035, role: 'debris', col: 0x9a7b55 },
     crate:   { name: 'Plastic crate',  shape: 'box', lay: 0.09, hx: 0.25, hy: 0.09, hz: 0.18, dens: 130, fr: 0.45, rest: 0.10, rs: 0.09, role: 'debris', col: 0xd05a3c }
   };
+  /* the smaller bricks used when a fort is too big for the pad at full size: half and quarter scale (same wood, same friction) */
+  [['h', 0.5], ['q', 0.25]].forEach(function (sc) {
+    ['brick', 'beam'].forEach(function (k) { var o = {}, b = KINDS[k], f; for (f in b) o[f] = b[f]; o.name = b.name + (sc[0] === 'h' ? ' (half size)' : ' (quarter size)'); o.hx = b.hx * sc[1]; o.hy = b.hy * sc[1]; o.hz = b.hz * sc[1]; o.lay = b.lay * sc[1]; KINDS[k + sc[0]] = o; });
+  });
   var AMMO = ['acorn', 'marble', 'coconut', 'lid', 'float', 'bottle', 'rod'];
+  var BELL_DROP = 0.32, MOVED = 0.20;                    /* the bell counts as down after 0.32 m (Castle Sound's number; its bricks are the same 0.30 m ones, so its units are metres); a piece has moved after 0.20 m (a brick width) */
   var BOTTLE = { hh: 0.10, r: 0.045, nh: 0.05, nr: 0.02 };
 
   /* Rapier's own cylinder shape fell through heightfields in about a fifth of random drops (found in testing, see test_terrain_physics.js), a convex prism does not,
@@ -39,11 +47,17 @@
     for (i = 0; i < n; i++) { a = i / n * 2 * PI; pts[i * 6] = Math.cos(a) * r; pts[i * 6 + 1] = -hh + (oy || 0); pts[i * 6 + 2] = Math.sin(a) * r; pts[i * 6 + 3] = pts[i * 6]; pts[i * 6 + 4] = hh + (oy || 0); pts[i * 6 + 5] = pts[i * 6 + 2]; }
     return R_.ColliderDesc.convexHull(pts);
   }
+  function cone(hh, r0, r1, n) {                          /* a frustum as a convex hull: the bell */
+    var pts = new Float32Array(n * 6), i, a;
+    for (i = 0; i < n; i++) { a = i / n * 2 * PI; pts[i * 6] = Math.cos(a) * r0; pts[i * 6 + 1] = -hh; pts[i * 6 + 2] = Math.sin(a) * r0; pts[i * 6 + 3] = Math.cos(a) * r1; pts[i * 6 + 4] = hh; pts[i * 6 + 5] = Math.sin(a) * r1; }
+    return R_.ColliderDesc.convexHull(pts);
+  }
   var R_ = null;
   function volOf(K) {
     switch (K.shape) {
       case 'ball': return 4 / 3 * PI * K.r * K.r * K.r;
       case 'box': return 8 * K.hx * K.hy * K.hz;
+      case 'bell': return PI * 2 * K.hh * (K.r * K.r + K.r * K.rt + K.rt * K.rt) / 3;
       case 'cyl': return PI * K.r * K.r * 2 * K.hh;
       case 'capsule': return PI * K.r * K.r * 2 * K.hh + 4 / 3 * PI * K.r * K.r * K.r;
       case 'bottle': return PI * BOTTLE.r * BOTTLE.r * 2 * BOTTLE.hh + PI * BOTTLE.nr * BOTTLE.nr * 2 * BOTTLE.nh;
@@ -116,6 +130,7 @@
         case 'box': cds.push(R.ColliderDesc.cuboid(K.hx, K.hy, K.hz)); break;
         case 'cyl': R_ = R; cds.push(prism(K.hh, K.r, 24)); break;
         case 'capsule': cds.push(R.ColliderDesc.capsule(K.hh, K.r)); break;
+        case 'bell': R_ = R; cds.push(cone(K.hh, K.r, K.rt, 20)); break;
         case 'bottle': R_ = R; cds.push(prism(BOTTLE.hh, BOTTLE.r, 24)); cds.push(prism(BOTTLE.nh, BOTTLE.nr, 12, BOTTLE.hh + BOTTLE.nh)); break;
       }
       for (i = 0; i < cds.length; i++) {
@@ -260,6 +275,7 @@
       sim.add(kk, { x: dx, y: site.H(dx, dz) + KD.lay + 0.03 + layer * 0.4, z: dz }, qq);
     }
     sim.scene.debris = nd;
+    if (cfg.noSettle) return sim.scene;
     /* settle: at least 1.7 s, then until under 2 percent are still moving (at most 10 s), then everything goes to sleep */
     for (i = 0; i < 600 && (i < 100 || sim.awake() > Math.max(3, n * 0.02)); i++) sim.step();
     sim.settleSteps = i;
@@ -268,18 +284,65 @@
     return sim.scene;
   }
 
+  /* ---------- the fort ---------- */
+  /* One structure of exactly cfg.pieces pieces (bricks, beams, one bell) from RFort, on the levelled pad. cfg.rubble adds a loose beach field on top (counted apart).
+     The pieces are created here but not yet settled: the caller runs settleUnit() until it says done (the page does it a little each frame, Node all at once). */
+  function rubbleCount(n) { return TR.clamp(Math.round(n * 0.25), 30, 400); }
+  function buildFort(sim, cfg) {
+    var site = sim.site, d = FORT.design(cfg.fort, cfg.pieces, cfg.seed || 1, site, cfg.force, cfg.tight), i, e, q, recs = [], nr = 0, bellRec = null;
+    sim.scene = { bricks: 0, cans: 0, debris: 0, fort: null, rubble: 0 };
+    if (cfg.rubble) {                                   /* the loose field first, so the fort is built last and nothing steps it before it is whole */
+      nr = rubbleCount(cfg.pieces); var m = 20; while (true) { var nb_ = Math.max(12, Math.round(m * 0.45)), nc_ = TR.clamp(Math.round(m * 0.07), 6, 150); if (m - nb_ - nc_ >= nr) break; m++; }
+      buildScene(sim, { pieces: m, seed: cfg.seed, noWall: true, noSettle: true });
+      sim.scene.rubble = sim.bodies.length;
+    }
+    for (i = 0; i < d.pieces.length; i++) {
+      e = d.pieces[i]; q = e.a ? qYaw(Math.PI / 2) : [0, 0, 0, 1];
+      var rec = sim.add(e.k, { x: e.x, y: e.y, z: e.z }, q); rec.fort = true; recs.push(rec); if (e.k === 'bell') bellRec = rec;
+    }
+    sim.fort = { shape: cfg.fort, requested: cfg.pieces, count: recs.length, recs: recs, bell: bellRec, home: null, bellHome: 0, design: d, params: d.params, baseY: d.baseY, rubble: sim.scene.rubble };
+    sim.scene.fort = { shape: cfg.fort, count: recs.length };
+    return sim.scene;
+  }
+  /* one unit of settling: 10 steps, then the test. At least 1 s, until under 1 percent are awake (the bodies sleep by themselves after about 2 s of calm), at most 10 s. */
+  function settleUnit(sim, st) {
+    var i;
+    for (i = 0; i < 10; i++) sim.step();
+    st.n += 10;
+    if (st.n >= 60 && (sim.awake() <= Math.max(3, sim.bodies.length * 0.01) || st.n >= st.max)) {
+      var f = sim.fort, e, t, rec, md = 0, d2, k;
+      sim.sleepAll();
+      if (f) {
+        f.home = new Float32Array(f.recs.length * 3);
+        for (k = 0; k < f.recs.length; k++) { rec = f.recs[k]; t = rec.body.translation(); f.home[k * 3] = t.x; f.home[k * 3 + 1] = t.y; f.home[k * 3 + 2] = t.z; e = f.design.pieces[k]; d2 = Math.sqrt((t.x - e.x) * (t.x - e.x) + (t.y - e.y) * (t.y - e.y) + (t.z - e.z) * (t.z - e.z)); if (d2 > md) md = d2; }
+        f.bellHome = f.bell.body.translation().y; f.settleMax = md; f.settleSteps = st.n; f.settledOk = md < 0.12 && sim.rescued === 0;
+      }
+      sim.settleSteps = st.n; sim.steps = 0; st.done = true;
+    }
+    return st.done;
+  }
+
   /* ---------- a session: scene + shots + replay log ---------- */
   function makeSession(R, site, cfg) {
-    cfg = { pieces: cfg.pieces || 200, seed: cfg.seed || 1, ammoCap: cfg.ammoCap || 60, tide: cfg.tide || 0, ground: cfg.ground === undefined ? -1 : cfg.ground, track: !!cfg.track, hooks: cfg.hooks || null };
+    cfg = { pieces: cfg.pieces || 200, seed: cfg.seed || 1, ammoCap: cfg.ammoCap || 60, tide: cfg.tide || 0, ground: cfg.ground === undefined ? -1 : cfg.ground, track: !!cfg.track, hooks: cfg.hooks || null, fort: cfg.fort || '', rubble: !!cfg.rubble, defer: !!cfg.defer, tight: !!cfg.tight, force: cfg.force || null, solverIters: cfg.solverIters || 0, pgs: cfg.pgs || 0 };
+    function simOpts() { var o = { ammoCap: cfg.ammoCap, tide: cfg.tide, track: cfg.track, hooks: cfg.hooks }; if (cfg.solverIters) o.solverIters = cfg.solverIters; if (cfg.pgs) o.pgs = cfg.pgs; return o; }
     var ses = { R: R, site: site, cfg: cfg, events: [], sim: null, rnd: null, replay: null };
     function fresh() {
       if (ses.sim) ses.sim.dispose();
-      ses.sim = makeSim(R, site, { ammoCap: cfg.ammoCap, tide: cfg.tide, track: cfg.track, hooks: cfg.hooks });
+      ses.sim = makeSim(R, site, simOpts());
       ses.sim.groundMode = cfg.ground; ses.sim.updateGround();
       ses.rnd = rng(cfg.seed * 7919 + 13);
-      buildScene(ses.sim, cfg);
+      ses.bellDown = false; ses.bellDownAt = -1; ses.settling = null;
+      if (cfg.fort) { buildFort(ses.sim, cfg); ses.settling = { n: 0, max: 600, done: false }; if (!cfg.defer) ses.settleAll(); } else buildScene(ses.sim, cfg);
       ses.events = [];
     }
+    /* if a fort will not settle (drift over 12 cm or a piece fell through), build it once more with tighter joints (a smaller gap between pieces) and say so */
+    function afterSettle() {
+      var f = ses.sim.fort; ses.settling = null; ses.settleNote = '';
+      if (f && !f.settledOk && !cfg.tight) { cfg.tight = true; ses.settleNote = 'It did not settle the first time (drift ' + (f.settleMax * 100).toFixed(0) + ' cm), so it was rebuilt with tighter joints.'; if (cfg.hooks) cfg.hooks.reset(); fresh(); }
+    }
+    ses.settleChunk = function (ms) { var st = ses.settling, t0 = nowMs(); if (!st) return true; while (!st.done && nowMs() - t0 < ms) settleUnit(ses.sim, st); if (st.done) { afterSettle(); return !ses.settling; } return false; };
+    ses.settleAll = function () { var st = ses.settling; if (!st) return; while (!st.done) settleUnit(ses.sim, st); afterSettle(); if (ses.settling && !cfg.defer) ses.settleAll(); };
     fresh();
     ses.rebuild = function (c2) { for (var k in c2) cfg[k] = c2[k]; ses.replay = null; if (cfg.hooks) cfg.hooks.reset(); fresh(); };
     ses.muzzle = function () { var L = site.layout.launcher; return { x: L.x, y: site.H(L.x, L.z) + 1.0, z: L.z }; };
@@ -308,8 +371,10 @@
     /* one step; during a replay the logged events are applied at their step */
     ses.step = function () {
       var rp = ses.replay;
+      if (ses.settling) ses.settleAll();
       if (rp) { while (rp.i < rp.events.length && rp.events[rp.i].s <= ses.sim.steps) applyEvent(rp.events[rp.i++]); }
       var ms = ses.sim.step();
+      if (ses.sim.fort && !ses.bellDown && ses.sim.steps % 6 === 0 && ses.sim.fort.home && ses.sim.fort.bell.body.translation().y < ses.sim.fort.bellHome - BELL_DROP) { ses.bellDown = true; ses.bellDownAt = ses.sim.steps; }
       if (rp && ses.sim.steps >= rp.endStep) { var hh = ses.sim.hash(); ses.lastReplay = { ok: hh === rp.hashAtEnd, expected: rp.hashAtEnd, got: hh, steps: ses.sim.steps }; ses.replay = null; ses.events = rp.events; }
       return ms;
     };
@@ -317,11 +382,20 @@
     ses.startReplay = function () {
       var ev = ses.events.slice(), endStep = ses.sim.steps, hashNow = ses.sim.hash();
       if (cfg.hooks) cfg.hooks.reset();
-      if (ses.sim) ses.sim.dispose(); ses.sim = makeSim(R, site, { ammoCap: cfg.ammoCap, tide: cfg.tide, track: cfg.track, hooks: cfg.hooks }); ses.sim.groundMode = cfg.ground; ses.sim.updateGround();
-      buildScene(ses.sim, cfg);
+      if (ses.sim) ses.sim.dispose(); ses.sim = makeSim(R, site, simOpts()); ses.sim.groundMode = cfg.ground; ses.sim.updateGround();
+      ses.bellDown = false; ses.bellDownAt = -1; ses.settling = null;
+      if (cfg.fort) { buildFort(ses.sim, cfg); ses.settling = { n: 0, max: 600, done: false }; if (!cfg.defer) ses.settleAll(); } else buildScene(ses.sim, cfg);
       ses.replay = { events: ev, i: 0, endStep: endStep, hashAtEnd: hashNow };
       ses.events = [];
       return ses.replay;
+    };
+    /* score: pieces moved (more than a brick width, 0.20 m, from where they settled), pieces still standing, shots used, the bell */
+    ses.score = function () {
+      var f = ses.sim.fort; if (!f || !f.home) return null;
+      var i, t, dx, dy, dz, moved = 0, n = f.recs.length;
+      for (i = 0; i < n; i++) { t = f.recs[i].body.translation(); dx = t.x - f.home[i * 3]; dy = t.y - f.home[i * 3 + 1]; dz = t.z - f.home[i * 3 + 2]; if (dx * dx + dy * dy + dz * dz > MOVED * MOVED) moved++; }
+      var by = f.bell.body.translation().y, shots = 0; for (i = 0; i < ses.events.length; i++) if (ses.events[i].t === 'shot') shots++;
+      return { count: n, moved: moved, standing: n - moved, shots: shots, bellDrop: f.bellHome - by, bellDown: ses.bellDown, bellDownAtStep: ses.bellDownAt };
     };
     ses.finishReplay = function () { while (ses.replay) ses.step(); };
     return ses;
@@ -342,6 +416,13 @@
     h = s.sim.hash(); s.sim.dispose(); return h;
   }
 
-  var API = { determinismCode: determinismCode, KINDS: KINDS, AMMO: AMMO, DT: DT, GRAV: GRAV, RHOW: RHOW, makeSim: makeSim, buildScene: buildScene, makeSession: makeSession, aimAt: aimAt, rng: rng, qFromTo: qFromTo, qRandom: qRandom, qYaw: qYaw, volOf: volOf, nowMs: nowMs };
+  /* the same idea for forts: a 250-piece castle, a fixed volley, then the hash */
+  function fortCode(R, site) {
+    var s = makeSession(R, site, { pieces: 250, seed: 1, ammoCap: 100, fort: 'castle' }), kinds = ['rod', 'marble', 'coconut', 'rod'], i, k, a, h;
+    for (i = 0; i < kinds.length; i++) { a = aimAt(s.muzzle(), { x: -0.5 + i * 0.3, y: s.sim.fort.bellHome, z: site.layout.wall.z }, KINDS[kinds[i]].speed); s.fire(kinds[i], a.yaw, a.elev, 1); for (k = 0; k < 40; k++) s.step(); }
+    for (k = 0; k < 200; k++) s.step();
+    h = s.sim.hash(); s.sim.dispose(); return h;
+  }
+  var API = { fortCode: fortCode, buildFort: buildFort, settleUnit: settleUnit, BELL_DROP: BELL_DROP, MOVED: MOVED, rubbleCount: rubbleCount, FORT: FORT, determinismCode: determinismCode, KINDS: KINDS, AMMO: AMMO, DT: DT, GRAV: GRAV, RHOW: RHOW, makeSim: makeSim, buildScene: buildScene, makeSession: makeSession, aimAt: aimAt, rng: rng, qFromTo: qFromTo, qRandom: qRandom, qYaw: qYaw, volOf: volOf, nowMs: nowMs };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.RSim = API;
 })(typeof window !== 'undefined' ? window : globalThis);

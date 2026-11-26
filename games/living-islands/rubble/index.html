@@ -26,6 +26,9 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
 #ammo .am{min-width:84px;padding:6px 8px;text-align:center;font-size:12px;line-height:1.2}
 #ammo .am i{display:inline-block;width:16px;height:16px;border-radius:50%;border:2px solid #fff6;vertical-align:-3px;margin-right:4px}
 #aimbox{font:600 12px ui-monospace,Menlo,Consolas,monospace;white-space:pre;line-height:1.35}
+#score{position:fixed;left:50%;top:8px;transform:translateX(-50%);text-align:center;font:700 14px system-ui,sans-serif;pointer-events:none;min-width:260px}
+#score b{color:var(--accent)}
+#score.down{background:#7a3d12;border-color:#ffd9a8}
 #status{position:fixed;left:50%;top:60px;transform:translateX(-50%);font-weight:800;font-size:20px;text-shadow:0 2px 8px #000;pointer-events:none;display:none;text-align:center}
 #modal{position:fixed;inset:0;background:rgba(20,15,10,.82);display:none;align-items:center;justify-content:center;z-index:9;padding:12px}
 #modal .in{max-width:760px;width:100%;max-height:92vh;overflow:auto}
@@ -41,10 +44,14 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
 <div id="perf" class="card"></div>
 <div id="title" class="card"><h1>Rubble</h1><div id="siteNote">physics on the island ground</div></div>
 <div id="status"></div>
+<div id="score" class="card"></div>
 <div id="hint">Tap or click the ground to aim. Hold Fire. Drag to turn the camera, wheel or pinch to zoom.</div>
 <div id="side">
-  <div class="card"><label>Pieces: <span id="piecesV"></span><input id="pieces" type="range" min="0" max="100" value="40"></label>
-    <div class="row" style="margin-top:6px"><select id="tier"><option value="ipad">iPad tier: cap 250</option><option value="radeon">Radeon tier: up to 4000</option></select><button class="btn" id="rebuild">Rebuild</button></div></div>
+  <div class="card"><label>Fort pieces: <span id="piecesV"></span><input id="pieces" type="range" min="0" max="15" step="1" value="8"></label>
+    <div class="row" style="margin-top:6px"><select id="shape"><option value="castle">Castle</option><option value="tower">Tower</option><option value="wall">Wall</option></select><button class="btn" id="rubbleSw">Rubble field: off</button></div>
+    <div class="row" style="margin-top:6px"><button class="btn big" id="buildFort" style="font-size:16px;min-width:0;flex:1">Build fort</button></div>
+    <div class="row" style="margin-top:6px"><select id="tier"><option value="ipad">iPad preset</option><option value="radeon">Radeon preset</option></select></div>
+    <div id="fortInfo" style="margin-top:6px;opacity:.85;font-size:12px"></div></div>
   <div class="card"><label>Ground
     <select id="ground"><option value="-1">Island map (sand, wet sand, shingle, turf, rock)</option><option value="0">All dry sand</option><option value="1">All wet sand</option><option value="2">All shingle</option><option value="3">All turf</option><option value="4">All rock</option></select></label>
     <label style="margin-top:6px">Tide: <span id="tideV"></span><input id="tide" type="range" min="-110" max="110" value="0"></label>
@@ -66,6 +73,7 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
 <script src="vendor/three/three.min.js"></script>
 <script src="../landform/worlds/seed9001/world.js" onerror="window.__worldMissing=true"></script>
 <script src="terrain.js"></script>
+<script src="fort.js"></script>
 <script src="sim_terrain.js"></script>
 <script type="module">
 import RAPIER from './vendor/rapier-0.21-compat/rapier.mjs';
@@ -94,9 +102,11 @@ var site, siteNote, WID = 9001;
 /* ---------- tier ---------- */
 var tier = Q.get('tier') === 'radeon' ? 'radeon' : (Q.get('tier') === 'ipad' ? 'ipad' : ((/iPad|iPhone/.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform))) ? 'ipad' : 'radeon'));
 $('tier').value = tier;
-function tierCap() { return tier === 'ipad' ? 250 : 4000; }
+/* the tier is a preset (shots kept live, pixel ratio, shadow size), not a limit: the owner's iPad ran 4,000 pieces fine */
+var LEVELS_ALL = [40, 60, 100, 150, 250, 400, 600, 1000, 1500, 2000, 3000, 4000, 6000, 8000, 12000, 20000];
 function ammoCapFor() { return tier === 'ipad' ? 40 : 400; }
-function piecesFromSlider(v) { var lo = 40, hi = tierCap(); return Math.round(lo * Math.pow(hi / lo, v / 100) / 10) * 10; }
+function piecesFromSlider(v) { return LEVELS_ALL[Math.max(0, Math.min(LEVELS_ALL.length - 1, v | 0))]; }
+function sliderFromPieces(n) { var i, b = 0; for (i = 0; i < LEVELS_ALL.length; i++) if (Math.abs(LEVELS_ALL[i] - n) < Math.abs(LEVELS_ALL[b] - n)) b = i; return b; }
 var shadowsOn = Q.get('shadows') !== '0';
 
 /* ---------- three.js ---------- */
@@ -152,13 +162,14 @@ function geoFor(K) {
   switch (K.shape) {
     case 'ball': return new THREE.SphereGeometry(K.r, 12, 8);
     case 'box': return new THREE.BoxGeometry(K.hx * 2, K.hy * 2, K.hz * 2);
+    case 'bell': return lathe([[0.0001, -0.1], [0.11, -0.1], [0.108, -0.085], [0.09, -0.04], [0.072, 0.02], [0.058, 0.07], [0.03, 0.098], [0.012, 0.1], [0.0001, 0.1]], 16);
     case 'cyl': return new THREE.CylinderGeometry(K.r, K.r, K.hh * 2, 18);
     case 'capsule': return capsuleGeo(K.hh, K.r);
     case 'bottle': return lathe([[0.0001, -0.1], [0.036, -0.098], [0.045, -0.085], [0.045, 0.06], [0.038, 0.1], [0.022, 0.13], [0.02, 0.2], [0.0001, 0.2]], 14);
   }
 }
 Object.keys(KINDS).forEach(function (k) {
-  var K = KINDS[k]; CAP[k] = k === 'acorn' ? 800 : 3200; free[k] = []; nextSlot[k] = 0;
+  var K = KINDS[k]; CAP[k] = k === 'acorn' ? 800 : /^brick/.test(k) ? 21000 : /^beam/.test(k) ? 2000 : k === 'bell' ? 4 : 1500; free[k] = []; nextSlot[k] = 0;
   var mat = new THREE.MeshStandardMaterial({ color: K.col, roughness: k === 'lid' || k === 'can' ? 0.4 : k === 'marble' || k === 'float' || k === 'bottle' ? 0.2 : 0.8, metalness: k === 'lid' || k === 'can' ? 0.6 : 0 });
   if (k === 'bottle' || k === 'float') { mat.transparent = true; mat.opacity = 0.85; }
   var m = new THREE.InstancedMesh(geoFor(K), mat, CAP[k]); m.count = 0; m.frustumCulled = false; m.castShadow = true; m.receiveShadow = true;
@@ -169,7 +180,7 @@ var hooks = {
   add: function (rec) {
     var k = rec.kind, s = free[k].length ? free[k].pop() : nextSlot[k]++; if (s >= CAP[k]) { rec.slot = -1; return; }
     rec.slot = s; if (s >= IM[k].count) IM[k].count = s + 1;
-    var sh = k === 'brick' || k === 'crate' || k === 'stick' ? 0.9 + Math.random() * 0.2 : 1, c = new THREE.Color(KINDS[k].col); IM[k].instanceColor.setXYZ(s, c.r * sh, c.g * sh, c.b * sh); IM[k].instanceColor.needsUpdate = true;
+    var sh = /^brick|^beam|^crate|^stick/.test(k) ? 0.9 + ((rec.id * 2654435761 >>> 0) % 1000) / 5000 : 1, c = new THREE.Color(KINDS[k].col); IM[k].instanceColor.setXYZ(s, c.r * sh, c.g * sh, c.b * sh); IM[k].instanceColor.needsUpdate = true;
   },
   remove: function (rec) { if (rec.slot < 0 || rec.slot === undefined) return; var k = rec.kind; IM[k].instanceMatrix.array.set(zeroM, rec.slot * 16); IM[k].instanceMatrix.needsUpdate = true; free[k].push(rec.slot); },
   reset: function () { Object.keys(IM).forEach(function (k) { IM[k].count = 0; free[k].length = 0; nextSlot[k] = 0; IM[k].instanceMatrix.array.fill(0); }); }
@@ -206,15 +217,46 @@ var ring = new THREE.Mesh(new THREE.RingGeometry(0.25, 0.4, 24).rotateX(-Math.PI
 /* ---------- session ---------- */
 var amp = 1.1, tideNow = 0, autoTide = false, groundMode = -1, ammoKind = 'marble', power = 1;
 var aim = { yaw: 0, elev: 0.3, target: null };
-var pieces = 250, ses = null, loading = false;
-var cfgBase = function () { return { pieces: pieces, seed: 1, ammoCap: ammoCapFor(), tide: tideNow, ground: groundMode, track: true, hooks: hooks }; };
-function build(p) {
+var pieces = 250, ses = null, loading = false, shape = Q.get('shape') === 'tower' ? 'tower' : Q.get('shape') === 'wall' ? 'wall' : 'castle', rubble = Q.get('rubble') === '1', fortSeed = +(Q.get('seed') || 1) || 1, builtKey = '';
+var cfgBase = function () { return { pieces: pieces, seed: fortSeed, ammoCap: ammoCapFor(), tide: tideNow, ground: groundMode, track: true, hooks: hooks, fort: shape, rubble: rubble, defer: true, tight: false }; };
+var settleT0 = 0, readyAt = 0;
+function keyNow() { return shape + '|' + piecesFromSlider(+$('pieces').value) + '|' + rubble; }
+function build(p, again) {
   pieces = p; loading = true; $('status').style.display = 'block'; $('status').textContent = 'Building ' + p + ' pieces...';
   return new Promise(function (res) { setTimeout(function () {
     var t0 = performance.now();
-    if (!ses) ses = SIM.makeSession(RAPIER, site, cfgBase()); else ses.rebuild(cfgBase());
-    ses.buildMs = performance.now() - t0; loading = false; $('status').style.display = 'none'; colTide = 99; aimUpdate(); res();
+    if (!ses) ses = SIM.makeSession(RAPIER, site, cfgBase()); else if (again) ses.rebuild({}); else ses.rebuild(cfgBase());
+    ses.buildMs = performance.now() - t0; settleT0 = performance.now(); builtKey = shape + '|' + p + '|' + rubble; colTide = 99;
+    /* the settle phase: a slice of it every frame so the page stays alive; shots wait for 'Ready' */
+    (function slice() {
+      var done = ses.settleChunk(25);
+      if (!done) { var st = ses.settling; $('status').textContent = 'Settling... ' + Math.min(99, Math.round((st ? st.n : 0) / 120 * 100)) + '%'; return setTimeout(slice, 0); }
+      loading = false; ses.settleMs = performance.now() - settleT0; frameFort(); aimAtBell(); fortUI();
+      var f = ses.sim.fort; status('Ready' + (ses.settleNote ? ': ' + ses.settleNote : ''), 1800);
+      $('buildFort').classList.remove('on'); res();
+    })();
   }, 30); });
+}
+function frameFort() {                                  /* the camera looks at the fort by default */
+  var f = ses && ses.sim.fort, d = f ? f.design : null; if (!d) return;
+  var hh = Math.max(d.height, 0.6), w = Math.max(d.half.x, d.half.z, 0.8);
+  orb.tx = d.cx; orb.tz = d.cz; orb.ty = d.baseY + hh * 0.45; orb.az = 0; orb.el = 0.42; orb.dist = Math.max(6, Math.min(40, (Math.max(hh * 1.3, w * 1.5) + 1.5) / Math.tan(25 * Math.PI / 180) * 0.8));
+}
+function aimAtBell() { var f = ses && ses.sim.fort; if (!f) return; aim.target = { x: f.design.bell.x, y: f.bellHome, z: f.design.bell.z }; aimUpdate(); }
+function fortUI() {
+  var f = ses && ses.sim.fort; if (!f) { $('fortInfo').textContent = ''; return; }
+  var d = f.design, sc = d.scale === 1 ? 'full size' : d.scale === 0.5 ? 'half size' : 'quarter size';
+  $('fortInfo').textContent = f.shape + ': ' + f.count + ' pieces exactly (asked ' + f.requested + '), ' + sc + ' bricks, ' + (d.height).toFixed(1) + ' m tall' + (f.rubble ? ', plus ' + f.rubble + ' loose rubble' : '') +
+    '. Settled in ' + f.settleSteps + ' steps, drift ' + (f.settleMax * 100).toFixed(1) + ' cm' + (ses.settleNote ? '. ' + ses.settleNote : '') + '.';
+}
+var scoreT = 0;
+function scoreUI(force) {
+  if (!ses || loading) return;
+  var sc = ses.score(), el = $('score');
+  if (!sc) { el.style.display = 'none'; return; }
+  el.style.display = 'block'; el.classList.toggle('down', sc.bellDown);
+  el.innerHTML = (sc.bellDown ? '<span style="font-size:22px">Bell down!</span> (fell ' + (sc.bellDrop * 100).toFixed(0) + ' cm)<br>' : 'Bell: ' + (ses.settling ? 'settling' : 'still up') + ' (down at 32 cm)<br>') +
+    'pieces moved <b>' + sc.moved + '</b> &nbsp; standing <b>' + sc.standing + '</b> &nbsp; shots <b>' + sc.shots + '</b>';
 }
 function status(t, ms) { var s = $('status'); s.textContent = t; s.style.display = t ? 'block' : 'none'; if (ms) setTimeout(function () { if (s.textContent === t) s.style.display = 'none'; }, ms); }
 
@@ -240,7 +282,7 @@ function ammoMass(k) { if (massCache[k]) return massCache[k]; var K = KINDS[k]; 
 function nudge(dy, de) { aim.target = null; aim.yaw += dy; aim.elev = Math.max(-0.1, Math.min(1.4, aim.elev + de)); aimUpdate(); }
 
 /* ---------- ammo buttons, firing ---------- */
-var firing = false, fireCool = 0;
+var firing = false, fireCool = 0, burstLeft = 0, burstGap = 0;
 (function () {
   var box = $('ammo');
   SIM.AMMO.forEach(function (k) {
@@ -248,6 +290,12 @@ var firing = false, fireCool = 0;
     b.addEventListener('click', function () { ammoKind = k; syncAmmo(); aimUpdate(); }); box.appendChild(b);
   });
   var f = document.createElement('button'); f.className = 'btn big'; f.id = 'fire'; f.textContent = 'FIRE'; box.appendChild(f);
+  var br = document.createElement('button'); br.className = 'btn'; br.id = 'bigrod'; br.textContent = 'Big rod'; br.style.cssText = 'min-height:48px;font-size:16px'; box.appendChild(br);
+  var bu = document.createElement('button'); bu.className = 'btn'; bu.id = 'burst'; bu.textContent = 'Burst'; bu.style.cssText = 'min-height:48px;font-size:16px'; box.appendChild(bu);
+  var rb = document.createElement('button'); rb.className = 'btn'; rb.id = 'rebuild'; rb.textContent = 'Rebuild'; rb.style.cssText = 'min-height:48px;font-size:16px'; box.appendChild(rb);
+  br.addEventListener('click', function () { ammoKind = 'rod'; syncAmmo(); aimUpdate(); fireNow(); });
+  bu.addEventListener('click', function () { if (ammoKind === 'rod') burstLeft = 3; else burstLeft = Math.max(4, Math.min(8, Math.round(KINDS[ammoKind].rate * 2))); burstGap = 0; });
+  rb.addEventListener('click', function () { if (loading || !ses || ses.replay) return; build(pieces, true); });
   var pw = document.createElement('label'); pw.className = 'card'; pw.style.cssText = 'min-width:120px;font-size:12px;font-weight:700'; pw.innerHTML = 'Power<input id="power" type="range" min="20" max="100" value="100" style="width:100%">'; box.appendChild(pw);
   var nb = document.createElement('div'); nb.className = 'row'; [['◀', -0.01, 0], ['▶', 0.01, 0], ['▲', 0, 0.01], ['▼', 0, -0.01]].forEach(function (a) { var b = document.createElement('button'); b.className = 'btn'; b.textContent = a[0]; b.style.minWidth = '44px'; b.addEventListener('click', function () { nudge(a[1] * 3, a[2] * 3); }); nb.appendChild(b); }); box.appendChild(nb);
   f.addEventListener('pointerdown', function (e) { e.preventDefault(); firing = true; fireCool = 0; }); addEventListener('pointerup', function () { firing = false; }); addEventListener('pointercancel', function () { firing = false; });
@@ -257,7 +305,7 @@ var firing = false, fireCool = 0;
 })();
 function syncAmmo() { document.querySelectorAll('#ammo .am').forEach(function (b) { b.classList.toggle('on', b.dataset.k === ammoKind); }); }
 var armAnim = 0;
-function fireNow() { if (!ses || ses.replay || loading) return; ses.fire(ammoKind, aim.yaw, aim.elev, power); armAnim = 1; }
+function fireNow() { if (!ses || ses.replay || loading || ses.settling) return; ses.fire(ammoKind, aim.yaw, aim.elev, power); armAnim = 1; }
 
 /* ---------- camera ---------- */
 var orb = { az: 0.0, el: 0.55, dist: 19, tx: 0, ty: 0.7, tz: 1.5 };
@@ -283,10 +331,12 @@ addEventListener('resize', function () { renderer.setSize(innerWidth, innerHeigh
 cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix();
 
 /* ---------- controls ---------- */
-function setPiecesLabel() { $('piecesV').textContent = piecesFromSlider(+$('pieces').value) + ' (tier cap ' + tierCap() + ')'; }
-$('pieces').addEventListener('input', setPiecesLabel); $('pieces').addEventListener('change', function () { build(piecesFromSlider(+$('pieces').value)); });
-$('rebuild').addEventListener('click', function () { build(piecesFromSlider(+$('pieces').value)); });
-$('tier').addEventListener('change', function () { tier = this.value; setPiecesLabel(); renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); build(Math.min(pieces, tierCap())); });
+function setPiecesLabel() { var n = piecesFromSlider(+$('pieces').value); $('piecesV').textContent = n + (n > 4000 ? ' (past the 4,000 the iPad ran fine: untested)' : ''); $('buildFort').classList.toggle('on', !!ses && keyNow() !== builtKey); }
+$('pieces').addEventListener('input', setPiecesLabel); $('pieces').addEventListener('change', setPiecesLabel);
+$('shape').addEventListener('change', function () { shape = this.value; setPiecesLabel(); });
+$('rubbleSw').addEventListener('click', function () { rubble = !rubble; this.textContent = 'Rubble field: ' + (rubble ? 'on' : 'off'); this.classList.toggle('on', rubble); setPiecesLabel(); });
+$('buildFort').addEventListener('click', function () { if (loading || (ses && ses.replay)) return; build(piecesFromSlider(+$('pieces').value)); });
+$('tier').addEventListener('change', function () { tier = this.value; setPiecesLabel(); renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); build(pieces); });
 $('ground').addEventListener('change', function () { groundMode = +this.value; if (ses && !ses.replay) ses.setGround(groundMode); status('Ground: ' + (groundMode < 0 ? 'island map' : 'all ' + TR.GROUND[groundMode].name.toLowerCase()), 1500); });
 function setTideUI(v) { tideNow = v; $('tide').value = Math.round(v * 100); $('tideV').textContent = (v >= 0 ? '+' : '') + v.toFixed(2) + ' m'; }
 $('tide').addEventListener('input', function () { autoTide = false; $('autoTide').textContent = 'Auto tide: off'; $('autoTide').classList.remove('on'); setTideUI(this.value / 100); if (ses && !ses.replay) ses.setTide(tideNow); });
@@ -312,7 +362,7 @@ function pushStat(a, v, n) { a.push(v); if (a.length > (n || 60)) a.shift(); }
 function perfText() {
   if (!ses) return '';
   var sim = ses.sim, fm = avg(P.frame), pm = avg(P.phys), st = avg(P.steps), info = renderer.info.render;
-  return '<b>pieces</b> ' + sim.bodies.length + '  <b>awake</b> ' + sim.nActive + '\nshots live ' + sim.nAmmo + ' of ' + sim.ammoCap +
+  return '<b>pieces</b> ' + (sim.fort ? sim.fort.count + ' fort' + (sim.fort.rubble ? ' + ' + sim.fort.rubble + ' rubble' : '') : sim.bodies.length) + '  <b>awake</b> ' + sim.nActive + '\nshots live ' + sim.nAmmo + ' of ' + sim.ammoCap +
     '\n<b>physics</b> ' + pm.toFixed(2) + ' ms/frame' + '\n  (' + st.toFixed(1) + ' steps, ' + (st ? (pm / Math.max(st, 0.01)).toFixed(2) : '0') + ' ms each)' +
     '\n<b>frame</b> ' + fm.toFixed(1) + ' ms  ' + (fm ? (1000 / fm).toFixed(0) : 0) + ' fps' + '\ntris ' + info.triangles + '  calls ' + info.calls +
     '\n' + tier + '  tide ' + (tideNow >= 0 ? '+' : '') + tideNow.toFixed(2) + '  rescued ' + sim.rescued +
@@ -331,11 +381,13 @@ function frame(now) {
   if (ses && !loading) {
     var sim = ses.sim, t0 = performance.now(), physMs = 0, n = 0;
     if (benchHook) benchHook.pre(dtms);
-    if (ses.replay) {
+    if (ses.settling) { ses.settleChunk(20); status('Settling...'); acc = 0; }
+    else if (ses.replay) {
       if (ff) { var c = 0; while (ses.replay && c++ < 40) stepOnce(); if (!ses.replay) replayEnded(); }
       else { acc += dt * replaySpeed; while (acc >= DT && n < 3 && ses.replay) { physMs += stepOnce(); acc -= DT; n++; } if (!ses.replay) replayEnded(); }
     } else {
-      acc += dt; if (firing) { fireCool -= dt; var gap = 1 / KINDS[ammoKind].rate; while (fireCool <= 0) { fireNow(); fireCool += gap; if (fireCool < -1) fireCool = 0; } }
+      acc += dt; if (burstLeft > 0) { burstGap -= dt; if (burstGap <= 0) { fireNow(); burstLeft--; burstGap = ammoKind === 'rod' ? 0.28 : 0.1; } }
+      if (firing) { fireCool -= dt; var gap = 1 / KINDS[ammoKind].rate; while (fireCool <= 0) { fireNow(); fireCool += gap; if (fireCool < -1) fireCool = 0; } }
       while (acc >= DT && n < 3) { physMs += stepOnce(); acc -= DT; n++; } if (acc > DT * 3) acc = 0;
     }
     sim = ses.sim;
@@ -343,6 +395,7 @@ function frame(now) {
     sea.position.y = sim.tide;
     armAnim = Math.max(0, armAnim - dt * 5); armPivot.rotation.x = aim.elev + 0.6 - armAnim * 0.9;
     drawBodies(sim, ses.replay ? acc / DT : Math.min(1, acc / DT)); placeCam();
+    scoreT += dtms; if (scoreT > 250) { scoreT = 0; scoreUI(); }
     renderer.render(scene, cam);
     pushStat(P.frame, dtms); pushStat(P.phys, physMs); pushStat(P.steps, n);
     if (benchHook) benchHook.post(dtms, physMs, n);
@@ -352,14 +405,13 @@ function frame(now) {
 }
 
 /* ---------- the bench: pieces go up until the page slows, then it stops by itself ---------- */
-var benchState = null;
+var benchState = null, saved0 = 400;
 function gpuName() { try { var gl = renderer.getContext(), ext = gl.getExtension('WEBGL_debug_renderer_info'); return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : 'unknown (no debug info)'; } catch (e) { return 'unknown'; } }
 function pct(a, p) { var b = a.slice().sort(function (x, y) { return x - y; }); return b.length ? b[Math.min(b.length - 1, Math.floor(b.length * p))] : 0; }
 function benchRun() {
-  var quick = Q.get('bench') === 'quick', LEVELS = quick ? [40, 120] : [50, 100, 200, 300, 500, 750, 1000, 1500, 2000, 3000, 4000], FR = quick ? 12 : 90, KNEE_MS = +(Q.get('kneems') || 100), KNEE_N = 5;
+  var quick = Q.get('bench') === 'quick', LEVELS = quick ? [40, 120] : [50, 100, 250, 500, 1000, 2000, 3000, 4000, 6000, 8000, 12000, 20000], FR = quick ? 12 : 90, KNEE_MS = +(Q.get('kneems') || 100), KNEE_N = 5;
   var st = benchState = { i: 0, rows: [], phase: 'build', frames: [], phys: [], steps: [], awake: 0, over: 0, stopped: null, fireAcc: 0, shotNo: 0, t0: Date.now(), tris: 0, calls: 0, running: true };
-  var saved = { pieces: pieces, tide: tideNow };
-  if (tier === 'ipad') LEVELS = LEVELS.filter(function (v) { return v <= 250; }).concat(quick ? [] : [250]);
+  var saved = { pieces: pieces, tide: tideNow }; saved0 = pieces;
   LEVELS = LEVELS.filter(function (v, i, a) { return a.indexOf(v) === i; });
   $('benchStart').disabled = true; $('benchStop').disabled = false; $('benchCopy').disabled = true; $('rep').value = '';
   function progress() { $('benchProg').textContent = st.stopped ? 'Stopped: ' + st.stopped : 'Level ' + (st.i + 1) + ' of ' + LEVELS.length + ': ' + LEVELS[st.i] + ' pieces (' + st.phase + ')...'; }
@@ -379,7 +431,7 @@ function benchRun() {
     L.push('device: ' + navigator.userAgent); L.push('screen ' + innerWidth + 'x' + innerHeight + ' @' + (window.devicePixelRatio || 1) + '  cores ' + (navigator.hardwareConcurrency || '?') + '  tier ' + tier + '  shadows ' + (shadowsOn ? 'on' : 'off'));
     L.push('gpu: ' + gpuName());
     L.push('ground: ' + siteNote + '; mode ' + (groundMode < 0 ? 'island map' : TR.GROUND[groundMode].id));
-    L.push('replay code (250 pieces, fixed volley): ' + SIM.determinismCode(RAPIER, site) + '   (Node gives ' + (window.__nodeCode || 'see test_results.json') + ')');
+    L.push('replay code (250 loose pieces, fixed volley): ' + SIM.determinismCode(RAPIER, site) + '   fort code (250-piece castle, fixed volley): ' + SIM.fortCode(RAPIER, site) + '   (Node gives the same: see test_results.json and test_fort_results.json)');
     L.push('stop rule: frame over ' + KNEE_MS + ' ms for ' + KNEE_N + ' frames in a row');
     L.push(''); L.push('pieces  built_ms  frame_avg  frame_p95  frame_max  fps  phys_ms/frame  steps/frame  awake_peak  tris  calls  rescued');
     for (i = 0; i < st.rows.length; i++) {
@@ -388,8 +440,10 @@ function benchRun() {
     }
     L.push(''); L.push('smooth (about 60 fps: avg 18 ms or less, p95 24 ms or less) up to: ' + (smooth ? smooth + ' pieces' : 'none of the levels'));
     L.push('knee (30 fps or better: avg 33 ms or less, p95 50 ms or less) up to: ' + (knee ? knee + ' pieces' : 'none of the levels'));
+    var hi = 0, hiTried = 0; for (i = 0; i < st.rows.length; i++) { hiTried = st.rows[i].fort || st.rows[i].pieces; if (!st.rows[i].aborted) hi = hiTried; }
+    L.push('highest level reached: ' + (hi ? hi + ' pieces (frame rule not tripped)' : 'none') + (st.stopped ? '; stopped at ' + hiTried + ' pieces' : '; the top level of the list ran'));
     L.push(st.stopped ? 'stopped early: ' + st.stopped : 'ran every level');
-    L.push('note: pieces include the brick block, cans and wash-up debris; the scripted volley fires rods, coconuts, marbles and acorns at the block.');
+    L.push('note: the pieces are one fort (' + shape + ', bricks, beams and a bell, counted exactly); the scripted volley fires rods, coconuts, marbles and acorns at it.');
     if (/swiftshader|llvmpipe|software|basic render/i.test(gpuName())) L.push('WARNING: this is SOFTWARE graphics: the frame times say nothing about a real GPU.');
     return L.join('\n');
   }
@@ -409,7 +463,7 @@ function benchRun() {
       if (dtms > KNEE_MS) st.over++; else st.over = 0;
       var abort = st.over >= KNEE_N, done = st.frames.length >= FR;
       if (abort || done) {
-        var r = { pieces: ses.sim.bodies.length, buildMs: Math.round(st.buildMs), fAvg: avg(st.frames), fP95: pct(st.frames, 0.95), fMax: Math.max.apply(null, st.frames), pAvg: avg(st.phys), sAvg: avg(st.steps), awake: st.awake, tris: renderer.info.render.triangles, calls: renderer.info.render.calls, rescued: ses.sim.rescued, aborted: abort };
+        var r = { fort: ses.sim.fort ? ses.sim.fort.count : 0, pieces: ses.sim.bodies.length, buildMs: Math.round(st.buildMs), fAvg: avg(st.frames), fP95: pct(st.frames, 0.95), fMax: Math.max.apply(null, st.frames), pAvg: avg(st.phys), sAvg: avg(st.steps), awake: st.awake, tris: renderer.info.render.triangles, calls: renderer.info.render.calls, rescued: ses.sim.rescued, aborted: abort };
         st.rows.push(r); if (abort) { st.stopped = 'frame time over ' + KNEE_MS + ' ms for ' + KNEE_N + ' frames at ' + r.pieces + ' pieces'; return finish(); }
         st.i++; if (st.i >= LEVELS.length) return finish(); st.phase = 'next'; setTimeout(startLevel, 50);
       }
@@ -420,18 +474,17 @@ function benchRun() {
 $('bench').addEventListener('click', function () { $('modal').style.display = 'flex'; });
 $('benchClose').addEventListener('click', function () { if (benchState && benchState.running) return; $('modal').style.display = 'none'; });
 $('benchStart').addEventListener('click', benchRun);
-$('benchStop').addEventListener('click', function () { if (benchState && benchState.running) { benchState.stopped = 'stopped by the user'; var st = benchState; st.running = false; benchHook = null; $('rep').value = 'Stopped by the user before the report was complete.\n'; $('benchStart').disabled = false; $('benchStop').disabled = true; build(250); } });
+$('benchStop').addEventListener('click', function () { if (benchState && benchState.running) { benchState.stopped = 'stopped by the user'; var st = benchState; st.running = false; benchHook = null; $('rep').value = 'Stopped by the user before the report was complete.\n'; $('benchStart').disabled = false; $('benchStop').disabled = true; build(saved0); } });
 $('benchCopy').addEventListener('click', function () {
   var t = $('rep'); t.focus(); t.select();
   try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t.value).then(function () { $('benchProg').textContent = 'Copied.'; }, function () { document.execCommand('copy'); $('benchProg').textContent = 'Copied (fallback).'; }); else { document.execCommand('copy'); $('benchProg').textContent = 'Copied.'; } } catch (e) { $('benchProg').textContent = 'Select the text and copy it by hand.'; }
 });
 
 /* ---------- start ---------- */
-var start = +(Q.get('pieces') || 0) || (tier === 'ipad' ? 120 : 250);
-setTideUI(+(Q.get('tide') || 0)); setPiecesLabel(); syncAmmo();
-$('pieces').value = Math.round(Math.log(start / 40) / Math.log(tierCap() / 40) * 100); setPiecesLabel();
-await build(start);
-(function () { var a = SIM.aimAt(ses.muzzle(), { x: 0, y: site.padY + 0.5, z: site.layout.wall.z }, KINDS[ammoKind].speed * 0.9); aim.target = { x: 0, y: site.padY + 0.5, z: site.layout.wall.z }; aimUpdate(); })();
+var start = +(Q.get('pieces') || 0) || 400;
+setTideUI(+(Q.get('tide') || 0)); syncAmmo();
+$('pieces').value = sliderFromPieces(start); $('shape').value = shape; if (rubble) { $('rubbleSw').textContent = 'Rubble field: on'; $('rubbleSw').classList.add('on'); }
+await build(start); setPiecesLabel();
 recolor(tideNow, groundMode); placeCam(); requestAnimationFrame(frame);
 window.__rubble = { get ses() { return ses; }, site: site, THREE: THREE, P: P, build: build, fire: function (k, n) { ammoKind = k; for (var i = 0; i < (n || 1); i++) fireNow(); }, aim: aim, aimUpdate: aimUpdate, setAmmo: function (k) { ammoKind = k; syncAmmo(); aimUpdate(); }, perfText: perfText, renderer: renderer, benchRun: benchRun, tier: function () { return tier; } };
 })();

@@ -1,0 +1,324 @@
+{
+ "when": "2026-11-26T07:56:57.304Z",
+ "node": "v22.22.0",
+ "checks": [
+  {
+   "name": "count: every shape at 16 counts from 40 to 20000 gives exactly that many pieces and one bell (48 designs)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "design is deterministic: same shape, count and seed give the same pieces",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "a different seed gives a different bond pattern (same count)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the fort sits on the levelled pad (ground spread under it under 1 cm)",
+   "ok": true,
+   "detail": "spread 0.3 mm"
+  },
+  {
+   "name": "wall 100: exact count 100 bodies, 100 in the world",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "wall 100: settled and asleep (awake 0, drift 1.1 cm, 70 steps), nothing fell through",
+   "ok": true,
+   "detail": "ok=true"
+  },
+  {
+   "name": "wall 100: nothing moved after the settle (score 0 moved) and the bell is up",
+   "ok": true,
+   "detail": "{\"count\":100,\"moved\":0,\"standing\":100,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+  },
+  {
+   "name": "wall 100: after 5 more seconds untouched it is still the same (no creep)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "wall 400: exact count 400 bodies, 400 in the world",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "wall 400: settled and asleep (awake 0, drift 4.1 cm, 90 steps), nothing fell through",
+   "ok": true,
+   "detail": "ok=true"
+  },
+  {
+   "name": "wall 400: nothing moved after the settle (score 0 moved) and the bell is up",
+   "ok": true,
+   "detail": "{\"count\":400,\"moved\":0,\"standing\":400,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+  },
+  {
+   "name": "wall 400: after 5 more seconds untouched it is still the same (no creep)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "wall 1000: exact count 1000 bodies, 1000 in the world",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "wall 1000: settled and asleep (awake 0, drift 2.3 cm, 60 steps), nothing fell through",
+   "ok": true,
+   "detail": "ok=true"
+  },
+  {
+   "name": "wall 1000: nothing moved after the settle (score 0 moved) and the bell is up",
+   "ok": true,
+   "detail": "{\"count\":1000,\"moved\":0,\"standing\":1000,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+  },
+  {
+   "name": "wall 1000: after 5 more seconds untouched it is still the same (no creep)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "tower 100: exact count 100 bodies, 100 in the world",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "tower 100: settled and asleep (awake 0, drift 5.5 cm, 100 steps), nothing fell through",
+   "ok": true,
+   "detail": "ok=true"
+  },
+  {
+   "name": "tower 100: nothing moved after the settle (score 0 moved) and the bell is up",
+   "ok": true,
+   "detail": "{\"count\":100,\"moved\":0,\"standing\":100,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+  },
+  {
+   "name": "tower 100: after 5 more seconds untouched it is still the same (no creep)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "tower 400: exact count 400 bodies, 400 in the world",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "tower 400: settled and asleep (awake 0, drift 5.8 cm, 130 steps), nothing fell through",
+   "ok": true,
+   "detail": "ok=true"
+  },
+  {
+   "name": "tower 400: nothing moved after the settle (score 0 moved) and the bell is up",
+   "ok": true,
+   "detail": "{\"count\":400,\"moved\":0,\"standing\":400,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+  },
+  {
+   "name": "tower 400: after 5 more seconds untouched it is still the same (no creep)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "tower 1000: exact count 1000 bodies, 1000 in the world",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "tower 1000: settled and asleep (awake 0, drift 7.7 cm, 110 steps), nothing fell through",
+   "ok": true,
+   "detail": "ok=true"
+  },
+  {
+   "name": "tower 1000: nothing moved after the settle (score 0 moved) and the bell is up",
+   "ok": true,
+   "detail": "{\"count\":1000,\"moved\":0,\"standing\":1000,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+  },
+  {
+   "name": "tower 1000: after 5 more seconds untouched it is still the same (no creep)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "castle 100: exact count 100 bodies, 100 in the world",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "castle 100: settled and asleep (awake 0, drift 1.3 cm, 70 steps), nothing fell through",
+   "ok": true,
+   "detail": "ok=true"
+  },
+  {
+   "name": "castle 100: nothing moved after the settle (score 0 moved) and the bell is up",
+   "ok": true,
+   "detail": "{\"count\":100,\"moved\":0,\"standing\":100,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+  },
+  {
+   "name": "castle 100: after 5 more seconds untouched it is still the same (no creep)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "castle 400: exact count 400 bodies, 400 in the world",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "castle 400: settled and asleep (awake 0, drift 5.5 cm, 100 steps), nothing fell through",
+   "ok": true,
+   "detail": "ok=true"
+  },
+  {
+   "name": "castle 400: nothing moved after the settle (score 0 moved) and the bell is up",
+   "ok": true,
+   "detail": "{\"count\":400,\"moved\":0,\"standing\":400,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+  },
+  {
+   "name": "castle 400: after 5 more seconds untouched it is still the same (no creep)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "castle 1000: exact count 1000 bodies, 1000 in the world",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "castle 1000: settled and asleep (awake 0, drift 5.7 cm, 120 steps), nothing fell through",
+   "ok": true,
+   "detail": "ok=true"
+  },
+  {
+   "name": "castle 1000: nothing moved after the settle (score 0 moved) and the bell is up",
+   "ok": true,
+   "detail": "{\"count\":1000,\"moved\":0,\"standing\":1000,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+  },
+  {
+   "name": "castle 1000: after 5 more seconds untouched it is still the same (no creep)",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "numbers": {
+  "padY": 1.39,
+  "castle400": {
+   "params": {
+    "wm": 7,
+    "dm": 6,
+    "ts": 1,
+    "tw": 1,
+    "hw": 5,
+    "ht": 6,
+    "hk": 11,
+    "km": 1
+   },
+   "scale": 1,
+   "heightM": 1.65
+  },
+  "settle": [
+   {
+    "shape": "wall",
+    "pieces": 100,
+    "brickScale": 1,
+    "courses": 5,
+    "heightM": 0.8,
+    "settleSteps": 70,
+    "driftCm": 1.1,
+    "tiltMax": 0.0011,
+    "ms": 315
+   },
+   {
+    "shape": "wall",
+    "pieces": 400,
+    "brickScale": 1,
+    "courses": 12,
+    "heightM": 1.65,
+    "settleSteps": 90,
+    "driftCm": 4.1,
+    "tiltMax": 0.0828,
+    "ms": 880
+   },
+   {
+    "shape": "wall",
+    "pieces": 1000,
+    "brickScale": 0.5,
+    "courses": 11,
+    "heightM": 0.86,
+    "settleSteps": 60,
+    "driftCm": 2.3,
+    "tiltMax": 0.0002,
+    "ms": 1152
+   },
+   {
+    "shape": "tower",
+    "pieces": 100,
+    "brickScale": 1,
+    "courses": 12,
+    "heightM": 1.65,
+    "settleSteps": 100,
+    "driftCm": 5.5,
+    "tiltMax": 0.0001,
+    "ms": 259
+   },
+   {
+    "shape": "tower",
+    "pieces": 400,
+    "brickScale": 1,
+    "courses": 16,
+    "heightM": 2.13,
+    "settleSteps": 130,
+    "driftCm": 5.8,
+    "tiltMax": 0.0002,
+    "ms": 926
+   },
+   {
+    "shape": "tower",
+    "pieces": 1000,
+    "brickScale": 1,
+    "courses": 16,
+    "heightM": 2.13,
+    "settleSteps": 110,
+    "driftCm": 7.7,
+    "tiltMax": 0.0002,
+    "ms": 2048
+   },
+   {
+    "shape": "castle",
+    "pieces": 100,
+    "brickScale": 1,
+    "courses": 5,
+    "heightM": 0.8,
+    "settleSteps": 70,
+    "driftCm": 1.3,
+    "tiltMax": 0.0012,
+    "ms": 117
+   },
+   {
+    "shape": "castle",
+    "pieces": 400,
+    "brickScale": 1,
+    "courses": 12,
+    "heightM": 1.65,
+    "settleSteps": 100,
+    "driftCm": 5.5,
+    "tiltMax": 0.0021,
+    "ms": 550
+   },
+   {
+    "shape": "castle",
+    "pieces": 1000,
+    "brickScale": 1,
+    "courses": 14,
+    "heightM": 1.89,
+    "settleSteps": 120,
+    "driftCm": 5.7,
+    "tiltMax": 0.0103,
+    "ms": 1574
+   }
+  ]
+ }
+}
