@@ -179,16 +179,24 @@ void main(){
   float lift=clamp(0.5+0.5*(vP.y-uVK*0.0)/max(uHs,0.05)*0.55,0.0,1.0);
   vec3 body=mix(uDeep,uShal,pow(lift,2.5)*0.8+0.05)*(0.35+0.9*uSunI*max(uSunDir.y,0.1)+0.25*max(dot(N,uSunDir),0.0));
   body+=uShal*0.5*pow(max(dot(V,-uSunDir),0.0),3.0)*pow(lift,3.0)*uSunI*0.5;   /* light through a thin crest */
+  body*=mix(1.0,mix(0.30,1.0,smoothstep(0.08,0.70,lift)),clamp(uFoam,0.0,1.0))*(1.0-0.30*uDark);   /* troughs read darker when it blows */
   vec3 col=mix(body,sk,fres);
   float sd=max(dot(reflect(-V,N),uSunDir),0.0);col+=uSunCol*(pow(sd,350.0)*18.0+pow(sd,60.0)*0.6)*uSunI*(1.0-uDark*0.5)*smoothstep(0.0,0.15,uSunDir.y+0.05);
   /* foam from the Jacobian (crests that fold) with noise, plus wind streaks, plus the whirlpool's spiral arms */
-  float fj=smoothstep(uFoamT+0.14,uFoamT-0.12,vJ);
-  float nz=vn(vP.xz*0.8+uT*0.07)*0.6+vn(vP.xz*3.3-uT*0.1)*0.4;
-  float crest=smoothstep(0.78,1.0,lift)*smoothstep(0.35,0.9,uFoamT);float foam=max(fj*smoothstep(0.2,0.7,nz+fj*0.45),crest*smoothstep(0.5,0.8,nz)*0.45)*uFoam;
-  if(uStreak>0.0){vec2 q=vec2(dot(vP.xz,W),dot(vP.xz,Wp));float st=vn(vec2(q.x*0.05-uT*0.05,q.y*0.7));foam=max(foam,smoothstep(0.62,0.9,st+0.25*fj)*uStreak*0.55*smoothstep(1.1,0.55,vJ+0.2)); }
+  /* FOAM (reworked: the first version covered whole slopes in snow). Whitecaps = folded crest (low Jacobian) AND high on the wave AND a noise threshold, so they are patches on the crests;
+     trailing foam = a thinner, weaker version just behind the crest; wind streaks = thin lines stretched along the wind, sparse, never opaque. Troughs stay dark. */
+  float fold=smoothstep(uFoamT-0.02,uFoamT-0.34,vJ);
+  float crestH=smoothstep(0.58,0.95,lift);
+  float n1=vn(vP.xz*1.25+uT*0.09),n2=vn(vP.xz*4.3-uT*0.14);float nzz=0.6*n1+0.4*n2;
+  float cap=fold*crestH*smoothstep(0.50,0.78,nzz)*uFoam;
+  float trail=fold*smoothstep(0.38,0.75,lift)*smoothstep(0.58,0.88,n2)*0.30*uFoam;
+  float foam=max(cap,trail);
+  if(uStreak>0.0){vec2 q=vec2(dot(vP.xz,W),dot(vP.xz,Wp));float st=0.55*vn(vec2(q.x*0.035-uT*0.05,q.y*1.3))+0.45*vn(vec2(q.x*0.09+uT*0.02,q.y*3.4));
+    foam=max(foam,smoothstep(0.66,0.84,st)*uStreak*0.30*(0.45+0.55*smoothstep(0.35,0.85,lift)));}
   if(uVK>0.0){vec2 rv=vP.xz-uVort.xy;float r=length(rv);float th=atan(rv.y,rv.x);float arms=sin(3.0*th+6.5*log(r+1.0)-uT*0.9);
-    foam=max(foam,uVK*smoothstep(0.35,0.9,arms)*exp(-r/(uVort.z*1.4))*0.85*(0.6+0.4*nz));}
-  vec3 foamC=vec3(0.90,0.94,0.95)*(0.55+0.5*uSunI*max(uSunDir.y,0.12))*(1.0-0.35*uDark);
+    foam=max(foam,uVK*smoothstep(0.35,0.9,arms)*exp(-r/(uVort.z*1.4))*0.85*(0.6+0.4*nzz));}
+  foam=min(foam,0.88);
+  vec3 foamC=vec3(0.80,0.87,0.89)*(0.50+0.45*uSunI*max(uSunDir.y,0.12))*(1.0-0.40*uDark);
   col=mix(col,foamC,clamp(foam,0.0,1.0));
   if(uSmoke>0.0){float sm1=fbm(vP.xz*0.035+vec2(uT*0.03,0.0));col=mix(col,uFogC,uSmoke*smoothstep(0.35,0.8,sm1)*0.55*exp(-vDist*0.004));}
   float fg=1.0-exp(-pow(vDist*uFog,2.0));col=mix(col,uFogC*1.0,fg);
@@ -202,17 +210,17 @@ void main(){float life=fract(aS.x+uT*(0.25+0.5*aS.w));float r=22.0+aS.y*70.0*aS.
   vec3 P=vec3(p0.x+d.x,d.y,p0.y+d.z);P.xz+=uWind*life*3.0;P.y+=life*(1.0-life)*(1.0+3.0*aS.w)*1.6;
   vA=on*(1.0-life)*smoothstep(0.0,0.1,life);gl_Position=projectionMatrix*viewMatrix*vec4(P,1.0);gl_PointSize=uPxScale*(0.25+0.5*aS.w)*(0.5+life)/max(gl_Position.w,1.0)*60.0;if(on<=0.02)gl_Position=vec4(3.0,3.0,3.0,1.0);}`;
 const SPRAY_FS=`precision highp float;uniform vec3 uCol;varying float vA;void main(){float d=length(gl_PointCoord-0.5);if(d>0.5)discard;gl_FragColor=vec4(uCol,vA*(1.0-d*2.0)*0.75);}`;
-const DEB_VS=GLSL_COMMON+`attribute vec4 aS;attribute vec3 aC;uniform float uPxScale;uniform vec2 uWind;uniform float uDebOn,uDebAmt;varying vec3 vC;varying float vA;
+const DEB_VS=GLSL_COMMON+`attribute vec4 aS;attribute vec3 aC;uniform float uPxScale;uniform vec2 uWind;uniform float uDebOn,uDebAmt;varying vec3 vC;varying float vA;varying float vDist;
 void main(){float r=VORT_RMIN+aS.x*(uVort.z*2.6);float w=(1.4/sqrt(r+6.0))*(0.6+0.8*aS.y);float a=aS.z*6.2832+uT*w*max(uVK,uDebOn*0.4)*1.1;float rr=r*(1.0-0.02*sin(uT*0.1+aS.w*6.0));
   vec2 p0=uVort.xy+vec2(cos(a),sin(a))*rr;float on=max(uVK,uDebOn);
   #ifdef FLOTSAM
   /* flotsam: a 300 m box that follows the camera, every point drifting with the wind and wrapping round, so the cloud never runs out */
-  vec2 q=vec2(fract(aS.x*7.31+aS.z*3.7+uWind.x*uT*(0.35+0.4*aS.y)/300.0),fract(aS.y*5.17+aS.w*2.9+uWind.y*uT*(0.35+0.4*aS.y)/300.0));
-  p0=uCam.xz+(q-0.5)*300.0;rr=length(p0-uCam.xz)+10.0;on=uDebOn*step(aS.w,uDebAmt);
+  vec2 q=vec2(fract(aS.x*7.31+aS.z*3.7+uWind.x*uT*(0.35+0.4*aS.y)/150.0),fract(aS.y*5.17+aS.w*2.9+uWind.y*uT*(0.35+0.4*aS.y)/150.0));
+  p0=uCam.xz+(q-0.5)*150.0;rr=length(p0-uCam.xz)+10.0;on=uDebOn*step(aS.w,uDebAmt);
   #endif
   vec3 d;vec3 n;float J;seaAt(p0,rr+30.0,d,n,J);vec3 P=vec3(p0.x+d.x,d.y+0.12,p0.y+d.z);
-  vC=aC;vA=on;gl_Position=projectionMatrix*viewMatrix*vec4(P,1.0);gl_PointSize=uPxScale*(0.35+aS.w*0.9)/max(gl_Position.w,1.0)*40.0;if(on<=0.01)gl_Position=vec4(3.0,3.0,3.0,1.0);}`;
-const DEB_FS=`precision highp float;varying vec3 vC;varying float vA;void main(){gl_FragColor=vec4(vC,1.0);}`;
+  vC=aC;vA=on;vDist=length(P-cameraPosition);gl_Position=projectionMatrix*viewMatrix*vec4(P,1.0);gl_PointSize=clamp(uPxScale*(0.35+aS.w*0.9)/max(gl_Position.w,1.0)*(FLOATSZ),1.5,6.0);if(on<=0.01)gl_Position=vec4(3.0,3.0,3.0,1.0);}`;
+const DEB_FS=`precision highp float;uniform vec3 uFogC;uniform float uFog;varying vec3 vC;varying float vA;varying float vDist;void main(){float fg=1.0-exp(-pow(vDist*uFog,2.0));gl_FragColor=vec4(mix(vC,uFogC,fg),1.0);}`;
 
 /* ------------------------------------------------------------ scene ------------------------------------------------------------ */
 const canvas=document.getElementById('c');
@@ -245,7 +253,7 @@ function build(){
   const dg=new THREE.BufferGeometry();dg.setAttribute('position',new THREE.Float32BufferAttribute(new Float32Array(T.debris*3),3));dg.setAttribute('aS',new THREE.BufferAttribute(seeded(T.debris,9),4));
   const col=new Float32Array(T.debris*3);const pal=[[.36,.26,.17],[.45,.33,.2],[.62,.58,.5],[.25,.2,.16],[.7,.68,.62],[.5,.18,.12]];
   for(let i=0;i<T.debris;i++){const c=pal[Math.floor(hash(i,31)*pal.length)];col.set(c,i*3);}dg.setAttribute('aC',new THREE.BufferAttribute(col,3));
-  const dd={VORT_RMIN:'6.0'};if(T.flotsam)dd.FLOTSAM=1;debPts=new THREE.Points(dg,mat(DEB_VS,DEB_FS,dd));debPts.frustumCulled=false;scene.add(debPts);
+  const dd={VORT_RMIN:'6.0',FLOATSZ:T.flotsam?'38.0':'40.0'};if(T.flotsam)dd.FLOTSAM=1;debPts=new THREE.Points(dg,mat(DEB_VS,DEB_FS,dd));debPts.frustumCulled=false;scene.add(debPts);
   U.uPxScale.value=renderer.getPixelRatio()*canvas.clientHeight/700;
 }
 function buildBoat(){
@@ -275,7 +283,7 @@ function applyParams(t){
   const el=P.sunEl*Math.PI/180,az=P.sunAz*Math.PI/180;U.uSunDir.value.set(Math.sin(az)*Math.cos(el),Math.sin(el),-Math.cos(az)*Math.cos(el)).normalize();
   U.uSunI.value=P.sunI;U.uCover.value=P.cover;U.uRainbow.value=P.rainbow;U.uRays.value=P.rays;U.uDark.value=P.dark;U.uFog.value=P.fog;U.uFoamT.value=P.foamT;U.uFoam.value=P.foam;
   U.uStreak.value=P.streak;U.uSmoke.value=P.smoke;U.uExp.value=P.exp;U.uChopKA.value=P.chKA;U.uWindA.value=P.wind*Math.PI/180;U.uWind.value.set(Math.cos(P.wind*Math.PI/180),Math.sin(P.wind*Math.PI/180));
-  const stormK=sm((P.wsKA-.03)/.12);U.uDebOn.value=(T.flotsam&&T.debris>0)?1:0;U.uDebAmt.value=.25+.75*stormK;U.uVK.value=P.vort;U.uLevel.value=P.surge;U.uAmt.value=clamp((P.foam+P.streak)*.8,0,1)*sm((P.wsKA-.03)/.12);
+  const stormK=sm((P.wsKA-.03)/.12);U.uDebOn.value=(T.flotsam&&T.debris>0)?1:0;U.uDebAmt.value=.12+.38*stormK;U.uVK.value=P.vort;U.uLevel.value=P.surge;U.uAmt.value=clamp((P.foam+P.streak)*.8,0,1)*sm((P.wsKA-.03)/.12);
   /* lightning: a flash every 7 s of game time (thunder type only), a deterministic function of time */
   let fl=0;if(state.type==='thunder'){const ph=t%7;const e1=Math.exp(-ph*9)*(ph<.6?1:0),e2=ph>.25?Math.exp(-(ph-.25)*14)*.7:0;fl=(e1+e2)*state.s;}U.uFlash.value=fl;
   if(bolt){bolt.material.opacity=fl>.05&&(state.T||TIERS[state.tier]).flashBolt?Math.min(1,fl*1.5):0;if(bolt.material.opacity>0){const k=Math.floor(t/7),a=hash(k,3)*TAU,p=bolt.geometry.attributes.position;let x=Math.cos(a)*600,z=Math.sin(a)*600,y=420;
