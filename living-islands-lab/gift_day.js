@@ -189,7 +189,7 @@ function pickFinds(seed, n) {
 function newState(seed) {
   return { v: SAVE_VERSION, seed: seed >>> 0, gh: START_HOUR, stage: 'arrive', letter1: false, keyUsed: false, hutOpen: false,
     dry: null, water: false, finds: [], plank: false, shipSeen: false, crate1: false, parts: 0, partFrom: null, ordered: false, orders: [], delivered: [],
-    robots: [], mods: [], kits: { battery: 0, solar: 0 }, jobs: [], stock: emptyStock(), boat: null, storm: null, phys: null, opening: false, dockDone: false, letter2: false, build: null, bottle: false, night: false, saved: false, ledger: newLedger(),
+    robots: [], mods: [], kits: { battery: 0, solar: 0 }, jobs: [], stock: emptyStock(), boat: null, storm: null, phys: null, opening: false, dockDone: false, boards: null, boardsGh: 0, declinedGift: false, letter2: false, build: null, bottle: false, night: false, saved: false, ledger: newLedger(),
     dial: { year: 1, creditThin: [1, 0.9, 0.6, 0.3, 0.1], note: 'stored for later years, not used on day 1' } };
 }
 const boatOf = o => { const K = root.LI_BOAT_DRIVE; return K && K.sanitize ? K.serializeBoat(K.sanitize(o)) : (o && typeof o === 'object' ? JSON.parse(JSON.stringify(o)) : null); };
@@ -215,7 +215,7 @@ function validState(o) {
 }
 function State(o) {
   const base = newState(o.seed >>> 0), s = base, num = (v, d, lo, hi) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d), bool = v => v === true;
-  s.gh = num(o.gh, s.gh, 0, 24 * 400); s.letter1 = bool(o.letter1); s.keyUsed = bool(o.keyUsed); s.hutOpen = bool(o.hutOpen);
+  s.gh = num(o.gh, s.gh, 0, 24 * 400); s.letter1 = bool(o.letter1); s.hutOpen = bool(o.hutOpen) && s.letter1; s.keyUsed = bool(o.keyUsed) && s.hutOpen;   /* one key: the hut cannot be open before the lid was lifted */
   s.dry = ['leanto', 'tarp', 'hut'].includes(o.dry) ? o.dry : null; s.water = bool(o.water);
   s.finds = Array.isArray(o.finds) ? o.finds.filter(x => FINDS.some(f => f.id === x)).slice(0, 8) : [];
   s.plank = bool(o.plank); s.shipSeen = bool(o.shipSeen); s.crate1 = bool(o.crate1); s.parts = Math.round(num(o.parts, 0, 0, 99)); s.partFrom = ['crate', 'wreck'].includes(o.partFrom) ? o.partFrom : null;
@@ -225,6 +225,7 @@ function State(o) {
   s.boat = o.boat && typeof o.boat === 'object' ? boatOf(o.boat) : null;   /* the boat's part of the save (boat_drive.js sanitises it; absent = no boat yet) */
   s.storm = o.storm && typeof o.storm === 'object' ? (root.LI_STORM && root.LI_STORM.sanitize ? root.LI_STORM.sanitize(o.storm) : null) : null;   /* the storm and the haul's part of the save (storm.js sanitises it; absent = no storm yet) */
   s.opening = bool(o.opening); s.dockDone = bool(o.dockDone);
+  s.boards = BOARDS_STATES.includes(o.boards) ? o.boards : null; s.boardsGh = num(o.boardsGh, 0, 0, 24 * 1500); s.declinedGift = bool(o.declinedGift) && (s.boards === 'declined' || s.boards === 'tender');   /* the soft flag only exists after a decline */
   s.mods = Array.isArray(o.mods) ? o.mods.slice(0, 4).map(m => ({ bat: !!(m && m.bat), solar: !!(m && m.solar) })) : [];
   s.kits = { battery: Math.round(num(o.kits && o.kits.battery, 0, 0, 9)), solar: Math.round(num(o.kits && o.kits.solar, 0, 0, 9)) };
   s.jobs = Array.isArray(o.jobs) ? o.jobs.slice(0, 4).map(j => (stockById(j) ? j : null)) : [];
@@ -342,7 +343,50 @@ const PLACES = [
   { id: 'skerry', name: 'The outer skerry', land: 'skerry', known: () => true, line: 'Something is wedged on the skerry.' },
   { id: 'woods', name: 'The woods', land: null, known: () => false, line: 'Row to the woods.' }   /* later: no woods in the world yet; the row is here so the chart grows with the map */
 ];
-const CORE = { STOP_ICONS, arrowDeg, PLACES, AMBIENT, ambientStep, STARTER, missingText, WAIT, waitStep, KITS, FIT_S, CAMP_CAP, modsOf, partsText, batteryLine, fitKit, ROBOT_RATE, HAND_UNIT_S, LITTER_UNITS, litterStock, rateText, handRate, handStep, STOCKS, BUILD_NEEDS, UNITS_PER_TRIP, STOCK_CAP, emptyStock, missing, needText, addHaul, setJob, START_CASH, START_CREDIT, START_HOUR, BASE_YEARLY, CATALOGUE, BUILDS, BOTTLES, FINDS, SHELTERS, LETTER1, LETTER2, STAGES, STAGE_LABEL, WEATHER_DELAY, SAVE_KEY, SAVE_VERSION,
+/* ---------------- STORY V2 CALENDAR (Job 6e item 2): a 360-day year of twelve 30-day months, day 1 is 1 May (GIFT_WEEK_ONE_AND_SPINE.md). Letters and events key on the game day through this table. ---------------- */
+const CAL_MONTHS = ['May', 'June', 'July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March', 'April'], CAL_YEAR = 360, CAL_MONTH = 30;
+const CAL_SEASONS = [['spring', 1, 30], ['summer', 31, 120], ['autumn', 121, 210], ['winter', 211, 300], ['spring', 301, 360]];   /* four seasons of 90 days, spring split across the new year */
+function calOf(day) {
+  const d = Math.max(1, Math.floor(+day || 1)), year = Math.floor((d - 1) / CAL_YEAR) + 1, yd = (d - 1) % CAL_YEAR + 1, mi = Math.floor((yd - 1) / CAL_MONTH), dom = (yd - 1) % CAL_MONTH + 1;
+  const se = CAL_SEASONS.find(q => yd >= q[1] && yd <= q[2]);
+  return { day: d, year, yearDay: yd, month: mi + 1, monthName: CAL_MONTHS[mi], dom, season: se[0], label: dom + ' ' + CAL_MONTHS[mi], long: dom + ' ' + CAL_MONTHS[mi] + ', year ' + year + ', ' + se[0] };
+}
+/* when each letter may arrive, in game days (the trigger is still the event; this is the earliest and latest day): L3 follows the first storm (never before day 3), L4 is the first winter (day 211), L9 only in year three from day 842 */
+const LETTER_DAYS = { L1: { from: 1 }, L2: { from: 1 }, L3: { from: 3 }, L4: { from: 211 }, L9: { from: 842, to: 1080 } };
+const letterOk = (id, day) => { const r = LETTER_DAYS[id]; return !!r && day >= r.from && (r.to === undefined || day <= r.to); };
+/* ---------------- STORY V2 ONE BRASS KEY (Job 6e item 3): there is exactly one brass key. It is never stored as a count or an item you can drop: where it is and what it has opened are read from two save flags (letter1: the lid is lifted and the key is yours; hutOpen: it turned in the hut door), so it cannot be lost, spent or duplicated. ---------------- */
+const KEY_USES = [{ id: 'crate', text: 'the lidded crate at the dock' }, { id: 'hut', text: 'the hut door' }, { id: 'drawer', text: 'the drawer in the hut table (a later day)' }];
+function keyOf(s) {
+  const mine = !!(s && s.letter1), opened = [mine, !!(s && s.hutOpen), false];
+  const used = KEY_USES.filter((u, i) => opened[i]).map(u => u.text), next = KEY_USES.find((u, i) => !opened[i]);
+  return { id: 'brass_key', count: 1, where: mine ? 'yours' : 'lid', name: 'The brass key',
+    use: mine ? 'The one brass key, on its string in your pocket. ' + (used.length ? 'It has opened ' + used.join(', and ') + '. ' : '') + (next ? 'Next: ' + next.text + '.' : '') + ' There is no second key.' : 'The one brass key. It hangs from the crate lid on a string. There is no second key.' };
+}
+/* ---------------- STORY V2 DRY BOARDS (Job 6e item 4, a1_offer_dry_boards / a1_refusal_*): after the first storm's letter is kept, the tender has left a stack of dry boards under a tarp. The player may take them or hand them back. Both are fine and nothing is scored: taking adds planks to the yard; handing them back sets only the soft flag declinedGift, costs the afternoon (the wet boards are barrowed and stacked by hand: fewer planks, and the tender still comes on its usual day two days later with no note). No credit or cash changes either way. ---------------- */
+const BOARDS_TAKE = 8, BOARDS_WET = 3, BOARDS_AFTER_H = 48, BOARDS_STATES = ['offered', 'taken', 'declined', 'tender'];
+const boardsDue = s => !!s && !s.boards && !!s.storm && s.storm.n >= 1 && s.storm.l9 === 2;
+function boardsText(s) {
+  return { offer: 'After the storm the tender left a stack of dry boards under a tarp at the landing. Nobody asked for anything in return. The wrack line is full of wet ones.',
+    taken: 'Taken. ' + BOARDS_TAKE + ' dry planks go to the yard. The wet boards can dry on the shore.',
+    declined: 'Handed back. You spend the afternoon barrowing and stacking the wet boards by hand: ' + BOARDS_WET + ' planks, and your back knows it. The offer was real, nothing was withheld and nothing was a test.',
+    tender: 'The tender came on its usual day with the crates you ordered, tied the same, with no note.' };
+}
+function boardsStep(s, choice, gh) {   /* pure: the state after taking or declining; the planks to add; the message that says why */
+  const T = boardsText(s);
+  if (choice === 'take' && s.boards === 'offered') return { ok: true, patch: { boards: 'taken', boardsGh: gh }, planks: BOARDS_TAKE, say: T.taken };
+  if (choice === 'decline' && s.boards === 'offered') return { ok: true, patch: { boards: 'declined', boardsGh: gh, declinedGift: true }, planks: BOARDS_WET, say: T.declined };
+  return { ok: false, patch: {}, planks: 0, say: 'There is nothing to decide.' };
+}
+const boardsLater = (s, gh) => !!s && s.boards === 'declined' && gh >= (s.boardsGh || 0) + BOARDS_AFTER_H;
+/* ---------------- STORY V2 CHEAP PROPS (Job 6e item 5): four plain props the story mentions, each a few boxes (about 150 triangles in all): the lidded box with two blankets at the landing, the hatch beside the hut door, the flat picnic rock and the old speaker on it. Each says what it is on hover or first tap. ---------------- */
+const PROPS = [
+  { id: 'box', name: 'The lidded box', tris: 48, use: 'A lidded box at the landing with two folded blankets inside, for whoever comes in cold from the boat.', note: 'Look' },
+  { id: 'hatch', name: 'A hatch beside the hut', tris: 24, use: 'A small hatch set in the ground beside the hut door. Things that come to this island come to a hatch, not a door.', note: 'Look' },
+  { id: 'rock', name: 'The flat rock', tris: 20, use: 'A broad flat rock, warm in the afternoon sun. A good place to sit and eat something.', note: 'Look' },
+  { id: 'speaker', name: 'An old speaker', tris: 56, use: 'An old speaker on a short post by the flat rock. The cone is dusty and it makes no sound yet.', note: 'Look' }
+];
+const PROP_TRIS_MAX = 160, propInfo = id => PROPS.find(p => 'prop_' + p.id === id) || null;
+const CORE = { PROPS, PROP_TRIS_MAX, propInfo, BOARDS_TAKE, BOARDS_WET, BOARDS_AFTER_H, BOARDS_STATES, boardsDue, boardsText, boardsStep, boardsLater, KEY_USES, keyOf, CAL_MONTHS, CAL_SEASONS, CAL_YEAR, CAL_MONTH, calOf, LETTER_DAYS, letterOk, STOP_ICONS, arrowDeg, PLACES, AMBIENT, ambientStep, STARTER, missingText, WAIT, waitStep, KITS, FIT_S, CAMP_CAP, modsOf, partsText, batteryLine, fitKit, ROBOT_RATE, HAND_UNIT_S, LITTER_UNITS, litterStock, rateText, handRate, handStep, STOCKS, BUILD_NEEDS, UNITS_PER_TRIP, STOCK_CAP, emptyStock, missing, needText, addHaul, setJob, START_CASH, START_CREDIT, START_HOUR, BASE_YEARLY, CATALOGUE, BUILDS, BOTTLES, FINDS, SHELTERS, LETTER1, LETTER2, STAGES, STAGE_LABEL, WEATHER_DELAY, SAVE_KEY, SAVE_VERSION,
   pound, signed, newLedger, spend, recent, entryLine, creditYears, creditNote, itemById, etaFor, placeOrder, resolveDelivery, etaText, bottleIndex, bottleMessage, pickFinds,
   newState, stageOf, progress, jobsDone, serialize, deserialize, validState, canned, hintFor, canBuild, doBuild, hashStr, mulberry };
 if (typeof module !== 'undefined' && module.exports) module.exports = CORE;
@@ -626,6 +670,30 @@ function mkKey() {
   for (const x of [.28, .33]) { const t = new THREE.Mesh(new THREE.BoxGeometry(.04, .08, .03), m); t.position.set(x, -.05, 0); g.add(t); }
   g.scale.setScalar(1.6); return g;
 }
+function mkProps(sites) {
+  const T = THREE, g = new T.Group(); g.name = 'gift_props'; const M = (c, r) => new T.MeshStandardMaterial({ color: c, roughness: r || .85, flatShading: true });
+  const bx = (o, w, h, d, mat, x, y, z) => { const m = new T.Mesh(new T.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); o.add(m); return m; };
+  const wood = M(0x8a6a44), dark = M(0x5a4430), cloth1 = M(0xb9553f), cloth2 = M(0x4e7c8c), stone = M(0x9c9a92, .95), metal = M(0x6a6f72, .6), O = {};
+  const mk = id => { const o = new T.Group(); o.name = 'prop_' + id; o.userData.prop = id; g.add(o); O[id] = o; return o; };
+  let o = mk('box'); bx(o, .9, .5, .6, wood, 0, .25, 0); bx(o, .94, .08, .64, dark, 0, .54, 0); bx(o, .8, .05, .5, cloth1, 0, .6, 0); bx(o, .7, .05, .44, cloth2, 0, .66, 0);   /* 4 boxes, 48 triangles */
+  o = mk('hatch'); bx(o, .9, .07, .7, wood, 0, .04, 0); bx(o, .12, .05, .3, metal, 0, .1, 0);   /* 24 */
+  o = mk('rock'); { const m = new T.Mesh(new T.IcosahedronGeometry(1, 0), stone); m.scale.set(1.5, .26, 1.1); m.position.y = .14; o.add(m); }   /* 20 */
+  o = mk('speaker'); bx(o, .12, 1.0, .12, dark, 0, .5, 0); { const c = new T.Mesh(new T.CylinderGeometry(.2, .2, .22, 8), metal); c.rotation.x = Math.PI / 2; c.position.set(0, 1.05, .1); o.add(c); } bx(o, .42, .5, .22, dark, 0, 1.05, 0);   /* 12 + 32 + 12 = 56, trimmed below */
+  return { g, O };
+}
+function placeProps(sites) {
+  const { g, O } = mkProps(sites), hy = sites.hutYaw, d = { x: Math.cos(hy), z: -Math.sin(hy) }, n = { x: d.z, z: -d.x }, hut = sites.hut, tideTop = (C.tide ? C.tide() : 0) + .9;
+  const dry = (x, z) => groundY(x, z) >= tideTop && Math.hypot(groundY(x + .6, z) - groundY(x - .6, z), groundY(x, z + .6) - groundY(x, z - .6)) < .9;
+  const put = (o, ax, az, yaw, taken) => { for (let r = 0; r < 14; r += 1) for (let a = 0; a < 8; a++) { const x = ax + Math.cos(a * .785) * r, z = az + Math.sin(a * .785) * r; if (dry(x, z) && !taken.some(t => Math.hypot(t.x - x, t.z - z) < 2.2)) { o.position.set(x, groundY(x, z), z); o.rotation.y = yaw; taken.push({ x, z }); return true; } } o.visible = false; return false; };
+  const taken = [{ x: hut.x, z: hut.z }, { x: sites.crate.x, z: sites.crate.z }];
+  put(O.hatch, hut.x + n.x * 3.1 + d.x * 1.2, hut.z + n.z * 3.1 + d.z * 1.2, hy, taken);
+  put(O.rock, hut.x - d.x * 6 + n.x * 4, hut.z - d.z * 6 + n.z * 4, hy + .4, taken);
+  put(O.box, sites.crate.x - d.x * 3, sites.crate.z - d.z * 3, hy + 1.2, taken);
+  if (O.rock.visible) { const rp = O.rock.position; O.speaker.position.set(rp.x + 1.1, groundY(rp.x + 1.1, rp.z + .3), rp.z + .3); O.speaker.rotation.y = hy + 2.2; } else put(O.speaker, hut.x - d.x * 7, hut.z - d.z * 7, hy + 2.2, taken);
+  return { g, O };
+}
+const O_props = () => { const P = G.objs && G.objs.props; return P ? PROPS.map(q => ({ id: q.id, visible: !!P.O[q.id].visible, x: P.O[q.id].position.x, z: P.O[q.id].position.z, y: P.O[q.id].position.y })) : []; };
+function propsTris() { const P = G.objs.props; let t = 0; if (P) P.g.traverse(m => { if (m.isMesh && m.visible && m.parent.visible) t += m.geometry.index ? m.geometry.index.count / 3 : m.geometry.attributes.position.count / 3; }); return t; }
 function mkHut() {
   const g = new THREE.Group();
   const rustTex = canvasTex(256, 256, (c, W, Hh) => { c.fillStyle = '#9b4f2a'; c.fillRect(0, 0, W, Hh); const R = mulberry(7); for (let i = 0; i < 260; i++) { c.fillStyle = 'rgba(' + (60 + R() * 120 | 0) + ',' + (30 + R() * 50 | 0) + ',' + (10 + R() * 30 | 0) + ',' + (.1 + R() * .3) + ')'; c.fillRect(R() * W, R() * Hh, 2 + R() * 14, 6 + R() * 50); } c.strokeStyle = 'rgba(40,20,10,.35)'; c.lineWidth = 2; for (let x = 0; x < W; x += 16) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, Hh); c.stroke(); } });
@@ -720,8 +788,9 @@ function buildWorld() {
   const O = G.objs = {};
   /* the crate with the key, the hut */
   O.crate = place(mkCrate(0), sites.crate, 0.4); O.crate.userData.num = 0; root.add(O.crate);
-  const key = mkKey(); key.position.set(-.25, .86, .0); key.rotation.z = .3; O.crate.add(key); O.key = key;
+  const key = mkKey(); key.position.set(-.25, .86, .0); key.rotation.z = .3; O.crate.add(key); key.userData.brassKey = true; O.key = key;
   O.hut = place(mkHut(), sites.hut, sites.hutYaw); root.add(O.hut);
+  { const P = placeProps(sites); root.add(P.g); O.props = P; }
   O.tarp = place(mkTarp(), { x: sites.hut.x + Math.cos(sites.hutYaw) * 4.4, z: sites.hut.z - Math.sin(sites.hutYaw) * 4.4 }, sites.hutYaw); O.tarp.visible = false; root.add(O.tarp);
   /* placeholder barrel only when the kit barrel is not in this tier */
   if (!sites.barrel.kit) { const b = new THREE.Mesh(new THREE.CylinderGeometry(.5, .45, .9, 10), lambert(0x6e5233)); place(b, sites.barrel, 0, .45); root.add(b); O.barrelPh = b; b.add((() => { const l = labelSprite('PLACEHOLDER: barrel', 3.2, .8); l.position.y = 1.6; return l; })()); }
@@ -772,9 +841,11 @@ function targets() {
   const T = [], S = G.spots, s = G.s, O = G.objs; if (!S) return T;
   const add = (id, p, up, rad, ok) => { if (ok === false) return; const sc = screenOf(p.x, groundY(p.x, p.z) + up, p.z); if (sc) T.push({ id, x: sc.x, y: sc.y, r: rad }); };
   add('crate0', S.crate, .5, 52, !s.letter1 || !G.crateDone);
+  add('key', S.crate, 1.05, 26, !s.letter1);   /* the one brass key, while it hangs on the lid */
   add('hut', S.hut, 1.3, 70);
   if (S.lean) add('lean', S.lean, 1.2, 56);
   add('barrel', S.barrel, .6, 48);
+  if (O.props) PROPS.forEach(q => { const o = O.props.O[q.id]; if (o && o.visible) add('prop_' + q.id, o.position, q.id === 'speaker' ? 1.0 : .5, 40); });
   S.finds.forEach((f, i) => add('find' + i, f, .2, 44, !f.taken));
   if (S.wreck) add('wreck', S.wreck, 1.4, 60);
   G.crates && G.crates.forEach((c, i) => { if (c.mesh && c.mesh.visible) add('crate' + (i + 1), c.pos, .5, 52); });
@@ -796,7 +867,9 @@ function targets() {
    LOCKED = it cannot be used yet: a dim ring and the reason, never a glow. The words are in ONE table (INSPECT below; physical.js has the same kind of table for its own objects, info(id)): id pattern, name, use, needs, action. */
 const INSPECT = [
   { re: /^crate0$/, f: s => ({ name: 'The crate', use: 'Washed up on the beach. A brass key hangs from the lid.', needs: null, action: s.letter1 ? 'Read the letter again' : 'Lift the lid' }) },
-  { re: /^hut$/, f: s => ({ name: 'The hut', use: 'Your shelter. The door sticks.', needs: 'The brass key from the crate', action: 'Look inside' }) },
+  { re: /^prop_[a-z]+$/, f: (s, id) => { const q = propInfo(id); return q ? { name: q.name, use: q.use, needs: null, action: q.note } : null; } },
+  { re: /^key$/, f: s => { const k = keyOf(s); return { name: k.name, use: k.use, needs: null, action: 'Look' }; } },
+  { re: /^hut$/, f: s => ({ name: 'The hut', use: 'Your shelter. The door sticks.', needs: s.hutOpen ? 'The brass key (the door is open now)' : 'The one brass key from the crate' + (s.letter1 ? ' (you have it)' : ''), action: 'Look inside' }) },
   { re: /^lean$/, f: () => ({ name: 'The lean-to', use: 'A dry place out of the rain.', needs: null, action: 'Look' }) },
   { re: /^barrel$/, f: () => ({ name: 'Water barrel', use: 'Catches rain. Rain is the only water on this island.', needs: null, action: 'Check it' }) },
   { re: /^find\d+$/, f: () => ({ name: 'Something on the shore', use: 'A small find washed up by the tide.', needs: null, action: 'Pick it up' }) },
@@ -964,6 +1037,8 @@ function activate(id) {
   if (PHYS() && PHYS().activate(id)) return;
   if (id === 'dest') { const i = exploreInfo(); if (i) toast(i.line + ' Follow the gold arrow, ' + Math.round(i.dist) + ' m.', 4800); return; }
   if (id === 'boat') { if (BDP()) BDP().activate('boat'); return; }
+  if (/^prop_[a-z]+$/.test(id)) { const q = propInfo(id); if (q) toast(q.name + '. ' + q.use, 7000); return; }
+  if (id === 'key') { toast(keyOf(G.s).use, 6500); return; }
   if (id === 'crate0') return openKeyCrate();
   if (id === 'hut') return hutCard();
   if (id === 'lean') return shelterCard();
@@ -997,6 +1072,20 @@ function ledgerCard() {
   c.appendChild(xbtn()); c.appendChild(row(btn('Close', closeCard, 'pri')));
 }
 /* (3) the jobs notebook */
+function boardsCard() {
+  const s = G.s; if (s.boards !== 'offered') return; const T = boardsText(s);
+  const c = card('boards', '<h2>Dry boards</h2><p>' + T.offer + '</p><p><small>Take them, or hand them back. Either is fine: the tender comes on its usual day.</small></p>'); c.appendChild(xbtn());
+  c.appendChild(row(btn('Take the dry boards', () => boardsChoose('take'), 'pri'), btn('Hand them back', () => boardsChoose('decline'))));
+}
+function boardsChoose(choice) {
+  const r = boardsStep(G.s, choice, G.s.gh); if (!r.ok) { toast(r.say, 3000); return; } closeCard(); setS(r.patch);
+  if (r.planks) addStockUnits('planks', r.planks); ledgerLine(choice === 'take' ? 'Dry boards from the tender (a gift, no charge)' : 'Dry boards handed back', 0, 0);
+  toast(r.say, 9000); afterChange();
+}
+function boardsTick() {
+  const s = G.s; if (boardsDue(s)) { setS({ boards: 'offered' }); afterChange(); toast('The tender has left something at the landing. See the Notebook.', 7000); setTimeout(() => { if (G.s.boards === 'offered' && !G.cardOpen) boardsCard(); }, 1200); return; }
+  if (boardsLater(s, s.gh)) { setS({ boards: 'tender' }); afterChange(); toast(boardsText(s).tender, 8000); }
+}
 function notebook() {
   const s = G.s, c = card('notes', '<h2>Notebook</h2><p><small>Nothing here is a must. Do what you like first.</small></p>');
   const job = (done, title, sub, bt) => { const d = h('div', 'gd-item'); d.innerHTML = '<div><b>' + (done ? '&#10003; ' : '') + title + '</b><small>' + sub + '</small></div>'; if (bt) d.appendChild(bt); c.appendChild(d); };
@@ -1004,6 +1093,9 @@ function notebook() {
   job(s.water, 'Find water', s.water ? 'The barrel is out. No spring on this island: rain only.' : 'Not every island has a spring. This one does not.', s.water ? null : btn('Look', barrelCard));
   job(s.finds.length >= 2, 'Look along the shore', 'Finds taken: ' + s.finds.length + ' of 2. Seals keep to the far rocks.', null);
   job(s.plank, 'Fit one plank of the old jetty', s.plank ? 'One plank is in. The tender can land a little closer.' : 'Drag a loose plank to a gap, or tap a plank and then a gap.', s.plank ? null : btn('Show me', showJetty));
+  if (s.boards === 'offered') job(false, 'Dry boards at the landing', 'Left by the tender after the storm. Take them or hand them back.', btn('Decide', boardsCard));
+  if (s.boards && s.boards !== 'offered') job(true, 'Dry boards', boardsText(s)[s.boards === 'taken' ? 'taken' : 'declined'], null);
+  if (s.letter1) { const k = keyOf(s); c.appendChild(h('div', 'gd-item', '<div><b>' + k.name + '</b><small>' + k.use + '</small></div>')); }
   { const L = stopLines(10); if (L.length) { c.appendChild(h('p', '', '<b>Recent stops</b> <small>(the last ' + L.length + ')</small>')); L.forEach(q => c.appendChild(h('div', 'gd-stopline', '<small>' + q.text + '</small>'))); } }
   c.appendChild(xbtn()); c.appendChild(row(btn('Close', closeCard, 'pri')));
 }
@@ -1303,11 +1395,11 @@ function renderUi() {
   sk.addEventListener('change', () => { const v = sk.value; sk.value = ''; skipTo(v); });
   const R = G.ui.right; R.innerHTML = '';
   if (!GD_CLEAN) {
-    G.ui.strip.innerHTML = '<b>Day ' + dayNo() + '</b>' + P.map(p => '<i class="' + (p.done ? 'done' : p.current ? 'cur' : '') + '">' + p.label + (p.id === 'jobs' && p.current ? ' ' + (jobsDone(s) + (s.plank ? 1 : 0)) + '/4' : '') + '</i>').join('') + '<small id="gd-time">' + hhmm(s.gh) + '</small>';
+    G.ui.strip.innerHTML = '<b title="' + calOf(dayNo()).long + '">Day ' + dayNo() + '</b>' + P.map(p => '<i class="' + (p.done ? 'done' : p.current ? 'cur' : '') + '">' + p.label + (p.id === 'jobs' && p.current ? ' ' + (jobsDone(s) + (s.plank ? 1 : 0)) + '/4' : '') + '</i>').join('') + '<small id="gd-time">' + hhmm(s.gh) + '</small>';
     ['ledger', 'notes', 'plank', 'cat', 'build', 'chart', 'sleep', 'wait'].forEach(k => { if (mk[k]) R.appendChild(mk[k]); }); R.appendChild(sk);
   } else {
     /* top left: Day, the stage you are in, six dots, and one line of status */
-    const cur = P.find(q => q.current); G.ui.strip.innerHTML = '<b>Day ' + dayNo() + '</b><i class="cur">' + (cur ? cur.label + (cur.id === 'jobs' ? ' ' + (jobsDone(s) + (s.plank ? 1 : 0)) + '/4' : '') : (stage === 'dock' ? 'The dock' : 'Done')) + '</i><span class="gd-dots">' + P.map(q => '<u class="' + (q.done ? 'done' : q.current ? 'cur' : '') + '"></u>').join('') + '</span><small class="gd-line2" id="gd-status"><span id="gd-time">' + hhmm(s.gh) + '</span> &middot; <span id="gd-wx">' + weatherState() + '</span></small>';
+    const cur = P.find(q => q.current); G.ui.strip.innerHTML = '<b title="' + calOf(dayNo()).long + '">Day ' + dayNo() + '</b><i class="cur">' + (cur ? cur.label + (cur.id === 'jobs' ? ' ' + (jobsDone(s) + (s.plank ? 1 : 0)) + '/4' : '') : (stage === 'dock' ? 'The dock' : 'Done')) + '</i><span class="gd-dots">' + P.map(q => '<u class="' + (q.done ? 'done' : q.current ? 'cur' : '') + '"></u>').join('') + '</span><small class="gd-line2" id="gd-status"><span id="gd-time">' + hhmm(s.gh) + '</span> &middot; <span id="gd-wx">' + weatherState() + '</span></small>';
     /* top right: the ledger, then the one button that fits this moment, then Menu. The rest live in the Menu. */
     const main = stage === 'jobs' ? 'notes' : (stage === 'delivery' || stage === 'yard') ? 'cat' : stage === 'evening' ? 'build' : stage === 'done' ? 'sleep' : null;
     if (mk.ledger) R.appendChild(mk.ledger);
@@ -1382,7 +1474,7 @@ function tick(dt) {
   if (!G.ready || !G.root) return;
   const s = G.s; G.idle += dt; try { inspectTick(dt); } catch (e) { if (G.err.length < 20) G.err.push('inspect ' + e.message); }
   if (G.root.parent !== C.scene) C.scene.add(G.root);
-  waitTick(dt); ambientTick(dt); clockTick(dt); weatherTick(); try { if (SHP()) SHP().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('storm ' + e.message); } holdRobots(); chargePost(); try { storageBays(); } catch (e) { if (G.err.length < 20) G.err.push('bays ' + e.message); } handTick(dt);  plankWatch(); try { if (PHYS()) PHYS().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('phys ' + e.message); } deliveriesTick(); deliveryTick(dt); nightTick(dt); focusTick(dt);
+  waitTick(dt); ambientTick(dt); clockTick(dt); weatherTick(); try { if (SHP()) SHP().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('storm ' + e.message); } holdRobots(); chargePost(); try { storageBays(); } catch (e) { if (G.err.length < 20) G.err.push('bays ' + e.message); } try { boardsTick(); } catch (e) { if (G.err.length < 20) G.err.push('boards ' + e.message); } handTick(dt);  plankWatch(); try { if (PHYS()) PHYS().tick(dt * (G.fast || 1)); } catch (e) { if (G.err.length < 20) G.err.push('phys ' + e.message); } deliveriesTick(); deliveryTick(dt); nightTick(dt); focusTick(dt);
   try { const bd = BDP(); if (bd && bd.tick) { bd.tick(dt); if (!G.boatRev && s.ordered) { G.boatRev = true; if (bd.reveal) bd.reveal(); } } } catch (e) { if (G.err.length < 20) G.err.push('boat ' + e.message); }
   try { exploreTick(dt); } catch (e) { if (G.err.length < 20) G.err.push('explore ' + e.message); }
   try { G.stT = (G.stT || 0) + dt; if (G.stT > .12) { G.stT = 0; stopChips(); } } catch (e) { if (G.err.length < 20) G.err.push('stops ' + e.message); }
@@ -1546,7 +1638,7 @@ function init(ctx) {
     state: () => JSON.parse(JSON.stringify(G.s)), stage: () => stageOf(G.s), core: CORE, err: () => G.err.slice(), spots: () => G.spots && { crate: G.spots.crate, hut: G.spots.hut, tender: G.spots.tender, build: G.spots.build, stump: G.spots.stump, shore: G.spots.shore, wreck: G.spots.wreck, barrel: G.spots.barrel, finds: G.spots.finds.map(f => ({ id: f.id, x: f.x, z: f.z, taken: f.taken })), ship: G.spots.ship },
     targets: () => targets(), tap: (cx, cy) => onTap(cx, cy), act: id => activate(id), skipTo, card: () => G.cardOpen, closeCard, toast: () => G.toast, hint: () => hintFor(G.s), save: () => save(false), load: () => load(), wipe: wipeSave, saveOk: SAVE_OK,
     ledger: ledgerCard, notebook, catalogue: catalogueCard, build: buildCard, letter1: readLetter1, letter2: readLetter2, fitPlank: fitOnePlank, order: orderItem, startRobot, giveOrder, robotsCard, doBuild: confirmBuild, post: () => G.objs.post && { x: G.objs.post.position.x, z: G.objs.post.position.z, lamp: G.objs.post.userData.lampCol }, bottle: readBottle, sleep: sleepToMorning,
-    focus, clockMode: () => G.clockMode, weather: () => G.weather, hornCount: () => G.hornCount || 0, dlv: () => G.dlv && G.dlv.phase, barrel: () => G.barrel, crates: () => G.crates.map(c => ({ n: c.n, item: c.item || null, letter2: !!c.letter2, l9: !!c.l9 })),
+    focus, calendar: () => calOf(dayNo()), propsTris, props: () => O_props(),  boards: () => ({ state: G.s.boards, declinedGift: G.s.declinedGift, card: boardsCard, choose: boardsChoose }),  keyInfo: () => keyOf(G.s), keyMeshes: () => { let n = 0; G.root && G.root.traverse(o => { if (o.userData && o.userData.brassKey) n++; }); return n; }, clockMode: () => G.clockMode, weather: () => G.weather, hornCount: () => G.hornCount || 0, dlv: () => G.dlv && G.dlv.phase, barrel: () => G.barrel, crates: () => G.crates.map(c => ({ n: c.n, item: c.item || null, letter2: !!c.letter2, l9: !!c.l9 })),
     heavy: () => ({ ar: !!G.ar, seals: G.objs.seals.length, stumpKit: !!G.objs.stumpKit, finds: G.spots.finds.length, stumpScript: !!document.querySelector('script[src*="stump_b64"]') }),
     handHold: (id, sec) => { const st0 = Object.assign({}, G.s.stock); if (!handStart(id, 0, 0)) return { ok: false, got: 0 }; for (let t = 0; t < sec && G.hand && G.hand.down; t += .25) handTick(.25); handStop(); const st1 = G.s.stock; return { ok: true, got: STOCKS.reduce((n, k) => n + (st1[k.id] || 0) - (st0[k.id] || 0), 0) }; }, litterNow: () => litterNow(), stockSet: st => { G.s = Object.assign({}, G.s, { stock: Object.assign(emptyStock(), st) }); G.sig = null; }, bays: () => { const B = G.objs.bays; return B && B.list ? B.list.map(b => ({ id: b.id, x: b.x, z: b.z, step: B.step[b.id], shown: b.stack.filter(m => m.visible).length })) : []; }, bayInfo: id => bayInfo(id), baysTris: () => { const B = G.objs.bays; let t = 0; if (B && B.grp) B.grp.traverse(m => { if (m.isMesh && m.visible) t += m.geometry.index ? m.geometry.index.count / 3 : m.geometry.attributes.position.count / 3; }); return t; }, wrack: () => { try { const s = C.li().campstart.rt().sim(); return { k: s.wrackK || 1, w: s.wrack || null }; } catch (e) { return null; } }, phaseNow, litCircle, handOk: (x, z) => handOk(x, z, false), ringShown: () => !!(G.ring && G.ring.visible), setPhase: p => { G.phaseOverride = p; },
     deliverNow: id => { orderItem(id); const o = G.s.orders[G.s.orders.length - 1]; if (o) o.delivered = true; G.arrivals = (G.arrivals || []).concat([id]); }, openCrate: n => deliveryCrate(n), robotCardOpen: i => robotCard(i), startFit: (i, k) => startFit(i, k), fitState: () => G.fit && { i: G.fit.i, kit: G.fit.kit, ready: fitReady() }, cardText: () => (document.querySelector('.gd-card') || {}).textContent || '', clickBtn: txt => { const b = [...document.querySelectorAll('.gd-card button')].find(q => q.textContent.indexOf(txt) >= 0 && !q.disabled); if (b) { b.click(); return true; } return false; },
