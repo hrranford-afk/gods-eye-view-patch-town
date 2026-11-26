@@ -1,0 +1,2 @@
+# Job 7: the sea into the Gift, step 1 (26 Nov 2026). One line per pushed item.
+1. SHARED WAVE CODE: sea_waves.js (pure, no THREE: tier tables iPad 8 / desktop 16 / Radeon 24 / MAX 48 waves, the eight weather inputs, buildWaves, disp, height with the pinch inverted by an 8 step fixed point, normal, orbit, retune and advance so a moving sea never jumps phase). Test: tests/sea-waves-test.js (24, pure node: matches a straight reference sum and a separate solver within 1 mm, deterministic).
