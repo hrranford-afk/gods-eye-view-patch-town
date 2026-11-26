@@ -59,6 +59,7 @@ body.noui #top,body.noui #bar,body.noui #info,body.noui #gpuInfo,body.noui #benc
 <script>if(/[?&]game=gift/.test(location.search))document.write('<script src="boat_drive.js"><\/script>');</script>
 <script>if(/[?&]game=gift/.test(location.search)&&!/[?&]waves=0/.test(location.search)||/[?&]waves=1/.test(location.search))document.write('<script src="sea_waves.js"><\/script>');</script>
 <script>if(/[?&]game=gift/.test(location.search)&&!/[?&]storm=0/.test(location.search))document.write('<script src="storm.js"><\/script>');</script>
+<script>if(/[?&]cost=1/.test(location.search))document.write('<script src="cost_ladder.js"><\/script>');</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="li_sea.js"></script>
 <script src="li_kit.js"></script>
@@ -2268,12 +2269,13 @@ function build(){const t0=performance.now();
   if(RPON)rpBuild();
   if(ULT.on)ultraAniso(scene);
   stats.tris=sceneTris();stats.build=Math.round(performance.now()-t0);}
-function size(){const dpr=Math.min(window.devicePixelRatio||1,QL().pr);const w=Math.max(2,Math.floor(innerWidth*dpr)),h=Math.max(2,Math.floor(innerHeight*dpr));
+function size(){const dpr=COSTK===1?Math.min(window.devicePixelRatio||1,QL().pr):Math.min(window.devicePixelRatio||1,QL().pr)*COSTK;const w=Math.max(2,Math.floor(innerWidth*dpr)),h=Math.max(2,Math.floor(innerHeight*dpr));
   if(ULT.on){const R=ultraRange();if(!ULT.range||Math.abs(R.min-ULT.range.min)>1e-6||Math.abs(R.max-ULT.range.max)>1e-6)ultraCtl();ultraUi();}   /* a new window or screen: the range and the UI size are worked out again */
   let cw=w,ch=h;if(ULT.on&&NOPOST){const k=Math.max(.25,Math.min(ULT.scale,Math.sqrt(ULO.maxpx/(w*h))));cw=Math.round(w*k);ch=Math.round(h*k);ULT.scaleReal=cw/w;}   /* no post chain: the canvas itself is the big target, the browser scales it down */
   renderer.setPixelRatio(1);renderer.setSize(cw,ch,false);const cv=renderer.domElement;cv.style.width='100%';cv.style.height='100%';
   camera.aspect=w/h;camera.updateProjectionMatrix();if(!NOPOST)makeRT(w,h);
   if(smoke)smoke.material.uniforms.uScale.value=(ULT.on&&rtBig?rtBig.height:ch)/(2*Math.tan(camera.fov*Math.PI/360));}
+let COSTK=1;   /* the cost ladder (&cost=1, cost_ladder.js) multiplies the render size by this; 1 = nothing changes */
 const clock={t:0,last:0,frames:0,fps:60,acc:0};
 function frame(now){if(stopLoop)return;requestAnimationFrame(frame);
   const dt=Math.min(.1,(now-clock.last)/1000||.016);clock.last=now;clock.t+=dt*(clock.hold?0:1);clock.acc+=dt;clock.frames++;
@@ -3093,6 +3095,17 @@ function init(){
     ui:on=>document.body.classList.toggle('noui',!on),islands:ISL.map(I=>({id:I.id,x:I.x,z:I.z})),camp:()=>W.camp&&W.camp.fire,houses:()=>W.houses.length,
     counts:()=>({rocks:W.rocks.length,conifers:W.conifers.length,broad:W.broad.length,shrubs:W.shrubs.length,houses:W.houses.length}),H:(x,z)=>H(x,z),pass:LAND?'landing':'default',landing:()=>LD.on?{x:LD.L.x,z:LD.L.z,boat:{x:LD.boat.x,z:LD.boat.z},tent:{x:LD.tent.x,z:LD.tent.z}}:null,
     zoomLanding:()=>{if(!LD.on)return;const k=.62;Object.assign(cam,{tx:LD.L.x*k+LD.tent.x*(1-k)-LD.L.t[0]*.4,tz:LD.L.z*k+LD.tent.z*(1-k)-LD.L.t[1]*.4,dist:21,phi:.55,theta:.52});clampCam();snap=true;}};
+  /* the cost ladder (&cost=1, cost_ladder.js, research/GRAPHICS_REVIEW.md): one panel that switches layers off and on and reports the frame-time cost of each without the vsync lock; absent = nothing is loaded and nothing changes */
+  if(Q.get('cost')==='1'&&window.LI_COST){const CZ={dyn:false};
+    window.__li.cost=LI_COST.attach({renderer,scene,camera,layers:{sea:[waterMesh],terrain:[terrainMesh],props:[propsMesh],clouds:()=>{const P=WXR&&WXR.parts?WXR.parts():null;return P?[P.puffs,P.deck,P.dome]:[];},rain:()=>{const P=WXR&&WXR.parts?WXR.parts():null;return P?[P.rain]:[];}},
+      renderFull:()=>renderScene(),renderDirect:()=>renderer.render(scene,camera),hasPost:()=>!NOPOST,
+      freeze:on=>{if(on){CZ.dyn=ULT.dynOn;ULT.dynOn=false;CZ.auto=autoQDone;autoQDone=true;}else{ULT.dynOn=CZ.dyn;autoQDone=CZ.auto;if(COSTK!==1){COSTK=1;size();}}},
+      device:()=>DEV||'none',tier:tierName,gpuName:()=>ULT.gpuRaw||ULT.gpu.name||'unknown',gpuKind:()=>ULT.gpu.kind,
+      sizes:()=>{const c=renderer.domElement.width+'x'+renderer.domElement.height,px=rtBig?rtBig.width*rtBig.height:(rt&&!NOPOST?rt.width*rt.height:renderer.domElement.width*renderer.domElement.height);return{canvas:c,big:rtBig?rtBig.width+'x'+rtBig.height:'',pixels:px};},
+      shadowSize:()=>ULT.on?ULT.q.shadow:QL().shadow,
+      msaa:(NOPOST||!renderer.capabilities.isWebGL2)?null:{get:()=>ULT.on?ULT.msaaGot:QL().msaa,set:n=>{if(ULT.on)ULT.msaaWant=n;else QL().msaa=n;size();},max:()=>renderer.capabilities.maxSamples||4},
+      scale:{set:k=>{if(COSTK===k)return;COSTK=k;size();}},
+      get bloom(){return(dsMat&&rtBig&&ULO&&ULO.bloom>0)?{get:()=>dsMat.uniforms.uBloom.value,set:v=>{dsMat.uniforms.uBloom.value=v;}}:null;}});}
   if(window.LI_GIFT&&LI_GIFT.on)LI_GIFT.init({THREE,scene,camera,renderer,cam,W,people:()=>people,seed:SEED,H:(x,z)=>H(x,z),tide:()=>tide,ui:()=>(window.__li.ultra&&window.__li.ultra.ui())||1,li:()=>window.__li,man:()=>WV&&WV.man,tableR:()=>TABLE_R});   /* the Gift first day (gift_day.js, GIFT_FIRST_DAY.md) */
 }
 setTimeout(init,40);
