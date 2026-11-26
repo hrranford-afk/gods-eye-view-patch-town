@@ -56,6 +56,26 @@ const server = http.createServer((req, res) => { const f = path.join(ROOT, decod
     check('busy line says it is an estimate', /estimate/.test(txt) || /waiting/.test(txt));
     check('readout test: no console errors', errs.length === 0, errs.join(' | '));
   }
+  if (which === 'bench' || which === 'all') {
+    /* a. software GL: the real rule stops it early at the first rung, and says so */
+    await page.setViewport({ width: 480, height: 320 });
+    await open('?tier=radeon&benchsec=1&benchwarm=0.3&benchcap=3'); await page.click('#bBench'); await sleep(200);
+    check('Bench button shows a warning with Start and Cancel', await page.evaluate(() => /pushes the graphics card hard/.test(document.getElementById('benchBox').textContent) && !!document.getElementById('bbGo') && !!document.getElementById('bbNo')));
+    await page.click('#bbGo'); await page.waitForFunction('document.getElementById("bbCopy")', { timeout: 180000 });
+    let rep = await page.evaluate(() => window.__sea.bench.report);
+    check('software GL: bench stops early by itself and says so', /SOFTWARE renderer/.test(rep) && /(stopped at once|ran to the end|over 33)/.test(rep), rep.split('\n').filter(l => /result:|last good|NOTE/.test(l)).join(' | ').slice(0, 300));
+    /* b. a lenient limit and two rungs per axis: the whole ladder runs, all axes, combined rung, no console errors */
+    await open('?tier=ipad&benchsec=0.5&benchwarm=0.25&benchlimit=1000000&benchrungs=2&benchcap=6'); await page.click('#bBench'); await page.click('#bbGo');
+    await page.waitForFunction('document.getElementById("bbCopy")', { timeout: 280000 });
+    rep = await page.evaluate(() => window.__sea.bench.report);
+    for (const a of ['Sea mesh', 'Wave count', 'Spray particles', 'Debris points', 'Render resolution', 'Everything up']) check('ladder ran axis: ' + a, rep.includes('== ' + a), '');
+    check('report has renderer, GPU time column, last good rung and a result line', /renderer: /.test(rep) && /GPU [\d.]+ ms|GPU n\/a/.test(rep) && /last good rung: /.test(rep) && /result: ran to the end/.test(rep));
+    check('report copy text has no paths, URLs or user names', !/(\/home|\/root|\/Users|[A-Z]:\\|file:|https?:|localhost|127\.0\.0\.1|\.html|\.js)/.test(rep), 'length ' + rep.length);
+    await page.click('#bbCopy'); await sleep(300); check('Copy report button answers', await page.evaluate(() => document.getElementById('bbMsg').textContent.length > 5), await page.evaluate(() => document.getElementById('bbMsg').textContent));
+    check('page is back to normal after the bench (UI shown, mesh rebuilt)', await page.evaluate(() => document.getElementById('ui').style.display !== 'none' && !window.__sea.bench.running));
+    check('bench test: no console errors', errs.length === 0, errs.join(' | '));
+    await page.setViewport({ width: 900, height: 600 });
+  }
   await page.close(); await browser.close(); server.close();
   console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(2); });

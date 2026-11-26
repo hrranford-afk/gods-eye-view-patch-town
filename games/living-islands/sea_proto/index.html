@@ -24,6 +24,10 @@ canvas{display:block;width:100%;height:100%}
 #note{font-size:11px;opacity:.7;margin-top:4px}
 #camrow{display:flex;gap:6px;margin-top:8px}#camrow button{flex:1;padding:6px 4px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:12px}
 #camrow button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+#benchBox{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;backdrop-filter:blur(8px);display:none;z-index:5}
+#benchBox h2{font-size:16px;margin:0 0 6px}#benchBox p{margin:6px 0}#benchBox pre{font:11.5px/1.35 ui-monospace,monospace;white-space:pre-wrap;margin:8px 0;max-height:46vh;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px}
+#benchBox .bt{display:flex;gap:8px;flex-wrap:wrap}#benchBox button{padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit}
+#benchBox button.go{background:var(--accent);color:#fff;border-color:var(--accent)}
 #help{font-size:11px;opacity:.7;margin-top:4px}
 canvas{touch-action:none;cursor:grab}
 </style>
@@ -32,23 +36,25 @@ canvas{touch-action:none;cursor:grab}
 <canvas id="c"></canvas>
 <div id="ui">
   <h1>Sea prototype</h1>
-  <div id="row"><button id="bI">iPad sea</button><button id="bR">Radeon sea</button></div>
+  <div id="row"><button id="bI">iPad sea</button><button id="bR">Radeon sea</button><button id="bM">Radeon MAX</button></div>
   <label for="type">Storm type</label>
   <select id="type"></select>
   <label for="s">How far it has risen: <span id="sv"></span></label>
   <input id="s" type="range" min="0" max="1" step="0.01" value="0.8">
+  <div id="camrow2" style="display:flex;gap:6px;margin-top:6px"><button id="bBench" style="flex:1;padding:6px 4px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:12px">Bench (find this card's limit)</button></div>
   <div id="camrow"><button id="bReset">Reset camera</button><button id="bFollow">Follow boat</button><button id="bFree">Free fly</button></div>
   <div id="help">Drag: orbit. Wheel or pinch: zoom. Right-drag or two fingers: pan. W A S D or arrows: fly. Q down, E up. Shift: faster.</div>
   <div id="stats"></div>
   <div id="note">Numbers are frame time in whatever this browser uses to draw. On a software renderer they say nothing about a real device.</div>
 </div>
+<div id="benchBox"></div>
 <script src="../rubble/vendor/three/three.min.js"></script>
 <script>
 (function(){
 'use strict';
 const Q=new URLSearchParams(location.search);
 const clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t, sm=t=>{t=clamp(t,0,1);return t*t*(3-2*t);};
-const G=9.81, TAU=Math.PI*2, MAXW=24;
+const G=9.81, TAU=Math.PI*2, MAXW=128;
 function hash(i,s){let h=Math.imul(i|0,374761393)+Math.imul(s|0,668265263)|0;h=Math.imul(h^(h>>>13),1274126177);h^=h>>>16;return(h>>>0)/4294967296;}
 
 /* ------------------------------------------------------------ storm types: the inputs of the wave sum and the look (all TUNING) ------------------------------------------------------------
@@ -77,8 +83,20 @@ function paramsFor(type,s){const T=TYPES[type]||TYPES.calm,P={};
 /* ------------------------------------------------------------ tiers (cost knobs) ------------------------------------------------------------ */
 const TIERS={
  ipad:{name:'iPad sea',rings:72,segs:160,nSw:3,nWs:5,nCh:0,rip:4,clouds:0,spray:600,debris:400,prCap:2,flashBolt:0},
- radeon:{name:'Radeon sea',rings:220,segs:480,nSw:5,nWs:9,nCh:10,rip:10,clouds:1,spray:12000,debris:20000,prCap:2,flashBolt:1}
+ radeon:{name:'Radeon sea',rings:220,segs:480,nSw:5,nWs:9,nCh:10,rip:10,clouds:1,spray:12000,debris:20000,prCap:2,flashBolt:1},
+ /* Radeon MAX: picked from the bench knee (or by hand). A denser mesh that FOLLOWS THE CAMERA (the polar rings are tightest at the middle, so the middle is where the camera is), 48 waves,
+    more spray, and a debris cloud of flotsam drifting with the wind round the viewer. Numbers are TUNING until the owner's bench report says where the knee is. */
+ max:{name:'Radeon MAX',tris:500000,waves:48,rip:12,clouds:1,spray:100000,debris:20000,prCap:2,flashBolt:1,follow:1,flotsam:1}
 };
+/* the effective tier: a tier plus the bench / hand knobs state.K = {tris,waves,spray,debris,scale}. tris -> a polar grid (segs about 2.2 x rings); waves -> sets/wind sea/chop in about 5:9:10 */
+function effTier(){const B=TIERS[state.tier],K=state.K,T=Object.assign({},B);
+  if(B.tris){T.rings=Math.round(Math.sqrt(B.tris/2/2.2));T.segs=Math.round(T.rings*2.2);}
+  if(B.waves){const w=B.waves;T.nSw=w<=12?Math.round(w*3/8):Math.round(w*5/24);T.nWs=w<=12?w-T.nSw:Math.round(w*9/24);T.nCh=w<=12?0:w-T.nSw-T.nWs;}
+  if(K){if(K.tris!==undefined){T.rings=Math.max(8,Math.round(Math.sqrt(K.tris/2/2.2)));T.segs=Math.round(T.rings*2.2);}
+    if(K.waves!==undefined){const w=K.waves;T.nSw=w<=12?Math.round(w*3/8):Math.round(w*5/24);T.nWs=w<=12?w-T.nSw:Math.round(w*9/24);T.nCh=w<=12?0:w-T.nSw-T.nWs;}
+    if(K.spray!==undefined)T.spray=K.spray;if(K.debris!==undefined){T.debris=K.debris;T.flotsam=K.flotsam!==undefined?K.flotsam:T.flotsam;}
+    if(K.scale!==undefined)T.scale=K.scale;if(K.follow!==undefined)T.follow=K.follow;}
+  T.nTot=T.nSw+T.nWs+T.nCh;T.triCount=2*T.rings*T.segs;return T;}
 const VORT=[-45,-80,28,9]; /* x, z, radius, depth in metres of the funnel at full strength */
 
 /* ------------------------------------------------------------ wave table: sets (swell trains), groups (close neighbours beat), wind sea, chop ------------------------------------------------------------ */
@@ -106,12 +124,12 @@ function seaHeight(W,x,z,t,P){let px=x,pz=z,d;for(let i=0;i<4;i++){d=cpuDisp(W,p
 
 /* ------------------------------------------------------------ shaders ------------------------------------------------------------ */
 const GLSL_COMMON=`
-uniform float uT;uniform int uN;uniform vec4 uW[24];uniform vec3 uW2[24];uniform vec4 uVort;uniform float uVK;uniform float uLevel;uniform vec3 uCam;
+uniform float uT;uniform int uN;uniform vec4 uW[NW];uniform vec3 uW2[NW];uniform vec2 uMesh;uniform vec4 uVort;uniform float uVK;uniform float uLevel;uniform vec3 uCam;
 /* the wave sum: x = x0 - Q A d sin(th), y = A cos(th), th = k d.p0 - w t + phi. Returns displacement, a slope-based normal and the Jacobian determinant (small = crests folding = foam).
    A wave fades out with distance from the camera once it is much shorter than the distance (the mesh could not draw it). */
 void seaAt(vec2 p0,float dist,out vec3 d,out vec3 n,out float J){
   float dx=0.,dz=0.,dy=0.,jxx=0.,jzz=0.,jxz=0.,hx=0.,hz=0.;
-  for(int i=0;i<24;i++){if(i>=uN)break;vec4 w=uW[i];vec3 w2=uW2[i];
+  for(int i=0;i<NW;i++){vec4 w=uW[i];vec3 w2=uW2[i];
     float L=6.2831853/w.z;float A=w.w*(1.0-smoothstep(L*6.0,L*14.0,dist));
     float th=w.z*dot(w.xy,p0)-w2.y*uT+w2.z;float s=sin(th),c=cos(th);float qa=w2.x*A,kA=w.z*A;
     dx-=qa*w.x*s;dz-=qa*w.y*s;dy+=A*c;
@@ -143,7 +161,7 @@ vec3 skyCol(vec3 d,float clouds){
 vec3 tone(vec3 c,float e){c*=e;c=(c*(2.51*c+0.03))/(c*(2.43*c+0.59)+0.14);return pow(clamp(c,0.,1.),vec3(1.0/2.2));}
 `;
 const SEA_VS=GLSL_COMMON+`varying vec3 vP;varying vec3 vN;varying float vJ;varying float vDist;
-void main(){vec2 p0=position.xz;float dist=length(vec3(p0.x-uCam.x,uCam.y,p0.y-uCam.z));vec3 d;vec3 n;float J;seaAt(p0,dist,d,n,J);
+void main(){vec2 p0=position.xz+uMesh;float dist=length(vec3(p0.x-uCam.x,uCam.y,p0.y-uCam.z));vec3 d;vec3 n;float J;seaAt(p0,dist,d,n,J);
   vec3 P=vec3(p0.x+d.x,d.y,p0.y+d.z);vP=P;vN=n;vJ=J;vDist=dist;gl_Position=projectionMatrix*viewMatrix*vec4(P,1.0);}`;
 const SEA_FS=`precision highp float;`+GLSL_SKY+`
 uniform float uT;uniform vec3 uDeep,uShal,uFogC;uniform float uFog,uFoamT,uFoam,uStreak,uSmoke,uExp,uChopKA,uPix,uHs,uWindA;uniform vec4 uVort;uniform float uVK;
@@ -184,10 +202,16 @@ void main(){float life=fract(aS.x+uT*(0.25+0.5*aS.w));float r=22.0+aS.y*70.0*aS.
   vec3 P=vec3(p0.x+d.x,d.y,p0.y+d.z);P.xz+=uWind*life*3.0;P.y+=life*(1.0-life)*(1.0+3.0*aS.w)*1.6;
   vA=on*(1.0-life)*smoothstep(0.0,0.1,life);gl_Position=projectionMatrix*viewMatrix*vec4(P,1.0);gl_PointSize=uPxScale*(0.25+0.5*aS.w)*(0.5+life)/max(gl_Position.w,1.0)*60.0;if(on<=0.02)gl_Position=vec4(3.0,3.0,3.0,1.0);}`;
 const SPRAY_FS=`precision highp float;uniform vec3 uCol;varying float vA;void main(){float d=length(gl_PointCoord-0.5);if(d>0.5)discard;gl_FragColor=vec4(uCol,vA*(1.0-d*2.0)*0.75);}`;
-const DEB_VS=GLSL_COMMON+`attribute vec4 aS;attribute vec3 aC;uniform float uPxScale;varying vec3 vC;varying float vA;
-void main(){float r=VORT_RMIN+aS.x*(uVort.z*2.6);float w=(1.4/sqrt(r+6.0))*(0.6+0.8*aS.y);float a=aS.z*6.2832+uT*w*uVK*1.1;float rr=r*(1.0-0.02*sin(uT*0.1+aS.w*6.0));
-  vec2 p0=uVort.xy+vec2(cos(a),sin(a))*rr;vec3 d;vec3 n;float J;seaAt(p0,rr+30.0,d,n,J);vec3 P=vec3(p0.x+d.x,d.y+0.12,p0.y+d.z);
-  vC=aC;vA=uVK;gl_Position=projectionMatrix*viewMatrix*vec4(P,1.0);gl_PointSize=uPxScale*(0.35+aS.w*0.9)/max(gl_Position.w,1.0)*40.0;if(uVK<=0.01)gl_Position=vec4(3.0,3.0,3.0,1.0);}`;
+const DEB_VS=GLSL_COMMON+`attribute vec4 aS;attribute vec3 aC;uniform float uPxScale;uniform vec2 uWind;uniform float uDebOn,uDebAmt;varying vec3 vC;varying float vA;
+void main(){float r=VORT_RMIN+aS.x*(uVort.z*2.6);float w=(1.4/sqrt(r+6.0))*(0.6+0.8*aS.y);float a=aS.z*6.2832+uT*w*max(uVK,uDebOn*0.4)*1.1;float rr=r*(1.0-0.02*sin(uT*0.1+aS.w*6.0));
+  vec2 p0=uVort.xy+vec2(cos(a),sin(a))*rr;float on=max(uVK,uDebOn);
+  #ifdef FLOTSAM
+  /* flotsam: a 300 m box that follows the camera, every point drifting with the wind and wrapping round, so the cloud never runs out */
+  vec2 q=vec2(fract(aS.x*7.31+aS.z*3.7+uWind.x*uT*(0.35+0.4*aS.y)/300.0),fract(aS.y*5.17+aS.w*2.9+uWind.y*uT*(0.35+0.4*aS.y)/300.0));
+  p0=uCam.xz+(q-0.5)*300.0;rr=length(p0-uCam.xz)+10.0;on=uDebOn*step(aS.w,uDebAmt);
+  #endif
+  vec3 d;vec3 n;float J;seaAt(p0,rr+30.0,d,n,J);vec3 P=vec3(p0.x+d.x,d.y+0.12,p0.y+d.z);
+  vC=aC;vA=on;gl_Position=projectionMatrix*viewMatrix*vec4(P,1.0);gl_PointSize=uPxScale*(0.35+aS.w*0.9)/max(gl_Position.w,1.0)*40.0;if(on<=0.01)gl_Position=vec4(3.0,3.0,3.0,1.0);}`;
 const DEB_FS=`precision highp float;varying vec3 vC;varying float vA;void main(){gl_FragColor=vec4(vC,1.0);}`;
 
 /* ------------------------------------------------------------ scene ------------------------------------------------------------ */
@@ -195,24 +219,24 @@ const canvas=document.getElementById('c');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:false,powerPreference:'high-performance',preserveDrawingBuffer:true});
 const isGL2=renderer.capabilities.isWebGL2;
 const scene=new THREE.Scene();const camera=new THREE.PerspectiveCamera(58,1,0.2,4000);
-const state={tier:Q.get('tier')==='radeon'?'radeon':'ipad',type:TYPES[Q.get('type')]?Q.get('type'):'calm',s:parseFloat(Q.get('s')||'0.8'),t0:performance.now()/1000,
+const state={tier:['radeon','max'].includes(Q.get('tier'))?Q.get('tier'):'ipad',K:null,type:TYPES[Q.get('type')]?Q.get('type'):'calm',s:parseFloat(Q.get('s')||'0.8'),t0:performance.now()/1000,
   freeze:Q.get('freeze')==='1',tFix:Q.get('t')!==null?parseFloat(Q.get('t')):null,cam:Q.get('cam')!==null?parseFloat(Q.get('cam')):.7,user:false,follow:false,free:false,W:[],P:null,ms:0,tris:0,calls:0};
 let seaMesh=null,skyMesh=null,sprayPts=null,debPts=null,boat=null,crates=[],hulk=null,bolt=null;
-const U={uT:{value:0},uT2:{value:0},uN:{value:0},uW:{value:Array.from({length:MAXW},()=>new THREE.Vector4())},uW2:{value:Array.from({length:MAXW},()=>new THREE.Vector3())},
+const U={uT:{value:0},uT2:{value:0},uN:{value:0},uMesh:{value:new THREE.Vector2()},uDebOn:{value:0},uDebAmt:{value:1},uW:{value:Array.from({length:MAXW},()=>new THREE.Vector4())},uW2:{value:Array.from({length:MAXW},()=>new THREE.Vector3())},
   uVort:{value:new THREE.Vector4(...VORT)},uVK:{value:0},uLevel:{value:0},uCam:{value:new THREE.Vector3()},
   uHor:{value:new THREE.Vector3()},uZen:{value:new THREE.Vector3()},uSunDir:{value:new THREE.Vector3()},uSunCol:{value:new THREE.Vector3(3,2.2,1.5)},uCloudC:{value:new THREE.Vector3()},
   uSunI:{value:1},uCover:{value:.3},uRainbow:{value:0},uRays:{value:0},uFlash:{value:0},uDark:{value:0},
   uDeep:{value:new THREE.Vector3()},uShal:{value:new THREE.Vector3()},uFogC:{value:new THREE.Vector3()},uFog:{value:.001},uFoamT:{value:.3},uFoam:{value:.4},uStreak:{value:0},uSmoke:{value:0},uExp:{value:1},
   uChopKA:{value:.01},uPix:{value:.001},uHs:{value:1},uWindA:{value:0},uWind:{value:new THREE.Vector2()},uAmt:{value:1},uPxScale:{value:1},uCol:{value:new THREE.Vector3(.92,.95,.96)}};
-function mat(vs,fs,defs,extra,trans){const m=new THREE.ShaderMaterial({vertexShader:vs,fragmentShader:fs,uniforms:Object.assign({},U,extra||{}),transparent:!!trans,depthWrite:!trans});
+function mat(vs,fs,defs,extra,trans){defs=Object.assign({NW:Math.max(1,(state.T&&state.T.nTot)||8)},defs||{});const m=new THREE.ShaderMaterial({vertexShader:vs,fragmentShader:fs,uniforms:Object.assign({},U,extra||{}),transparent:!!trans,depthWrite:!trans});
   m.defines=defs||{};return m;}
-function polarGrid(rings,segs,R){const pos=[],idx=[];
-  for(let i=0;i<=rings;i++){const u=i/rings;const r=R*(0.12*u+0.88*u*u*u);for(let j=0;j<segs;j++){const a=j/segs*TAU;pos.push(Math.cos(a)*r,0,Math.sin(a)*r);}}
-  for(let i=0;i<rings;i++)for(let j=0;j<segs;j++){const a=i*segs+j,b=i*segs+(j+1)%segs,c=(i+1)*segs+j,d=(i+1)*segs+(j+1)%segs;idx.push(a,c,b,b,c,d);}
-  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);return g;}
+function polarGrid(rings,segs,R){const pos=new Float32Array((rings+1)*segs*3),idx=new Uint32Array(rings*segs*6);let p=0,q=0;
+  for(let i=0;i<=rings;i++){const u=i/rings;const r=R*(0.12*u+0.88*u*u*u);for(let j=0;j<segs;j++){const a=j/segs*TAU;pos[p++]=Math.cos(a)*r;pos[p++]=0;pos[p++]=Math.sin(a)*r;}}
+  for(let i=0;i<rings;i++)for(let j=0;j<segs;j++){const a=i*segs+j,b=i*segs+(j+1)%segs,c=(i+1)*segs+j,d=(i+1)*segs+(j+1)%segs;idx[q++]=a;idx[q++]=c;idx[q++]=b;idx[q++]=b;idx[q++]=c;idx[q++]=d;}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setIndex(new THREE.BufferAttribute(idx,1));return g;}
 function seeded(n,seed){const a=new Float32Array(n*4);for(let i=0;i<n;i++){for(let k=0;k<4;k++)a[i*4+k]=hash(i*4+k,seed);}return a;}
 function build(){
-  const T=TIERS[state.tier];
+  const T=effTier();state.T=T;
   [seaMesh,skyMesh,sprayPts,debPts].forEach(o=>{if(o){scene.remove(o);o.geometry.dispose();o.material.dispose();}});
   seaMesh=new THREE.Mesh(polarGrid(T.rings,T.segs,900),mat(SEA_VS,SEA_FS,{RIP:T.rip,CLOUDS:T.clouds}));seaMesh.material.side=THREE.DoubleSide;seaMesh.frustumCulled=false;scene.add(seaMesh);
   skyMesh=new THREE.Mesh(new THREE.SphereGeometry(1000,32,16),mat(SKY_VS,SKY_FS,{CLOUDS:T.clouds}));skyMesh.material.side=THREE.BackSide;skyMesh.frustumCulled=false;skyMesh.renderOrder=-1;scene.add(skyMesh);
@@ -221,7 +245,7 @@ function build(){
   const dg=new THREE.BufferGeometry();dg.setAttribute('position',new THREE.Float32BufferAttribute(new Float32Array(T.debris*3),3));dg.setAttribute('aS',new THREE.BufferAttribute(seeded(T.debris,9),4));
   const col=new Float32Array(T.debris*3);const pal=[[.36,.26,.17],[.45,.33,.2],[.62,.58,.5],[.25,.2,.16],[.7,.68,.62],[.5,.18,.12]];
   for(let i=0;i<T.debris;i++){const c=pal[Math.floor(hash(i,31)*pal.length)];col.set(c,i*3);}dg.setAttribute('aC',new THREE.BufferAttribute(col,3));
-  debPts=new THREE.Points(dg,mat(DEB_VS,DEB_FS,{VORT_RMIN:'6.0'}));debPts.frustumCulled=false;scene.add(debPts);
+  const dd={VORT_RMIN:'6.0'};if(T.flotsam)dd.FLOTSAM=1;debPts=new THREE.Points(dg,mat(DEB_VS,DEB_FS,dd));debPts.frustumCulled=false;scene.add(debPts);
   U.uPxScale.value=renderer.getPixelRatio()*canvas.clientHeight/700;
 }
 function buildBoat(){
@@ -243,7 +267,7 @@ function placeBody(m,W,x,z,yaw,L,B,t,P,capA,capH){
   m.position.set(x,hc+.05,z);m.rotation.set(0,0,0);m.rotation.order='YZX';m.rotation.y=-yaw;m.rotation.z=pitch;m.rotation.x=roll;return hc;}
 
 function applyParams(t){
-  const P=state.P=paramsFor(state.type,state.s),T=TIERS[state.tier];
+  const P=state.P=paramsFor(state.type,state.s),T=state.T||effTier();
   const W=state.W=buildWaves(P,T);U.uN.value=W.length;
   W.forEach((w,i)=>{U.uW.value[i].set(w.dx,w.dz,w.k,w.A);U.uW2.value[i].set(w.Q,w.w,w.phi);});
   let e=0;for(const w of W)e+=w.A*w.A/2;U.uHs.value=4*Math.sqrt(e);
@@ -251,13 +275,13 @@ function applyParams(t){
   const el=P.sunEl*Math.PI/180,az=P.sunAz*Math.PI/180;U.uSunDir.value.set(Math.sin(az)*Math.cos(el),Math.sin(el),-Math.cos(az)*Math.cos(el)).normalize();
   U.uSunI.value=P.sunI;U.uCover.value=P.cover;U.uRainbow.value=P.rainbow;U.uRays.value=P.rays;U.uDark.value=P.dark;U.uFog.value=P.fog;U.uFoamT.value=P.foamT;U.uFoam.value=P.foam;
   U.uStreak.value=P.streak;U.uSmoke.value=P.smoke;U.uExp.value=P.exp;U.uChopKA.value=P.chKA;U.uWindA.value=P.wind*Math.PI/180;U.uWind.value.set(Math.cos(P.wind*Math.PI/180),Math.sin(P.wind*Math.PI/180));
-  U.uVK.value=P.vort;U.uLevel.value=P.surge;U.uAmt.value=clamp((P.foam+P.streak)*.8,0,1)*sm((P.wsKA-.03)/.12);
+  const stormK=sm((P.wsKA-.03)/.12);U.uDebOn.value=(T.flotsam&&T.debris>0)?1:0;U.uDebAmt.value=.25+.75*stormK;U.uVK.value=P.vort;U.uLevel.value=P.surge;U.uAmt.value=clamp((P.foam+P.streak)*.8,0,1)*sm((P.wsKA-.03)/.12);
   /* lightning: a flash every 7 s of game time (thunder type only), a deterministic function of time */
   let fl=0;if(state.type==='thunder'){const ph=t%7;const e1=Math.exp(-ph*9)*(ph<.6?1:0),e2=ph>.25?Math.exp(-(ph-.25)*14)*.7:0;fl=(e1+e2)*state.s;}U.uFlash.value=fl;
-  if(bolt){bolt.material.opacity=fl>.05&&TIERS[state.tier].flashBolt?Math.min(1,fl*1.5):0;if(bolt.material.opacity>0){const k=Math.floor(t/7),a=hash(k,3)*TAU,p=bolt.geometry.attributes.position;let x=Math.cos(a)*600,z=Math.sin(a)*600,y=420;
+  if(bolt){bolt.material.opacity=fl>.05&&(state.T||TIERS[state.tier]).flashBolt?Math.min(1,fl*1.5):0;if(bolt.material.opacity>0){const k=Math.floor(t/7),a=hash(k,3)*TAU,p=bolt.geometry.attributes.position;let x=Math.cos(a)*600,z=Math.sin(a)*600,y=420;
     for(let i=0;i<24;i++){p.setXYZ(i,x,y,z);x+=(hash(i+k*31,7)-.5)*50;z+=(hash(i+k*31,8)-.5)*50;y-=17+hash(i,9)*4;}p.needsUpdate=true;}}
 }
-function resize(){const pr=Math.min(window.devicePixelRatio||1,TIERS[state.tier].prCap);renderer.setPixelRatio(pr);renderer.setSize(window.innerWidth,window.innerHeight,false);
+function resize(){let pr=state.T&&state.T.scale?state.T.scale:Math.min(window.devicePixelRatio||1,(state.T||TIERS[state.tier]).prCap);const mx=Math.min(8192,renderer.capabilities.maxTextureSize||4096)/Math.max(window.innerWidth,window.innerHeight,1);pr=Math.min(pr,mx);renderer.setPixelRatio(pr);renderer.setSize(window.innerWidth,window.innerHeight,false);
   camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();U.uPix.value=2*Math.tan(camera.fov*Math.PI/360)/Math.max(1,renderer.domElement.height);U.uPxScale.value=pr*window.innerHeight/700;}
 window.addEventListener('resize',resize);
 
@@ -333,10 +357,97 @@ function gpuPoll(){if(GPU.kind!=='timer')return;
 function gpuMean(n){const a=GPU.hist.slice(-(n||60));if(!a.length)return 0;let s=0;for(const v of a)s+=v;return s/a.length;}
 function gpuSrcLabel(){return GPU.kind==='timer'?'GPU timer query':'sampled finish() (rough)';}
 
+/* ------------------------------------------------------------ BENCH LADDER ------------------------------------------------------------
+   One axis at a time from a light base (24k triangles, 8 waves, no spray, no debris, 1x resolution), about 6 s a rung; then one combined rung with every axis at its last good value.
+   An axis stops at the first rung where the frame time is over 33 ms for 5 frames in a row (or a rung that ends with an average over 33 ms). If even the first rung of the first axis is over, the whole bench stops (software GL does this).
+   An error (context lost, a shader error, an exception) stops it at once. Numbers are what this browser measured on this machine: nothing is assumed about any other device. */
+const BASE={tris:24000,waves:8,spray:0,debris:0,scale:1,follow:1,flotsam:1};
+const AXES=[
+ {id:'mesh',label:'Sea mesh',unit:'triangles',key:'tris',vals:[24000,100000,210000,500000,1000000,2000000]},
+ {id:'waves',label:'Wave count',unit:'waves',key:'waves',vals:[8,24,48,96]},
+ {id:'spray',label:'Spray particles',unit:'points',key:'spray',vals:[0,20000,100000,400000]},
+ {id:'debris',label:'Debris points',unit:'points',key:'debris',vals:[0,5000,20000,100000]},
+ {id:'scale',label:'Render resolution',unit:'x scale',key:'scale',vals:[1,1.5,2,3]}];
+const BQ={sec:parseFloat(Q.get('benchsec')||'6'),warm:parseFloat(Q.get('benchwarm')||'1.2'),limit:parseFloat(Q.get('benchlimit')||'33'),n:5,maxRungs:parseInt(Q.get('benchrungs')||'99',10),hardCap:parseFloat(Q.get('benchcap')||'25')};
+const fmtV=(a,v)=>a.key==='tris'?(v>=1e6?v/1e6+'M':v/1e3+'k'):a.key==='scale'?v+'x':(v>=1000?v/1000+'k':''+v);
+const bench={running:false,rows:[],plan:[],i:-1,rung:null,stop:'',err:'',savedState:null,report:''};
+function benchPlan(){const p=[];for(const a of AXES)a.vals.slice(0,BQ.maxRungs).forEach((v,j)=>p.push({axis:a,v,j}));p.push({axis:{id:'all',label:'Everything up (combined)',unit:'',key:'all'},v:0,j:0});return p;}
+const benchBox=document.getElementById('benchBox');
+function benchShow(html){benchBox.innerHTML=html;benchBox.style.display='block';}
+function benchWarn(){benchShow('<h2>Bench: find this card\'s limit</h2><p>This pushes the graphics card hard for about '+Math.round(benchPlan().length*(BQ.sec+0.2)/60*10)/10+' minutes: sea meshes up to 2 million triangles, up to 96 waves, 400 thousand spray points and up to 3x resolution.</p>'+
+  '<p>The picture will stutter and may flicker. On a weak machine the browser can lose the graphics context or the tab can freeze for a while. Close other heavy tabs first. Nothing is saved or sent anywhere.</p>'+
+  '<p>It stops by itself when a rung is slower than '+BQ.limit+' ms a frame for '+BQ.n+' frames, or on an error, and then shows a report you can copy.</p>'+
+  '<div class="bt"><button class="go" id="bbGo">Start</button><button id="bbNo">Cancel</button></div>');
+  document.getElementById('bbGo').onclick=benchStart;document.getElementById('bbNo').onclick=()=>{benchBox.style.display='none';};}
+function benchStart(){if(bench.running)return;
+  bench.saved={type:state.type,s:state.s,user:state.user,free:state.free,follow:state.follow,cam:Object.assign({},cam),K:state.K,tier:state.tier,freeze:state.freeze,ui:document.getElementById('ui').style.display};
+  bench.running=true;bench.rows=[];bench.plan=benchPlan();bench.i=-1;bench.stop='';bench.err='';bench.axisDone={};bench.good={};bench.skipAxis=null;
+  state.type='gale';state.s=.85;state.user=false;state.free=false;state.follow=false;document.getElementById('ui').style.display='none';
+  bench.errHook=window.addEventListener('error',benchOnErr);canvas.addEventListener('webglcontextlost',benchCtxLost);
+  const ce=console.error;bench.ce=ce;console.error=function(){if(bench.running&&/shader|GL|WebGL/i.test(String([].slice.call(arguments).join(' ')).slice(0,400)))bench.err='GL error: '+String(arguments[0]).slice(0,120);return ce.apply(console,arguments);};
+  benchNext();}
+function benchOnErr(e){if(bench.running)bench.err='script error: '+(e&&e.message||'unknown');}
+function benchCtxLost(){if(bench.running)bench.err='the graphics context was lost';}
+function benchKnobsFor(item){const K=Object.assign({},BASE);
+  if(item.axis.id==='all'){for(const a of AXES){const g=bench.good[a.id];if(g!==undefined)K[a.key]=g;}}else K[item.axis.key]=item.v;return K;}
+function benchNext(){
+  if(bench.err)return benchFinish();
+  while(true){bench.i++;if(bench.i>=bench.plan.length)return benchFinish();const it=bench.plan[bench.i];if(bench.axisDone[it.axis.id])continue;break;}
+  const it=bench.plan[bench.i],K=benchKnobsFor(it);bench.item=it;bench.K=K;
+  try{state.K=K;build();resize();applyParams(state.t);}catch(e){bench.err='building the rung failed: '+e.message;return benchFinish();}
+  bench.rung={t0:performance.now(),dts:[],over:0,maxOver:0,frames:0,gpuStart:GPU.hist.length,gpuStartN:GPU.n};
+  bench.rung.gpuHistMark=GPU.n;bench.label=it.axis.label+(it.axis.id==='all'?'':': '+fmtV(it.axis,it.v)+' '+it.axis.unit);
+  benchProgress();}
+function benchProgress(){const r=bench.rung;if(!r)return;const el=(performance.now()-r.t0)/1000;
+  const msg='Bench: rung '+(bench.i+1)+' of '+bench.plan.length+'\n'+bench.label+'\n'+Math.min(el,BQ.sec+BQ.warm).toFixed(0)+' s of '+(BQ.sec+BQ.warm).toFixed(0)+' s   (frame '+state.ms.toFixed(1)+' ms)';
+  benchShow('<h2>Bench running</h2><pre>'+msg.replace(/</g,'&lt;')+'</pre><div class="bt"><button id="bbStop">Stop now</button></div>');
+  document.getElementById('bbStop').onclick=()=>{bench.stop='stopped by you';benchEndRung(true);};}
+let benchLastShown=0;
+function benchOnFrame(dt){if(!bench.running||!bench.rung)return;const r=bench.rung,el=(performance.now()-r.t0)/1000;r.frames++;
+  if(bench.err)return benchFinishRung(true);
+  if(el>=BQ.warm&&r.frames>3){r.dts.push(dt);if(dt>BQ.limit){r.over++;if(r.over>r.maxOver)r.maxOver=r.over;}else r.over=0;}
+  if(performance.now()-benchLastShown>700){benchLastShown=performance.now();benchProgress();}
+  const measured=el-BQ.warm;
+  if(r.maxOver>=BQ.n||(measured>=BQ.sec&&r.dts.length>=3)||el>BQ.hardCap+BQ.warm+BQ.sec)benchFinishRung(false);}
+function benchFinishRung(errored){const r=bench.rung;bench.rung=null;const d=r.dts.slice().sort((a,b)=>a-b);let sum=0;for(const v of d)sum+=v;
+  const avg=d.length?sum/d.length:0,p95=d.length?d[Math.min(d.length-1,Math.ceil(.95*d.length)-1)]:0,max=d.length?d[d.length-1]:0;
+  const gh=GPU.hist.slice(-Math.max(1,Math.min(GPU.hist.length,d.length)));let gs=0;for(const v of gh)gs+=v;const gpu=GPU.n>r.gpuHistMark&&gh.length?gs/gh.length:-1;
+  const bad=errored||r.maxOver>=BQ.n||(d.length>=3&&avg>BQ.limit);
+  const T=state.T,row={axis:bench.item.axis,v:bench.item.v,label:bench.label,avg,p95,max,gpu,frames:d.length,bad,tris:state.tris,calls:state.calls,res:renderer.domElement.width+'x'+renderer.domElement.height,nW:T.nTot,spray:T.spray,debris:T.debris,meshTris:T.triCount};
+  bench.rows.push(row);const id=bench.item.axis.id;
+  if(id!=='all'){if(bad){bench.axisDone[id]=true;if(bench.item.j===0&&bench.i===0){bench.stop='even the smallest rung ('+bench.label+') is over '+BQ.limit+' ms a frame, so the bench stopped at once';return benchFinish();}}else bench.good[id]=bench.item.v;}
+  if(errored||bench.err)return benchFinish();setTimeout(benchNext,60);}
+function benchEndRung(){if(bench.rung)benchFinishRung(false);benchFinish();}
+function benchFinish(){if(!bench.running)return;bench.running=false;bench.rung=null;console.error=bench.ce||console.error;window.removeEventListener('error',benchOnErr);canvas.removeEventListener('webglcontextlost',benchCtxLost);
+  const sv=bench.saved;state.type=sv.type;state.s=sv.s;state.user=sv.user;state.free=sv.free;state.follow=sv.follow;Object.assign(cam,sv.cam);state.K=sv.K;document.getElementById('ui').style.display=sv.ui;
+  try{build();resize();}catch(e){}
+  bench.report=benchReport();benchShow('<h2>Bench report</h2><pre id="bbRep"></pre><div class="bt"><button class="go" id="bbCopy">Copy report</button><button id="bbMax">Use these limits for Radeon MAX</button><button id="bbClose">Close</button></div><p id="bbMsg" style="font-size:12px;opacity:.8"></p>');
+  document.getElementById('bbRep').textContent=bench.report;
+  document.getElementById('bbCopy').onclick=()=>benchCopy();document.getElementById('bbClose').onclick=()=>{benchBox.style.display='none';};
+  document.getElementById('bbMax').onclick=()=>{const k=benchKnee();TIERS.max.tris=k.tris;TIERS.max.waves=k.waves;TIERS.max.spray=k.spray;TIERS.max.debris=k.debris;window.__setTier('max');document.getElementById('bbMsg').textContent='Radeon MAX now uses: '+k.tris+' triangles, '+k.waves+' waves, '+k.spray+' spray, '+k.debris+' debris.';};}
+function benchKnee(){const k={tris:TIERS.max.tris,waves:TIERS.max.waves,spray:TIERS.max.spray,debris:TIERS.max.debris};   /* knee = the biggest rung that still held 55 fps on average (18 ms) with the 95th percentile under 25 ms */
+  for(const a of AXES){let best=null;for(const r of bench.rows)if(r.axis.id===a.id&&!r.bad&&r.avg<=18&&r.p95<=25)best=r.v;if(best!==null&&a.key!=='scale')k[a.key]=best;}return k;}
+function benchReport(){const L=[],f=(v,n)=>typeof v==='number'&&isFinite(v)&&v>=0?v.toFixed(n===undefined?1:n):'n/a';
+  L.push('SEA BENCH (Living Islands sea prototype)','renderer: '+(glName||'unknown (browser hides it)')+(isGL2?'  WebGL2':'  WEBGL1'),'GPU timer: '+(GPU.kind==='timer'?'EXT_disjoint_timer_query_webgl2 (GPU ms are per-frame GPU time)':'not available; GPU ms from a sampled finish() (rough)'),
+    'page '+window.innerWidth+' x '+window.innerHeight+' css px, device pixel ratio '+(window.devicePixelRatio||1).toFixed(2),'rule: an axis stops when a rung is over '+BQ.limit+' ms for '+BQ.n+' frames; each rung '+BQ.sec+' s after '+BQ.warm+' s warm-up','base: 24k triangles, 8 waves, no spray, no debris, 1x; storm weather (gale, 0.85)');
+  if(soft)L.push('NOTE: this is a SOFTWARE renderer. It stops early by itself, and its numbers say nothing about a real graphics card.');
+  for(const a of AXES.concat([{id:'all',label:'Everything up (combined)',unit:'',key:'all'}])){const rows=bench.rows.filter(r=>r.axis.id===a.id);if(!rows.length)continue;L.push('','== '+a.label+(a.unit?' ('+a.unit+')':'')+' ==');
+    for(const r of rows)L.push((a.id==='all'?'combined':fmtV(a,r.v)).padEnd(10)+' frame avg '+f(r.avg)+' ms, p95 '+f(r.p95)+', worst '+f(r.max)+'   GPU '+(r.gpu>=0?f(r.gpu,2)+' ms':'n/a')+'   '+r.meshTris.toLocaleString('en-US')+' mesh tris, '+r.nW+' waves, '+r.res+'   '+(r.bad?'OVER '+BQ.limit+' ms':'ok'));
+    if(a.id!=='all'){const g=bench.good[a.id];L.push('last good rung: '+(g===undefined?'none (the first rung was already over the limit)':fmtV(a,g)+' '+a.unit));}}
+  const k=benchKnee();L.push('','suggested Radeon MAX from the 55 fps knee: '+k.tris.toLocaleString('en-US')+' triangles, '+k.waves+' waves, '+k.spray.toLocaleString('en-US')+' spray, '+k.debris.toLocaleString('en-US')+' debris (an axis with no rung at 55 fps keeps the default)');
+  L.push('','result: '+(bench.err?'stopped on an error: '+bench.err:bench.stop?bench.stop:'ran to the end'));
+  const gp=bench.rows.filter(r=>r.gpu>=0);if(gp.length){const pk=gp.reduce((a,b)=>b.gpu>a.gpu?b:a);L.push('heaviest rung by GPU time: '+pk.label+' at '+f(pk.gpu,2)+' ms ('+Math.round(pk.gpu/16.7*100)+' percent of a 16.7 ms frame)');}
+  return L.join('\n');}
+function benchCopy(){const t=bench.report,msg=document.getElementById('bbMsg');
+  const done=ok=>{if(msg)msg.textContent=ok?'Copied. Paste it into the chat.':'Could not copy by itself: select the text above and copy it.';};
+  const fb=()=>{try{const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();const ok=document.execCommand('copy');document.body.removeChild(ta);done(ok);}catch(e){done(false);}};
+  try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(()=>done(true),fb);else fb();}catch(e){fb();}}
+document.getElementById('bBench').onclick=benchWarn;
+
 /* ------------------------------------------------------------ frame ------------------------------------------------------------ */
 let last=performance.now(),ema=0,frames=0;
 function frame(now){
-  const dt=now-last;last=now;ema=ema?ema*.9+dt*.1:dt;frames++;
+  const dt=now-last;last=now;ema=ema?ema*.9+dt*.1:dt;frames++;benchOnFrame(dt);
   const t=state.tFix!==null?state.tFix+(state.freeze?0:(now/1000-state.t0)):(now/1000-state.t0);state.t=t;
   U.uT.value=t;U.uT2.value=t;applyParams(t);const P=state.P;
   /* the boat holds its place; crates drift in a small ring; the hulk lies at the whirlpool's edge, listing */
@@ -344,7 +455,7 @@ function frame(now){
   crates.forEach((c,i)=>{const a=i*2.1+.5;placeBody(c,state.W,Math.cos(a)*(9+i*2),Math.sin(a)*(9+i*2),a,.9,.9,t,P,.5,1);});
   hulk.visible=P.vort>.05;if(hulk.visible){const hy=placeBody(hulk,state.W,VORT[0]+VORT[2]*1.15,VORT[1]+VORT[2]*.4,.9,16,5.4,t,P,.3,1);hulk.position.y=hy+.4;hulk.rotation.x+=.18*P.vort;hulk.scale.setScalar(1);}
   updateCamera(dt/1000,t,P);
-  U.uCam.value.copy(camera.position);
+  U.uCam.value.copy(camera.position);{const T=state.T;if(T&&T.follow)U.uMesh.value.set(Math.round(camera.position.x*2)/2,Math.round(camera.position.z*2)/2);else U.uMesh.value.set(0,0);}
   skyMesh.position.copy(camera.position);
   gpuBegin();renderer.render(scene,camera);gpuEnd(frames);gpuPoll();
   const inf=renderer.info.render;state.tris=inf.triangles;state.calls=inf.calls;state.ms=ema;
@@ -358,7 +469,7 @@ function busyLine(frameMs){
   const g=GPU.ms,pct=g/GPU.frameBudget*100,hz=frameMs<=GPU.frameBudget*1.12;let v;
   if(hz&&pct<75)v='limited by the 60 Hz display, the GPU has room';else if(pct>=85||g>=frameMs*.85)v='GPU-bound: the card is the limit';else v='not the GPU alone (CPU, driver or browser)';
   return (pct>100?'GPU needs about '+(pct/100).toFixed(1)+' x a 16.7 ms frame (over 100 percent: cannot hold 60 fps)':'GPU busy about '+Math.round(pct)+' percent of a 16.7 ms frame')+' (estimate from the GPU time)\n=> '+v;}
-function updateStats(){const T=TIERS[state.tier],P=state.P;
+function updateStats(){const T=state.T||effTier(),P=state.P;
   const cv=renderer.domElement,pr=renderer.getPixelRatio();
   const lines=[T.name+'  |  '+TYPES[state.type].label,'waves '+state.W.length+' (swell '+T.nSw+', wind sea '+T.nWs+', chop '+T.nCh+' + '+T.rip+' pixel ripples)',
    'mesh '+T.rings+' x '+T.segs+'  spray '+T.spray+'  debris '+(P.vort>.05?T.debris:0)+' (points)',
@@ -372,12 +483,12 @@ function updateStats(){const T=TIERS[state.tier],P=state.P;
 function ui(){const sel=document.getElementById('type');for(const k in TYPES){const o=document.createElement('option');o.value=k;o.textContent=TYPES[k].label;sel.appendChild(o);}
   sel.value=state.type;sel.onchange=()=>{state.type=sel.value;};
   const sl=document.getElementById('s');sl.value=state.s;sl.oninput=()=>{state.s=parseFloat(sl.value);};
-  const bI=document.getElementById('bI'),bR=document.getElementById('bR');
-  function setTier(t){state.tier=t;bI.classList.toggle('on',t==='ipad');bR.classList.toggle('on',t==='radeon');build();resize();}
-  bI.onclick=()=>setTier('ipad');bR.onclick=()=>setTier('radeon');setTier(state.tier);
+  const bI=document.getElementById('bI'),bR=document.getElementById('bR'),bM=document.getElementById('bM');
+  function setTier(t){state.tier=t;state.K=null;bI.classList.toggle('on',t==='ipad');bR.classList.toggle('on',t==='radeon');bM.classList.toggle('on',t==='max');build();resize();}
+  window.__setTier=setTier;bI.onclick=()=>setTier('ipad');bR.onclick=()=>setTier('radeon');bM.onclick=()=>setTier('max');setTier(state.tier);
   if(Q.get('ui')==='0')document.getElementById('ui').style.display='none';}
 ui();buildBoat();camEvents();resize();requestAnimationFrame(frame);
-window.__sea={state,GPU,gpuMean,busyLine,updateStats,glName:()=>glName,TYPES,TIERS,cam,camPose,camKeys,camFloor:(x,z)=>camFloor(x,z,state.t),camera,seaHeight:(x,z,t)=>seaHeight(state.W,x,z,t===undefined?state.t:t,state.P),ready:true};
+window.__sea={bench,benchStart,benchWarn,effTier,state,GPU,gpuMean,busyLine,updateStats,glName:()=>glName,TYPES,TIERS,cam,camPose,camKeys,camFloor:(x,z)=>camFloor(x,z,state.t),camera,seaHeight:(x,z,t)=>seaHeight(state.W,x,z,t===undefined?state.t:t,state.P),ready:true};
 })();
 </script>
 </body>
