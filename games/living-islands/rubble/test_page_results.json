@@ -1,5 +1,5 @@
 {
- "when": "2026-11-26T10:46:55.003Z",
+ "when": "2026-11-26T15:18:25.138Z",
  "results": [
   {
    "name": "page loads the island ground (not the procedural stand-in)",
@@ -14,12 +14,12 @@
   {
    "name": "the page in Chromium gives the same replay code as Node",
    "ok": true,
-   "detail": "page 43dc9b59, node 43dc9b59"
+   "detail": "page 4839943c, node 4839943c"
   },
   {
    "name": "the page in Chromium gives the same FORT replay code as Node",
    "ok": true,
-   "detail": "page bcdf5115, node bcdf5115"
+   "detail": "page 2441ab8d, node 2441ab8d"
   },
   {
    "name": "the camera frames the fort by default (fort centre near the middle of the screen, in front of the camera)",
@@ -39,17 +39,17 @@
   {
    "name": "the bell comes down to big rods and the page says Bell down, with moved, standing and shots",
    "ok": true,
-   "detail": "Bell down! (fell 83 cm) | pieces moved 15   standing 235   shots 8"
+   "detail": "Bell down! (fell 98 cm) | pieces moved 10   standing 240   shots 8"
   },
   {
    "name": "Rebuild: the same fort is back, 250 pieces, bell up, score back to zero",
    "ok": true,
-   "detail": "{\"count\":250,\"moved\":0,\"standing\":250,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1,\"bells\":1,\"bellsDown\":0,\"bellFlags\":[false]}"
+   "detail": "{\"keep\":null,\"count\":250,\"moved\":0,\"standing\":250,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1,\"bells\":1,\"bellsDown\":0,\"bellFlags\":[false]}"
   },
   {
    "name": "all seven ammo kinds fired and were logged",
    "ok": true,
-   "detail": "{\"n\":259,\"awake\":231,\"ammo\":9,\"ev\":14}"
+   "detail": "{\"n\":258,\"awake\":179,\"ammo\":8,\"ev\":14}"
   },
   {
    "name": "ground override and tide reach the physics (all rock, tide +0.80)",
@@ -79,12 +79,12 @@
   {
    "name": "the page states the tested range from measured numbers and says they are not iPad numbers",
    "ok": true,
-   "detail": "Tested up to: 20000 pieces settle and sleep in Node, software only, one cloud core (4000: 1.469 ms/step asleep, 15.63 ms/step while awake after a hit). These ar"
+   "detail": "Tested up to: 1000 pieces settle and sleep in Node, software only, one cloud core. These are not iPad numbers. iPad preset: the owner ran 4,000 pieces fine (a r"
   },
   {
    "name": "Grand fort at 5000: exactly 5000 pieces, six bells, the page shows Settling... then Ready, and the score says Bells down: 0 of 6",
    "ok": true,
-   "detail": "{\"n\":5000,\"bells\":6,\"stat\":[\"Building 5000 pieces...\",\"Settling... 17%\",\"Settling... 90 of at most 600 steps, 20 \",\"Ready\"],\"score\":\"Bells down: 0 of 6 (a bell is down at 32 cm) | pieces moved 0   standing 5000   shots 0\"}"
+   "detail": "{\"n\":5000,\"bells\":6,\"stat\":[\"Building 5000 pieces...\",\"Settling... 17%\",\"Settling... 90 of at most 600 steps, 18 \",\"Ready\"],\"score\":\"Bells down: 0 of 6 (a bell is down at 32 cm) | pieces moved 0   standing 5000   shots 0\"}"
   },
   {
    "name": "the camera frames the whole Grand fort by default (all eight corners of its box are on screen)",
@@ -99,37 +99,112 @@
   {
    "name": "Gate then Big rod brings the gatehouse bell down and the score reads Bells down: 1 of 6 or more",
    "ok": true,
-   "detail": "{\"flags\":[false,true,false,false,false,false],\"down\":1,\"text\":\"Bells down: 1 of 6 (a bell is down at 32 cm) | pieces moved 14   standing 4986   shots 9\",\"rods\":9}"
+   "detail": "{\"flags\":[false,true,false,false,false,false],\"down\":1,\"text\":\"Bells down: 1 of 6 (a bell is down at 32 cm) | pieces moved 6   standing 4994   shots 8\",\"rods\":8}"
   },
   {
    "name": "Fly round turns the camera round the fort while on and stops when off",
    "ok": true,
-   "detail": "0.00 -> 0.54, off: 1.280 / 1.280"
+   "detail": "0.00 -> 0.11, off: 0.330 / 0.330"
   },
   {
    "name": "Grand 10000: exactly 10000 pieces in the page; settled with Settling... then Ready",
    "ok": true,
-   "detail": "settled in 66828 ms (page, software GL, shared CPU); {\"brick\":9916,\"beam\":78,\"bell\":6}"
+   "detail": "settled in 60006 ms (page, software GL, shared CPU); {\"brick\":9916,\"beam\":78,\"bell\":6}"
   },
   {
-   "name": "when settling takes over 10 s of real time the page shows a progress line (steps and seconds) and asks the player to wait for Ready (settle took 66828 ms)",
+   "name": "when settling takes over 10 s of real time the page shows a progress line (steps and seconds) and asks the player to wait for Ready (settle took 60006 ms)",
    "ok": true,
-   "detail": "Settling... 90 of at most 600 steps, 67 s so far. A big fort needs a moment to get comfy: please wait for Ready before the first shot."
+   "detail": "Settling... 90 of at most 600 steps, 60 s so far. A big fort needs a moment to get comfy: please wait for Ready before the first shot."
   },
   {
-   "name": "Grand 10000 Pretty look: one draw per material (InstancedMesh) and a sane triangle count: 135030 triangles, 13 draw calls (Plain: 134314 / 7)",
+   "name": "Grand 10000 Pretty look: one draw per material (InstancedMesh) and a sane triangle count: 135018 triangles, 12 draw calls (Plain: 134314 / 7)",
    "ok": true,
-   "detail": "{\"pretty\":{\"tris\":135030,\"calls\":13},\"plain\":{\"tris\":134314,\"calls\":7}}"
+   "detail": "{\"pretty\":{\"tris\":135018,\"calls\":12},\"plain\":{\"tris\":134314,\"calls\":7}}"
   },
   {
    "name": "the page in Chromium gives the same GRAND fort replay code as Node (3000-piece fort, fixed volley at the gate)",
    "ok": true,
-   "detail": "page 33227fdb, node 33227fdb"
+   "detail": "page 921f8e08, node 921f8e08"
   },
   {
    "name": "INFO grand 10000 Pretty render cost (software GL, counts only)",
    "ok": true,
-   "detail": "{\"pretty\":{\"tris\":135030,\"calls\":13},\"plain\":{\"tris\":134314,\"calls\":7},\"kinds\":{\"brick\":9916,\"beam\":78,\"bell\":6}}"
+   "detail": "{\"pretty\":{\"tris\":135018,\"calls\":12},\"plain\":{\"tris\":134314,\"calls\":7},\"kinds\":{\"brick\":9916,\"beam\":78,\"bell\":6}}"
+  },
+  {
+   "name": "Keep mode loads: exactly 2000 pieces, one bell on a perch, the switch shows Keep the bell, shots slider runs 6 to 40",
+   "ok": true,
+   "detail": "{\"n\":2000,\"keep\":true,\"perch\":693,\"bells\":1,\"hud\":\"Knocked out: 0 percent   ★☆☆ | Bell: standing   Shots left: 6 of 6\",\"slider\":[\"6\",\"40\",\"6\"],\"on\":true,\"api\":{\"on\":true,\"shotsMax\":6,\"over\":null,\"best\":null}}"
+  },
+  {
+   "name": "the Keep HUD shows Knocked out: x percent, Bell: standing and Shots left",
+   "ok": true,
+   "detail": "Knocked out: 0 percent   ★☆☆ | Bell: standing   Shots left: 6 of 6"
+  },
+  {
+   "name": "the shot allowance holds: nine taps with 6 shots allowed fire exactly 6",
+   "ok": true,
+   "detail": "6 fired"
+  },
+  {
+   "name": "after the last shot and the bricks resting the page shows the result with stars and says what was knocked out (The bell is still standing! | ★☆☆ | Knocked out 3 percent of the base with 6 of 6 shots. | A new best for this)",
+   "ok": true,
+   "detail": "{\"outer\":1307,\"knocked\":41,\"percent\":3.1369548584544757}"
+  },
+  {
+   "name": "the best score is remembered for this shape and count (localStorage)",
+   "ok": true,
+   "detail": "{\"pct\":3.1369548584544757,\"stars\":1}"
+  },
+  {
+   "name": "Keep replay: the same perch fort and the same shots give the same hash at the same step",
+   "ok": true,
+   "detail": "832c74d2 / 832c74d2"
+  },
+  {
+   "name": "Rebuild starts a fresh round: result hidden, shots back to 6 of 6, 2000 pieces",
+   "ok": true,
+   "detail": "{\"end\":\"none\",\"hud\":\"Knocked out: 0 percent   ★☆☆ | Bell: standing   Shots left: 6 of 6\",\"n\":2000,\"ev\":0}"
+  },
+  {
+   "name": "rods at the perch bring the bell down and the page says Bell down, try again, with Rebuild",
+   "ok": true,
+   "detail": "Bell down, try again | The bell came tumbling off its perch. No harm done: bricks are for rebuilding after 13 rods"
+  },
+  {
+   "name": "no more shots after the round is over",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "Topple the bell is still there and is the default mode (old HUD, one bell, no perch)",
+   "ok": true,
+   "detail": "{\"keep\":false,\"hud\":\"Bell: still up (down at 32 cm) | pieces moved 0   standing 2000   shots 0\",\"pieces\":2000,\"bells\":1}"
+  },
+  {
+   "name": "with localStorage blocked the page still plays Keep the bell and shows a result (Done with no shots), no errors",
+   "ok": true,
+   "detail": "The bell is still standing! | ★☆☆ | Knocked out 0 percent of the base with 0 of 6 shots. |"
+  },
+  {
+   "name": "trails: a shot in the air draws a streak in the Pretty look (12 vertices), it is one extra draw call and no triangles (10 -> 11 calls, 17154 -> 17154 triangles)",
+   "ok": true,
+   "detail": "{\"base\":{\"tris\":16718,\"calls\":8},\"trailOn\":{\"on\":true,\"visible\":true,\"drawn\":12},\"flying\":{\"tris\":17154,\"calls\":11},\"trailOff\":{\"on\":false,\"visible\":false,\"drawn\":12},\"off\":{\"tris\":17154,\"calls\":10},\"plain\":{\"on\":true,\"visible\":false,\"drawn\":12},\"head\":\"Bolt head: blunt\",\"trisAfterHead\":60,\"names\":\"Bolt (heavy, flies point first)\"}"
+  },
+  {
+   "name": "trails switch off with the button and are hidden in the Plain look",
+   "ok": true,
+   "detail": "[{\"on\":false,\"visible\":false,\"drawn\":12},{\"on\":true,\"visible\":false,\"drawn\":12}]"
+  },
+  {
+   "name": "the Big rod is now the Bolt (label) and the head button swaps pointed and blunt (Bolt head: blunt)",
+   "ok": true,
+   "detail": "Bolt (heavy, flies point first)"
+  },
+  {
+   "name": "B3: the faint aim line (40 points, the first 0.67 s) and the power meter (50 percent) are shown, switch off with the button and come back",
+   "ok": true,
+   "detail": "{\"on\":{\"on\":true,\"visible\":true,\"pts\":40,\"meter\":\"block\",\"fill\":\"50%\"},\"off\":{\"on\":false,\"visible\":false,\"pts\":40,\"meter\":\"none\",\"fill\":\"50%\"},\"back\":{\"on\":true,\"visible\":true,\"pts\":40,\"meter\":\"block\",\"fill\":\"50%\"}}"
   },
   {
    "name": "replay started after pressing Replay slow (it may already be over on a slow machine)",
@@ -139,12 +214,12 @@
   {
    "name": "after the replay the scene has the same hash at the same step as before it",
    "ok": true,
-   "detail": "4184e56a before, 4184e56a after, at step 21"
+   "detail": "7b03676d before, 7b03676d after, at step 145"
   },
   {
    "name": "bench ran every level and wrote a report with a knee line and the highest level reached",
    "ok": true,
-   "detail": "knee (30 fps or better: avg 33 ms or less, p95 50 ms or less) up to: 59 pieces | ran every level | WARNING: this is SOFTWARE graphics: the frame times say nothing about a real GPU."
+   "detail": "knee (30 fps or better: avg 33 ms or less, p95 50 ms or less) up to: none of the levels | ran every level | WARNING: this is SOFTWARE graphics: the frame times say nothing about a real GPU."
   },
   {
    "name": "the knee finder stops by itself when frames are slow (software GL trips the 100 ms rule)",
