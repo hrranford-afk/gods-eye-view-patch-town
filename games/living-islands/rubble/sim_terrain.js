@@ -285,7 +285,7 @@
      The pieces are created here but not yet settled: the caller runs settleUnit() until it says done (the page does it a little each frame, Node all at once). */
   function rubbleCount(n) { return TR.clamp(Math.round(n * 0.25), 30, 400); }
   function buildFort(sim, cfg) {
-    var site = sim.site, d = FORT.design(cfg.fort, cfg.pieces, cfg.seed || 1, site, cfg.force, cfg.tight), i, e, q, recs = [], nr = 0, bellRec = null, bellRecs = [];
+    var site = sim.site, d = FORT.design(cfg.fort, cfg.pieces, cfg.seed || 1, site, cfg.force, cfg.tight, cfg.keep || false), i, e, q, recs = [], nr = 0, bellRec = null, bellRecs = [];
     sim.scene = { bricks: 0, cans: 0, debris: 0, fort: null, rubble: 0 };
     if (cfg.rubble) {                                   /* the loose field first, so the fort is built last and nothing steps it before it is whole */
       nr = rubbleCount(cfg.pieces); var m = 20; while (true) { var nb_ = Math.max(12, Math.round(m * 0.45)), nc_ = TR.clamp(Math.round(m * 0.07), 6, 150); if (m - nb_ - nc_ >= nr) break; m++; }
@@ -320,7 +320,7 @@
 
   /* ---------- a session: scene + shots + replay log ---------- */
   function makeSession(R, site, cfg) {
-    cfg = { pieces: cfg.pieces || 200, seed: cfg.seed || 1, ammoCap: cfg.ammoCap || 60, tide: cfg.tide || 0, ground: cfg.ground === undefined ? -1 : cfg.ground, track: !!cfg.track, hooks: cfg.hooks || null, fort: cfg.fort || '', rubble: !!cfg.rubble, defer: !!cfg.defer, tight: !!cfg.tight, force: cfg.force || null, solverIters: cfg.solverIters || 0, pgs: cfg.pgs || 0 };
+    cfg = { pieces: cfg.pieces || 200, seed: cfg.seed || 1, ammoCap: cfg.ammoCap || 60, tide: cfg.tide || 0, ground: cfg.ground === undefined ? -1 : cfg.ground, track: !!cfg.track, hooks: cfg.hooks || null, fort: cfg.fort || '', rubble: !!cfg.rubble, defer: !!cfg.defer, tight: !!cfg.tight, keep: cfg.keep || false, force: cfg.force || null, solverIters: cfg.solverIters || 0, pgs: cfg.pgs || 0 };
     function simOpts() { var o = { ammoCap: cfg.ammoCap, tide: cfg.tide, track: cfg.track, hooks: cfg.hooks }; if (cfg.solverIters) o.solverIters = cfg.solverIters; if (cfg.pgs) o.pgs = cfg.pgs; return o; }
     var ses = { R: R, site: site, cfg: cfg, events: [], sim: null, rnd: null, replay: null };
     function fresh() {

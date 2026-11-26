@@ -203,8 +203,83 @@
       function (p) { if (p.ti >= Math.min(p.tw, GCAPW)) return 0; if (p.hi < Math.min(p.hc - 2, 7 * p.ti)) return 0; p.ti++; return gFit(p) ? true : 0; },
       function (p) { if (p.hi >= Math.min(p.hc - 2, 7 * p.ti + 1)) return p.ti >= GCAPW ? false : 0; p.hi++; return true; }
     ] };
+
+  /* ---------- Keep the bell ---------- */
+  /* Keep mode: the shape's own core (its keep, pier or deck) and every extra bell are dropped, and one bell stands on its own perch: a tall pillar of bricks laid like a stepped (battered) tower,
+     kb modules wide at the foot, one module narrower every three courses down to two modules (1.2 m), a two-beam deck on top and the bell on the deck. The perch is group 3. The rest of the shape
+     (its walls, towers, ward) is grown to the piece count as usual, minus the perch, and is kept clear of the perch's footprint, so once the walls are gone the perch stands by itself.
+     The walls are held lower than the perch (MAXC is lowered for the design) so the bell is always above them. */
+  var KEEP = null, KEEPMIN = 1000;
+  function perchTier(i, kb) { return Math.max(2, kb - Math.floor(i / 3)); }
+  function perchSpec(n) { var kb = n < 1500 ? 3 : n < 4500 ? 4 : n < 9000 ? 5 : 6; return { kb: kb, kh: kb <= 3 ? 14 : kb === 4 ? 16 : 18 }; }
+  function perchFill(B, cx, cz, kb, kh) {
+    var c, s, n0, i;
+    for (c = 0; c < kh; c++) { s = perchTier(c, kb) * MOD; block(B, c, cx - s / 2, cz - s / 2, s, s, 3); }
+    n0 = B.p.length; deck(B, kh, cx, cz); for (i = n0; i < B.p.length; i++) B.p[i].g = 3;
+  }
+  function perchCount(kb, kh) { var B = newB(); perchFill(B, 0, 0, kb, kh); return B.p.length + 1; }       /* every piece of the perch, the bell included */
+  /* cutting the shape around the perch leaves ragged ends: a piece that no longer has at least 55 percent of its footprint on the course below is dropped (bottom up, so it cascades),
+     so no cut wall hangs over a gap */
+  function prune(arr) {
+    var byC = {}, i, e, c, maxC = 0, out = [], grid, cs = 0.3, gx, gz, g0x, g1x, g0z, g1z, k, list, o, ov, area, hx, hz, t, ok, key;
+    function box(q) { var hx = (q.k.indexOf('beam') === 0 ? BEAML : BL) / 2, hz = BW / 2, t; if (q.a) { t = hx; hx = hz; hz = t; } return [q.x - hx, q.x + hx, q.z - hz, q.z + hz]; }
+    for (i = 0; i < arr.length; i++) { e = arr[i]; (byC[e.c] = byC[e.c] || []).push(e); if (e.c > maxC) maxC = e.c; }
+    grid = null;
+    for (c = 0; c <= maxC; c++) {
+      list = byC[c]; if (!list) { grid = {}; continue; }
+      var next = {}, kept = [];
+      for (i = 0; i < list.length; i++) {
+        e = list[i]; o = box(e); ok = true;
+        if (c > 0 && e.g !== 2) {
+          ov = 0; area = (o[1] - o[0]) * (o[3] - o[2]);
+          if (grid) for (gx = Math.floor(o[0] / cs); gx <= Math.floor(o[1] / cs); gx++) for (gz = Math.floor(o[2] / cs); gz <= Math.floor(o[3] / cs); gz++) {
+            var cell = grid[gx + ',' + gz]; if (!cell) continue;
+            for (k = 0; k < cell.length; k++) { var q = cell[k]; if (q.seen === i + 1 + c * 1e6) continue; q.seen = i + 1 + c * 1e6; var w = Math.min(o[1], q.b[1]) - Math.max(o[0], q.b[0]), d = Math.min(o[3], q.b[3]) - Math.max(o[2], q.b[2]); if (w > 0 && d > 0) ov += w * d; }
+          }
+          ok = ov >= 0.55 * area;
+        }
+        if (ok) {
+          kept.push(e); var rec = { b: o, seen: 0 };
+          for (gx = Math.floor(o[0] / cs); gx <= Math.floor(o[1] / cs); gx++) for (gz = Math.floor(o[2] / cs); gz <= Math.floor(o[3] / cs); gz++) { key = gx + ',' + gz; (next[key] = next[key] || []).push(rec); }
+          out.push(e);
+        }
+      }
+      grid = next;
+    }
+    return out;
+  }
+  function buildKeep(shape, p, ph, mph) {
+    var B = newB(), i, e, hx, hz, t, h = KEEP.kb * MOD / 2, keep = [], px = 0, pz = 0;
+    B.ph = ph; B.merlPhase = mph; SHAPES[shape].fn(B, p);
+    if (B.bells && B.bells.length) { px = B.bells[0].x; pz = B.bells[0].z; }
+    for (i = 0; i < B.p.length; i++) {
+      e = B.p[i];
+      if (e.g === 0) { if (shape !== 'tower') continue; e.g = 1; }                       /* a tower has no walls: its body becomes the knock-out part and gets a hole for the perch */
+      hx = (e.k.indexOf('beam') === 0 ? BEAML : BL) / 2; hz = BW / 2; if (e.a) { t = hx; hx = hz; hz = t; }
+      if (e.x + hx > px - h + 1e-6 && e.x - hx < px + h - 1e-6 && e.z + hz > pz - h + 1e-6 && e.z - hz < pz + h - 1e-6) continue;
+      keep.push(e);
+    }
+    B.p = prune(keep); perchFill(B, px, pz, KEEP.kb, KEEP.kh); B.bells = [{ x: px, z: pz, c: KEEP.kh + 1 }]; B.top = KEEP.kh + 1;
+    return B;
+  }
+  function attemptKeep(shape, n, ph, mph) {
+    var p, B, i, ex, need, trimmed = 0, saveMax = MAXC, ex2, fc = 0;
+    MAXC = KEEP.kh - 3;
+    try {
+      setScale(1); p = grow(shape, n - 1, ph, mph); B = buildKeep(shape, p, ph, mph);
+      if (B.p.length > n - 1) {                                 /* too many (a tiny count): drop knock-out pieces from the top down, never the perch */
+        var perch = [], outer = [];
+        for (i = 0; i < B.p.length; i++) (B.p[i].g === 3 ? perch : outer).push(B.p[i]);
+        outer.sort(function (a, b) { return a.c - b.c; }); trimmed = B.p.length - (n - 1); outer.length = Math.max(0, outer.length - trimmed); B.p = outer.concat(perch);
+      }
+      ex = extents(B.p); need = n - 1 - B.p.length;
+      if (need > 0) footing(B, need, ex.x / SXZ, ex.z / SXZ);
+      ex2 = extents(B.p); for (i = 0; i < B.p.length; i++) if (B.p[i].g === 2 && B.p[i].c > fc) fc = B.p[i].c;
+    } finally { MAXC = saveMax; }
+    return { B: B, p: p, top: B.top, trimmed: trimmed, ex: ex2, fits: ex2.x <= REACHX && ex2.z <= REACHZ, sc: 1, footLayers: fc + 1 };
+  }
   function clone(o) { var r = {}, k; for (k in o) r[k] = o[k]; return r; }
-  function count(shape, p, ph, mph) { var B = newB(); B.ph = ph; B.merlPhase = mph; SHAPES[shape].fn(B, p); return B.p.length; }
+  function count(shape, p, ph, mph) { if (KEEP) return buildKeep(shape, p, ph, mph).p.length; var B = newB(); B.ph = ph; B.merlPhase = mph; SHAPES[shape].fn(B, p); return B.p.length; }
   function grow(shape, budget, ph, mph) {                         /* budget counts every piece but the bell */
     var S = SHAPES[shape], p = S.start(), blocked = [], i = 0, tries = 0, q, ok, allBlocked;
     for (i = 0; i < S.inc.length; i++) blocked.push(false);
@@ -258,7 +333,7 @@
   }
 
   /* the whole design. site gives the ground. Returns {pieces, count, params, baseY, spread, bell, ...}. Bricks are always full size. */
-  function design(shape, n, seed, site, force, tight) {
+  function design(shape, n, seed, site, force, tight, keepBell) {
     var L = site.layout.wall, cx = L.x, cz = L.z, ph = (seed >>> 0) & 1, mph = (seed >>> 1) & 1, i, e, A = null, si;
     if (!SHAPES[shape]) shape = 'castle';
     var asked = shape, fallback = false;
@@ -266,8 +341,14 @@
     var pd = (site.sculpt && site.sculpt.pad) || { hw: 2.6, hd: 2.4 };       /* the levelled pad the fort stands on (half width, half depth, metres) */
     PADX = 2 * (pd.hw - 0.5); PADZ = 2 * (pd.hd - 0.6); REACHX = pd.hw - 0.05; REACHZ = pd.hd - 0.05; CAPW = pd.hw > 5 ? 20 : 6; CAPK = pd.hw > 5 ? 8 : 3;
     n = Math.max(8, n | 0);
-    if (shape === 'grand' && !force) { setScale(1); if (count('grand', SHAPES.grand.start(), ph, mph) > n - GBELLS) { shape = 'castle'; fallback = true; } }      /* too few pieces for a Grand fort: a castle instead, and the page says so */
+    var asked0 = n, perchAlone = keepBell === 'perch', perchInfo = null;
+    if (keepBell && !force) {
+      n = Math.max(n, KEEPMIN); perchInfo = perchSpec(n); KEEP = { kb: perchInfo.kb, kh: perchInfo.kh };
+      if (shape === 'grand') { var savM = MAXC; MAXC = KEEP.kh - 3; setScale(1); var gc = count('grand', SHAPES.grand.start(), ph, mph); MAXC = savM; if (gc > n - 1) { shape = 'castle'; fallback = true; } }
+    }
+    if (shape === 'grand' && !force && !keepBell) { setScale(1); if (count('grand', SHAPES.grand.start(), ph, mph) > n - GBELLS) { shape = 'castle'; fallback = true; } }      /* too few pieces for a Grand fort: a castle instead, and the page says so */
     if (force) { setScale(force.scale || 1); var BB = newB(); BB.ph = ph; BB.merlPhase = mph; var tp = SHAPES[shape].fn(BB, force.params); A = { B: BB, p: force.params, top: tp, trimmed: 0, ex: extents(BB.p), fits: true, sc: force.scale || 1 }; n = BB.p.length + 1; }
+    else if (keepBell) { try { A = attemptKeep(shape, n, ph, mph); } finally { var kp = KEEP; KEEP = null; } if (perchAlone) { A.B.p = A.B.p.filter(function (e) { return e.g === 3; }); A.ex = extents(A.B.p); n = A.B.p.length + 1; } }
     else A = attempt(shape, n, ph, mph, 1);
     setScale(A.sc);
     var B = A.B, gmin = 1e9, gmax = -1e9, gx, gz, hh, fx = A.ex.x + 0.05, fz = A.ex.z + 0.05, pieces = [], baseY, bell;
@@ -278,11 +359,11 @@
     for (bi = 0; bi < bellList.length; bi++) { bell = { k: 'bell', x: cx + bellList[bi].x * SXZ, y: baseY + BH * SY * bellList[bi].c + BELL_HH + 0.0008, z: cz + bellList[bi].z * SXZ, a: 0, g: 0 }; pieces.push(bell); bells.push(bell); }
     bell = bells[0];
     return { pieces: pieces, count: pieces.length, shape: shape, scale: A.sc, params: A.p, baseY: baseY, spread: gmax - gmin, bell: bell, courses: A.top, trimmed: A.trimmed, half: A.ex, cx: cx, cz: cz,
-      bells: bells, asked: asked, fallback: fallback, height: BH * SY * Math.max(A.top, B.bells && B.bells.length ? Math.max.apply(null, B.bells.map(function (b) { return b.c; })) : 0) + 0.2, onPad: A.fits, footLayers: A.footLayers, tight: !!tight };
+      bells: bells, asked: asked, fallback: fallback, keep: !!keepBell, perch: perchInfo ? { kb: perchInfo.kb, kh: perchInfo.kh, count: perchCount(perchInfo.kb, perchInfo.kh), alone: perchAlone } : null, raised: keepBell && asked0 < n && !perchAlone ? n : 0, height: BH * SY * Math.max(A.top, B.bells && B.bells.length ? Math.max.apply(null, B.bells.map(function (b) { return b.c; })) : 0) + 0.2, onPad: A.fits, footLayers: A.footLayers, tight: !!tight };
   }
 
   /* the fewest pieces a Grand fort can be made of: below this the designer builds a castle instead */
   function grandMin() { var m = 0, ph, mph; setScale(1); for (ph = 0; ph < 2; ph++) for (mph = 0; mph < 2; mph++) m = Math.max(m, count('grand', SHAPES.grand.start(), ph, mph) + GBELLS); return m; }
-  var API = { design: design, grandMin: grandMin, BELL_HH: BELL_HH, SHAPES: ['wall', 'tower', 'castle', 'grand'], GRAND_BELLS: GBELLS, KEEPCAP: KEEPCAP };
+  var API = { design: design, grandMin: grandMin, KEEPMIN: KEEPMIN, perchSpec: perchSpec, perchCount: perchCount, BELL_HH: BELL_HH, SHAPES: ['wall', 'tower', 'castle', 'grand'], GRAND_BELLS: GBELLS, KEEPCAP: KEEPCAP };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.RFort = API;
 })(typeof window !== 'undefined' ? window : globalThis);

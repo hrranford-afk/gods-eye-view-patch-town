@@ -1,0 +1,195 @@
+{
+ "when": "2026-11-26T13:45:23.779Z",
+ "node": "v22.22.0",
+ "checks": [
+  {
+   "name": "perch alone at 2000: 693 pieces (kb 4 modules at the foot, 16 courses, 2.25 m), settled and asleep, nothing fell through",
+   "ok": true,
+   "detail": "drift 6.2 cm, 100 steps"
+  },
+  {
+   "name": "perch alone at 2000: after 10 more seconds awake there is no creep (0 pieces moved over 20 cm, bell moved 0.1 mm, bell up)",
+   "ok": true,
+   "detail": "{\"moved\":0,\"worstMm\":0.055789947509765625}"
+  },
+  {
+   "name": "perch alone at 5000: 1119 pieces (kb 5 modules at the foot, 18 courses, 2.49 m), settled and asleep, nothing fell through",
+   "ok": true,
+   "detail": "drift 8.2 cm, 130 steps"
+  },
+  {
+   "name": "perch alone at 5000: after 10 more seconds awake there is no creep (0 pieces moved over 20 cm, bell moved 0.0 mm, bell up)",
+   "ok": true,
+   "detail": "{\"moved\":0,\"worstMm\":0.0476837158203125}"
+  },
+  {
+   "name": "perch alone at 10000: 1695 pieces (kb 6 modules at the foot, 18 courses, 2.49 m), settled and asleep, nothing fell through",
+   "ok": true,
+   "detail": "drift 7.5 cm, 110 steps"
+  },
+  {
+   "name": "perch alone at 10000: after 10 more seconds awake there is no creep (0 pieces moved over 20 cm, bell moved 0.1 mm, bell up)",
+   "ok": true,
+   "detail": "{\"moved\":0,\"worstMm\":0.06031990051269531}"
+  },
+  {
+   "name": "keep castle 2000: exact count 2000 with one bell and a 692-piece perch",
+   "ok": true,
+   "detail": "castle"
+  },
+  {
+   "name": "keep castle 2000: settled and asleep (drift 6.9 cm, 130 steps), no creep after 5 s awake, bell up",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep castle 5000: exact count 5000 with one bell and a 1118-piece perch",
+   "ok": true,
+   "detail": "castle"
+  },
+  {
+   "name": "keep castle 5000: settled and asleep (drift 8.2 cm, 130 steps), no creep after 5 s awake, bell up",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep castle 10000: exact count 10000 with one bell and a 1694-piece perch",
+   "ok": true,
+   "detail": "castle"
+  },
+  {
+   "name": "keep castle 10000: settled and asleep (drift 7.9 cm, 120 steps), no creep after 5 s awake, bell up",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep wall 2000: exact count 2000 with one bell and a 692-piece perch",
+   "ok": true,
+   "detail": "wall"
+  },
+  {
+   "name": "keep wall 2000: settled and asleep (drift 6.9 cm, 130 steps), no creep after 5 s awake, bell up",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep tower 2000: exact count 2000 with one bell and a 692-piece perch",
+   "ok": true,
+   "detail": "tower"
+  },
+  {
+   "name": "keep tower 2000: settled and asleep (drift 7.3 cm, 140 steps), no creep after 5 s awake, bell up",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep grand 5000: exact count 5000 with one bell and a 1118-piece perch",
+   "ok": true,
+   "detail": "grand"
+  },
+  {
+   "name": "keep grand 5000: settled and asleep (drift 9.9 cm, 120 steps), no creep after 5 s awake, bell up",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep design is deterministic per seed and count, and the seed changes the bond",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep mode raises a too small count to 1000 (the perch needs room) and says so",
+   "ok": true,
+   "detail": "count 1000"
+  },
+  {
+   "name": "Topple mode is unchanged (no perch group, no keep flag, 400 pieces)",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "numbers": {
+  "perch": [
+   {
+    "pieces": 2000,
+    "perchCount": 693,
+    "kb": 4,
+    "courses": 16,
+    "heightM": 2.25,
+    "driftCm": 6.22,
+    "bellMoveMm": 0.06,
+    "ms": 3704
+   },
+   {
+    "pieces": 5000,
+    "perchCount": 1119,
+    "kb": 5,
+    "courses": 18,
+    "heightM": 2.49,
+    "driftCm": 8.25,
+    "bellMoveMm": 0.05,
+    "ms": 4029
+   },
+   {
+    "pieces": 10000,
+    "perchCount": 1695,
+    "kb": 6,
+    "courses": 18,
+    "heightM": 2.49,
+    "driftCm": 7.47,
+    "bellMoveMm": 0.06,
+    "ms": 5778
+   }
+  ],
+  "fort": [
+   {
+    "shape": "castle",
+    "pieces": 2000,
+    "perch": 693,
+    "driftCm": 6.9,
+    "heightM": 2.25,
+    "ms": 4892
+   },
+   {
+    "shape": "castle",
+    "pieces": 5000,
+    "perch": 1119,
+    "driftCm": 8.2,
+    "heightM": 2.49,
+    "ms": 11092
+   },
+   {
+    "shape": "castle",
+    "pieces": 10000,
+    "perch": 1695,
+    "driftCm": 7.9,
+    "heightM": 2.49,
+    "ms": 33759
+   },
+   {
+    "shape": "wall",
+    "pieces": 2000,
+    "perch": 693,
+    "driftCm": 6.9,
+    "heightM": 2.25,
+    "ms": 5349
+   },
+   {
+    "shape": "tower",
+    "pieces": 2000,
+    "perch": 693,
+    "driftCm": 7.3,
+    "heightM": 2.25,
+    "ms": 5576
+   },
+   {
+    "shape": "grand",
+    "pieces": 5000,
+    "perch": 1119,
+    "driftCm": 9.9,
+    "heightM": 2.49,
+    "ms": 15473
+   }
+  ]
+ }
+}
