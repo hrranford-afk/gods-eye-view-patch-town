@@ -86,6 +86,31 @@ async function main() {
   check('iPad 4000 pieces stays within a sane budget in both looks (under 200,000 triangles and 40 draw calls)', lk.pretty.tris < 200000 && lk.pretty.calls < 40 && lk.plain.tris < 200000, 'pretty ' + lk.pretty.tris + ' tris / ' + lk.pretty.calls + ' calls; plain ' + lk.plain.tris + ' tris / ' + lk.plain.calls + ' calls');
   var tn = await page.evaluate(function () { return document.getElementById('tested').textContent; });
   check('the page states the tested range from measured numbers and says they are not iPad numbers', /Tested up to: \d+ pieces/.test(tn) && /not iPad numbers/.test(tn), tn.slice(0, 160));
+  /* 5b. the Grand fort at 5000 pieces: Settling... then Ready, the camera frames the whole fort, quick aims, Fly round, Big rod, bells */
+  await ctx.addInitScript(function () { window.__stat = []; setInterval(function () { var e = document.getElementById('status'); if (e && e.style.display !== 'none' && e.textContent && window.__stat[window.__stat.length - 1] !== e.textContent) window.__stat.push(e.textContent); }, 40); });
+  await page.goto(base + '?tier=radeon&shape=grand&pieces=5000', { waitUntil: 'load' }); await ready();
+  await page.waitForFunction('window.__rubble.ses.sim.fort && !window.__rubble.ses.settling && /Ready/.test(window.__stat.join("|"))', null, { timeout: 400000 }); await settle(1500);
+  var gr = await page.evaluate(function () { var r = window.__rubble, f = r.ses.sim.fort, d = f.design; return { n: r.ses.sim.bodies.length, shape: d.shape, bells: f.bells.length, info: document.getElementById('fortInfo').textContent, score: document.getElementById('score').innerText, stat: window.__stat.slice(), settleMs: r.ses.settleMs, calls: r.renderer.info.render.calls }; });
+  check('Grand fort at 5000: exactly 5000 pieces, six bells, the page shows Settling... then Ready, and the score says Bells down: 0 of 6', gr.n === 5000 && gr.shape === 'grand' && gr.bells === 6 && gr.stat.some(function (t) { return /^Settling/.test(t); }) && gr.stat.some(function (t) { return /Ready/.test(t); }) && /Bells down: 0 of 6/.test(gr.score), JSON.stringify({ n: gr.n, bells: gr.bells, stat: gr.stat.filter(function (t, i) { return i < 2 || i >= gr.stat.length - 2; }).map(function (t) { return t.slice(0, 40); }), score: gr.score.replace(/\n/g, ' | ') }));
+  var fr2 = await page.evaluate(function () { var r = window.__rubble, d = r.ses.sim.fort.design, V = r.THREE.Vector3, worst = 0, ok = true, sx, sz, sy, v; r.cam.updateMatrixWorld(true);
+    for (sx = -1; sx <= 1; sx += 2) for (sz = -1; sz <= 1; sz += 2) for (sy = 0; sy <= 1; sy++) { v = new V(d.cx + sx * d.half.x, d.baseY + sy * d.height, d.cz + sz * d.half.z).project(r.cam); worst = Math.max(worst, Math.abs(v.x), Math.abs(v.y)); if (Math.abs(v.x) > 1 || Math.abs(v.y) > 1 || v.z > 1) ok = false; }
+    return { ok: ok, worst: +worst.toFixed(2), dist: +r.orb.dist.toFixed(1), widthM: +(d.half.x * 2).toFixed(1) }; });
+  check('the camera frames the whole Grand fort by default (all eight corners of its box are on screen)', fr2.ok, JSON.stringify(fr2));
+  await page.screenshot({ path: path.join(shots, 'rubble-11-grand-5000.png') });
+  var qa = await page.evaluate(function () { var r = window.__rubble, f = r.ses.sim.fort, d = f.design, out = {}, t; document.getElementById('qGate').click(); t = r.aim.target; out.gate = Math.hypot(t.x - d.bells[1].x, t.z - d.bells[1].z) < 0.01 && Math.abs(t.y - f.bellHomes[1]) < 0.01;
+    document.getElementById('qKeep').click(); t = r.aim.target; out.keep = Math.hypot(t.x - d.bells[0].x, t.z - d.bells[0].z) < 0.01;
+    document.getElementById('qTower').click(); var t1 = Object.assign({}, r.aim.target); document.getElementById('qTower').click(); var t2 = r.aim.target; out.tower = Math.abs(t1.x - t2.x) > 1 && d.bells.slice(2).some(function (b) { return Math.hypot(t1.x - b.x, t1.z - b.z) < 0.01; });
+    out.names = ['qGate', 'qTower', 'qKeep', 'fly', 'bigrod', 'burst'].map(function (id) { return !!document.getElementById(id); }); out.yaw = r.aim.yaw; return out; });
+  check('quick aim buttons Gate, Tower and Keep aim the launcher at the gatehouse bell, a front corner tower bell (alternating) and the keep bell; Big rod, Burst and Fly round are still there', qa.gate && qa.keep && qa.tower && qa.names.every(Boolean), JSON.stringify(qa));
+  await page.click('#qGate'); var evG = await page.evaluate(function () { return window.__rubble.ses.events.length; });
+  for (var rq = 0; rq < 10; rq++) { var gd = await page.evaluate(function () { return window.__rubble.ses.score().bellFlags[1]; }); if (gd) break; await page.click('#bigrod'); await settle(2200); }
+  await settle(1500);
+  var gs = await page.evaluate(function () { var s = window.__rubble.ses.score(); return { flags: s.bellFlags, down: s.bellsDown, text: document.getElementById('score').innerText.replace(/\n/g, ' | '), rods: window.__rubble.ses.events.length }; });
+  check('Gate then Big rod brings the gatehouse bell down and the score reads Bells down: 1 of 6 or more', gs.flags[1] && gs.down >= 1 && /Bells down: \d+ of 6/.test(gs.text), JSON.stringify(gs));
+  await page.screenshot({ path: path.join(shots, 'rubble-12-grand-gate-hit.png') });
+  var az0 = await page.evaluate(function () { return window.__rubble.orb.az; }); await page.click('#fly'); await settle(1500); var az1 = await page.evaluate(function () { return { az: window.__rubble.orb.az, on: window.__rubble.fly() }; });
+  await page.click('#fly'); var az2 = await page.evaluate(function () { return window.__rubble.orb.az; }); await settle(800); var az3 = await page.evaluate(function () { return window.__rubble.orb.az; });
+  check('Fly round turns the camera round the fort while on and stops when off', az1.on && Math.abs(az1.az - az0) > 0.04 && Math.abs(az3 - az2) < 1e-6, az0.toFixed(2) + ' -> ' + az1.az.toFixed(2) + ', off: ' + az2.toFixed(3) + ' / ' + az3.toFixed(3));
   /* 6. replay */
   await page.evaluate(function () { var p = document.getElementById('pieces'); p.value = 0; p.dispatchEvent(new Event('input')); }); await page.click('#buildFort'); await page.waitForFunction('window.__rubble.ses.sim.bodies.length === 40 && !window.__rubble.ses.settling', null, { timeout: 240000 }); await settle(1500);
   await page.evaluate(function () { var r = window.__rubble; r.fire('rod', 2); r.fire('coconut', 2); }); await settle(3500);

@@ -1,5 +1,5 @@
 {
- "when": "2026-11-26T09:05:50.742Z",
+ "when": "2026-11-26T10:29:24.451Z",
  "results": [
   {
    "name": "page loads the island ground (not the procedural stand-in)",
@@ -24,7 +24,7 @@
   {
    "name": "the camera frames the fort by default (fort centre near the middle of the screen, in front of the camera)",
    "ok": true,
-   "detail": "{\"x\":0,\"y\":0.014430367006360552,\"z\":0.9751865165552814,\"dist\":7.926612259864251}"
+   "detail": "{\"x\":0,\"y\":0.03418458119993301,\"z\":0.9705169962574397,\"dist\":6.719581896720611}"
   },
   {
    "name": "Big rod: one tap fires a rod with no menu",
@@ -39,17 +39,17 @@
   {
    "name": "the bell comes down to big rods and the page says Bell down, with moved, standing and shots",
    "ok": true,
-   "detail": "Bell down! (fell 94 cm) | pieces moved 11   standing 239   shots 8"
+   "detail": "Bell down! (fell 78 cm) | pieces moved 14   standing 236   shots 8"
   },
   {
    "name": "Rebuild: the same fort is back, 250 pieces, bell up, score back to zero",
    "ok": true,
-   "detail": "{\"count\":250,\"moved\":0,\"standing\":250,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+   "detail": "{\"count\":250,\"moved\":0,\"standing\":250,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1,\"bells\":1,\"bellsDown\":0,\"bellFlags\":[false]}"
   },
   {
    "name": "all seven ammo kinds fired and were logged",
    "ok": true,
-   "detail": "{\"n\":259,\"awake\":178,\"ammo\":9,\"ev\":14}"
+   "detail": "{\"n\":259,\"awake\":230,\"ammo\":9,\"ev\":14}"
   },
   {
    "name": "ground override and tide reach the physics (all rock, tide +0.80)",
@@ -82,6 +82,31 @@
    "detail": "Tested up to: 1000 pieces settle and sleep in Node, software only, one cloud core. These are not iPad numbers. iPad preset: the owner ran 4,000 pieces fine (a r"
   },
   {
+   "name": "Grand fort at 5000: exactly 5000 pieces, six bells, the page shows Settling... then Ready, and the score says Bells down: 0 of 6",
+   "ok": true,
+   "detail": "{\"n\":5000,\"bells\":6,\"stat\":[\"Building 5000 pieces...\",\"Settling... 17%\",\"Settling... 90 of at most 600 steps, 20 \",\"Ready\"],\"score\":\"Bells down: 0 of 6 (a bell is down at 32 cm) | pieces moved 0   standing 5000   shots 0\"}"
+  },
+  {
+   "name": "the camera frames the whole Grand fort by default (all eight corners of its box are on screen)",
+   "ok": true,
+   "detail": "{\"ok\":true,\"worst\":0.61,\"dist\":20.7,\"widthM\":13}"
+  },
+  {
+   "name": "quick aim buttons Gate, Tower and Keep aim the launcher at the gatehouse bell, a front corner tower bell (alternating) and the keep bell; Big rod, Burst and Fly round are still there",
+   "ok": true,
+   "detail": "{\"gate\":true,\"keep\":true,\"tower\":true,\"names\":[true,true,true,true,true,true],\"yaw\":0.3888116396732154}"
+  },
+  {
+   "name": "Gate then Big rod brings the gatehouse bell down and the score reads Bells down: 1 of 6 or more",
+   "ok": true,
+   "detail": "{\"flags\":[false,true,false,false,false,false],\"down\":1,\"text\":\"Bells down: 1 of 6 (a bell is down at 32 cm) | pieces moved 20   standing 4980   shots 10\",\"rods\":10}"
+  },
+  {
+   "name": "Fly round turns the camera round the fort while on and stops when off",
+   "ok": true,
+   "detail": "0.00 -> 0.54, off: 1.225 / 1.225"
+  },
+  {
    "name": "replay started after pressing Replay slow (it may already be over on a slow machine)",
    "ok": true,
    "detail": ""
@@ -89,7 +114,7 @@
   {
    "name": "after the replay the scene has the same hash at the same step as before it",
    "ok": true,
-   "detail": "1b438ab7 before, 1b438ab7 after, at step 39"
+   "detail": "3ab3bbf8 before, 3ab3bbf8 after, at step 31"
   },
   {
    "name": "bench ran every level and wrote a report with a knee line and the highest level reached",
@@ -99,7 +124,7 @@
   {
    "name": "the knee finder stops by itself when frames are slow (software GL trips the 100 ms rule)",
    "ok": true,
-   "detail": "ran every level"
+   "detail": "   128         6       98.6      183.3      183.3   10           0.65          2.8           8  16554     11        0   <- stopped here | highest level reached: 40 pieces (frame rule not tripped); stopped at 120 pieces | stopped early: frame time over 100 ms for 5 frames at 128 pieces"
   },
   {
    "name": "procedural fallback loads and says so",

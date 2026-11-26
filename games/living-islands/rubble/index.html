@@ -13,6 +13,8 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
 #title{position:fixed;left:8px;top:152px;pointer-events:none;font-size:12px;max-width:min(300px,40vw)}
 #title h1{margin:0;font-size:17px}
 #title div{opacity:.85}
+#quickbox{position:fixed;left:8px;top:246px;font-size:13px;max-width:min(240px,42vw)}
+#quickbox .btn{min-height:40px;padding:6px 10px}
 #side{position:fixed;right:8px;top:8px;width:min(300px,46vw);max-height:calc(100% - 150px);overflow:auto;display:flex;flex-direction:column;gap:8px;font-size:13px}
 #side label{display:flex;flex-direction:column;gap:3px;font-weight:600}
 #side input[type=range]{width:100%;min-height:28px}
@@ -44,6 +46,7 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
 <div id="perf" class="card"></div>
 <div id="title" class="card"><h1>Rubble</h1><div id="siteNote">physics on the island ground</div></div>
 <div id="status"></div>
+<div class="card" id="quickbox"><div style="font-weight:700;margin-bottom:4px">Quick aim</div><div class="row"><button class="btn" id="qGate">Gate</button><button class="btn" id="qTower">Tower</button><button class="btn" id="qKeep">Keep</button></div><div class="row" style="margin-top:6px"><button class="btn" id="fly">Fly round: off</button></div></div>
 <div id="score" class="card"></div>
 <div id="hint">Tap or click the ground to aim. Hold Fire. Drag to turn the camera, wheel or pinch to zoom.</div>
 <div id="side">
@@ -211,7 +214,7 @@ function applyLook(on) {
   scene.fog = on ? new THREE.Fog(0xe9c2aa, 50, 170) : new THREE.Fog(0xa9d3e4, 45, 140);
   skyMesh.visible = on; decor.visible = on;
   hemi.color.set(on ? 0xe6e3ef : 0xdff0ff); hemi.groundColor.set(on ? 0x6a6256 : 0x8a7a5a); hemi.intensity = on ? 0.8 : 0.85;
-  sun.color.set(on ? 0xffcf9e : 0xfff0d0); sun.intensity = on ? 1.1 : 1.05; sun.position.set(on ? -16 : -14, on ? 16 : 22, on ? 2 : 10);
+  sun.color.set(on ? 0xffcf9e : 0xfff0d0); sun.intensity = on ? 1.1 : 1.05; (function (k) { var tp = sun.target.position; sun.position.set(tp.x + (on ? -16 : -14) * k, tp.y + (on ? 16 : 22) * k, tp.z + (on ? 2 : 10) * k); })(fortSun / 24);
   sea.material = on ? seaPretty : seaPlain;
   Object.keys(IM || {}).forEach(function (k) {
     var m = IM[k].material;
@@ -287,7 +290,7 @@ var amp = 1.1, tideNow = 0, autoTide = false, groundMode = -1, ammoKind = 'marbl
 var aim = { yaw: 0, elev: 0.3, target: null };
 var pieces = 250, ses = null, loading = false, shape = ['grand', 'tower', 'wall'].indexOf(Q.get('shape')) >= 0 ? Q.get('shape') : 'castle', rubble = Q.get('rubble') === '1', fortSeed = +(Q.get('seed') || 1) || 1, builtKey = '';
 var cfgBase = function () { return { pieces: pieces, seed: fortSeed, ammoCap: ammoCapFor(), tide: tideNow, ground: groundMode, track: true, hooks: hooks, fort: shape, rubble: rubble, defer: true, tight: false }; };
-var settleT0 = 0, readyAt = 0;
+var settleT0 = 0, readyAt = 0, fortSun = 24, flyRound = false;
 function keyNow() { return shape + '|' + piecesFromSlider(+$('pieces').value) + '|' + rubble; }
 function build(p, again) {
   pieces = p; loading = true; $('status').style.display = 'block'; $('status').textContent = 'Building ' + p + ' pieces...';
@@ -310,10 +313,20 @@ function settleText(st) {
   var secs = (performance.now() - settleT0) / 1000, n = st ? st.n : 0;
   $('status').textContent = secs < 10 ? 'Settling... ' + Math.min(99, Math.round(n / 120 * 100)) + '%' : 'Settling... ' + n + ' of at most 600 steps, ' + Math.round(secs) + ' s so far. A big fort needs a moment to get comfy: please wait for Ready before the first shot.';
 }
-function frameFort() {                                  /* the camera looks at the fort by default */
+function frameFort() {                                  /* the camera looks at the whole fort by default: the distance grows until all eight corners of its box are on screen */
   var f = ses && ses.sim.fort, d = f ? f.design : null; if (!d) return;
-  var hh = Math.max(d.height, 0.6), w = Math.max(d.half.x, d.half.z, 0.8);
-  orb.tx = d.cx; orb.tz = d.cz; orb.ty = d.baseY + hh * 0.45; orb.az = 0; orb.el = 0.42; orb.dist = Math.max(6, Math.min(40, (Math.max(hh * 1.3, w * 1.5) + 1.5) / Math.tan(25 * Math.PI / 180) * 0.8));
+  var hh = Math.max(d.height, 0.6), hx = Math.max(d.half.x, 0.8), hz = Math.max(d.half.z, 0.8), i, v = new THREE.Vector3(), corners = [], sx, sz, sy, dist, ok, R = Math.sqrt(hx * hx + hz * hz);
+  orb.tx = d.cx; orb.tz = d.cz; orb.ty = d.baseY + hh * 0.4; orb.az = 0; orb.el = 0.42;
+  for (sx = -1; sx <= 1; sx += 2) for (sz = -1; sz <= 1; sz += 2) for (sy = 0; sy <= 1; sy++) corners.push(new THREE.Vector3(d.cx + sx * hx, d.baseY + sy * hh, d.cz + sz * hz));
+  for (dist = 5; dist < 160; dist *= 1.03) {
+    orb.dist = dist; placeCam(); cam.updateMatrixWorld(true); ok = true;
+    for (i = 0; i < corners.length; i++) { v.copy(corners[i]).project(cam); if (Math.abs(v.x) > 0.62 || v.y > 0.8 || v.y < -0.72 || v.z > 1) { ok = false; break; } }   /* the side panel covers the right edge, the ammo row the bottom */
+    if (ok) break;
+  }
+  orb.dist = Math.max(6, dist); orb.home = { dist: orb.dist, el: orb.el };
+  var sh = sun.shadow, sd = Math.max(24, R + 6);                                  /* the sun's shadow box follows the fort */
+  sun.target.position.set(d.cx, d.baseY, d.cz); sun.target.updateMatrixWorld(); sun.position.set(d.cx + (pretty ? -16 : -14) * sd / 24, d.baseY + (pretty ? 16 : 22) * sd / 24, d.cz + (pretty ? 2 : 10) * sd / 24);
+  sh.camera.left = -sd; sh.camera.right = sd; sh.camera.top = sd; sh.camera.bottom = -sd; sh.camera.far = 40 + sd * 2.4; sh.camera.updateProjectionMatrix(); fortSun = sd;
 }
 function aimAtBell() { var f = ses && ses.sim.fort; if (!f) return; aim.target = { x: f.design.bell.x, y: f.bellHome, z: f.design.bell.z }; aimUpdate(); }
 function fortUI() {
@@ -354,6 +367,16 @@ function aimUpdate() {
 }
 var massCache = {};
 function ammoMass(k) { if (massCache[k]) return massCache[k]; var K = KINDS[k]; massCache[k] = K.dens * SIM.volOf(K); return massCache[k]; }
+/* quick aims: Gate, Tower and Keep turn the launcher to the gatehouse bell, a front corner tower bell (it alternates left and right) and the keep bell; on the other shapes the nearest equivalent */
+var towerSide = 0;
+function quickAim(which) {
+  var f = ses && ses.sim.fort; if (!f || loading || ses.settling) return; var d = f.design, b = d.bells, idx, t, hx = d.half.x, hz = d.half.z;
+  if (b.length >= 3) { idx = which === 'keep' ? 0 : which === 'gate' ? 1 : (towerSide++ & 1 ? 5 : 3); t = { x: b[idx].x, y: f.bellHomes[idx], z: b[idx].z }; }
+  else if (which === 'keep') t = { x: d.bell.x, y: f.bellHome, z: d.bell.z };
+  else if (which === 'gate') t = { x: d.cx, y: d.baseY + Math.min(0.5, d.height * 0.4), z: d.cz + hz * 0.9 };
+  else { t = { x: d.cx + (towerSide++ & 1 ? 1 : -1) * hx * 0.8, y: d.baseY + d.height * 0.8, z: d.cz + hz * 0.8 }; }
+  aim.target = t; aimUpdate(); status('Aiming at the ' + which, 1200);
+}
 function nudge(dy, de) { aim.target = null; aim.yaw += dy; aim.elev = Math.max(-0.1, Math.min(1.4, aim.elev + de)); aimUpdate(); }
 
 /* ---------- ammo buttons, firing ---------- */
@@ -389,7 +412,7 @@ var ptrs = {}, drag = null, pinch = 0;
 cvs.addEventListener('pointerdown', function (e) { cvs.setPointerCapture(e.pointerId); ptrs[e.pointerId] = { x: e.clientX, y: e.clientY }; drag = { x: e.clientX, y: e.clientY, moved: 0, t: performance.now() }; if (Object.keys(ptrs).length === 2) { var p = Object.values(ptrs); pinch = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y); } });
 cvs.addEventListener('pointermove', function (e) {
   if (!ptrs[e.pointerId]) return; var p = ptrs[e.pointerId], dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
-  var ks = Object.keys(ptrs); if (ks.length === 2) { var v = Object.values(ptrs), d = Math.hypot(v[0].x - v[1].x, v[0].y - v[1].y); if (pinch) orb.dist = Math.max(6, Math.min(80, orb.dist * pinch / d)); pinch = d; if (drag) drag.moved += 99; return; }
+  var ks = Object.keys(ptrs); if (ks.length === 2) { var v = Object.values(ptrs), d = Math.hypot(v[0].x - v[1].x, v[0].y - v[1].y); if (pinch) orb.dist = Math.max(6, Math.min(160, orb.dist * pinch / d)); pinch = d; if (drag) drag.moved += 99; return; }
   if (drag) drag.moved += Math.abs(dx) + Math.abs(dy); orb.az -= dx * 0.006; orb.el = Math.max(0.12, Math.min(1.45, orb.el + dy * 0.006));
 });
 function endPtr(e) {
@@ -401,7 +424,7 @@ function endPtr(e) {
   if (!Object.keys(ptrs).length) drag = null;
 }
 cvs.addEventListener('pointerup', endPtr); cvs.addEventListener('pointercancel', endPtr);
-cvs.addEventListener('wheel', function (e) { e.preventDefault(); orb.dist = Math.max(6, Math.min(80, orb.dist * (1 + e.deltaY * 0.001))); }, { passive: false });
+cvs.addEventListener('wheel', function (e) { e.preventDefault(); orb.dist = Math.max(6, Math.min(160, orb.dist * (1 + e.deltaY * 0.001))); }, { passive: false });
 addEventListener('resize', function () { renderer.setSize(innerWidth, innerHeight, false); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); });
 cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix();
 
@@ -418,6 +441,8 @@ $('tide').addEventListener('input', function () { autoTide = false; $('autoTide'
 $('autoTide').addEventListener('click', function () { autoTide = !autoTide; this.textContent = 'Auto tide: ' + (autoTide ? 'on (60 s cycle)' : 'off'); this.classList.toggle('on', autoTide); });
 $('shadows').addEventListener('click', function () { shadowsOn = !shadowsOn; renderer.shadowMap.enabled = shadowsOn; sun.castShadow = shadowsOn; this.textContent = 'Shadows: ' + (shadowsOn ? 'on' : 'off'); scene.traverse(function (o) { if (o.material) o.material.needsUpdate = true; }); });
 $('shadows').textContent = 'Shadows: ' + (shadowsOn ? 'on' : 'off');
+$('qGate').addEventListener('click', function () { quickAim('gate'); }); $('qTower').addEventListener('click', function () { quickAim('tower'); }); $('qKeep').addEventListener('click', function () { quickAim('keep'); });
+$('fly').addEventListener('click', function () { flyRound = !flyRound; this.textContent = 'Fly round: ' + (flyRound ? 'on' : 'off'); this.classList.toggle('on', flyRound); });
 $('look').addEventListener('click', function () { applyLook(!pretty); this.textContent = 'Look: ' + (pretty ? 'Pretty' : 'Plain'); this.classList.toggle('on', pretty); });
 
 /* ---------- slow-motion replay (deliberate only) ---------- */
@@ -471,6 +496,7 @@ function frame(now) {
     sea.position.y = sim.tide;
     if (pretty) { var tt = now / 1000; seaPretty.uniforms.time.value = tt; skyMesh.position.copy(cam.position); waveCloth(flagCloth, tt); mill.userData.sails.rotation.z = -tt * 0.5; }
     armAnim = Math.max(0, armAnim - dt * 5); armPivot.rotation.x = aim.elev + 0.6 - armAnim * 0.9;
+    if (flyRound && !drag) orb.az += Math.min(dtms / 1000, 0.5) * 0.22;
     drawBodies(sim, ses.replay ? acc / DT : Math.min(1, acc / DT)); placeCam();
     scoreT += dtms; if (scoreT > 250) { scoreT = 0; scoreUI(); }
     renderer.render(scene, cam);
@@ -571,7 +597,7 @@ $('pieces').value = sliderFromPieces(start); $('shape').value = shape; if (rubbl
 await build(start); setPiecesLabel();
 applyLook(pretty); $('look').textContent = 'Look: ' + (pretty ? 'Pretty' : 'Plain'); $('look').classList.toggle('on', pretty);
 recolor(tideNow, groundMode); placeCam(); requestAnimationFrame(frame);
-window.__rubble = { orb: orb, cam: cam, get ses() { return ses; }, site: site, THREE: THREE, P: P, build: build, fire: function (k, n) { ammoKind = k; for (var i = 0; i < (n || 1); i++) fireNow(); }, aim: aim, aimUpdate: aimUpdate, setAmmo: function (k) { ammoKind = k; syncAmmo(); aimUpdate(); }, perfText: perfText, renderer: renderer, applyLook: applyLook, look: function () { return pretty; }, benchRun: benchRun, tier: function () { return tier; } };
+window.__rubble = { orb: orb, cam: cam, get ses() { return ses; }, site: site, THREE: THREE, P: P, build: build, fire: function (k, n) { ammoKind = k; for (var i = 0; i < (n || 1); i++) fireNow(); }, aim: aim, aimUpdate: aimUpdate, setAmmo: function (k) { ammoKind = k; syncAmmo(); aimUpdate(); }, perfText: perfText, renderer: renderer, applyLook: applyLook, look: function () { return pretty; }, benchRun: benchRun, tier: function () { return tier; }, quickAim: quickAim, fly: function () { return flyRound; } };
 })();
 </script>
 </body></html>
