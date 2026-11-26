@@ -1,9 +1,9 @@
 {
- "when": "2026-11-26T09:03:28.366Z",
+ "when": "2026-11-26T10:24:40.748Z",
  "node": "v22.22.0",
  "checks": [
   {
-   "name": "count: every shape at 16 counts from 40 to 20000 gives exactly that many pieces and one bell (48 designs)",
+   "name": "count: every shape at 16 counts from 40 to 20000 gives exactly that many pieces and one bell (64 designs)",
    "ok": true,
    "detail": ""
   },
@@ -45,7 +45,7 @@
   {
    "name": "wall 100: nothing moved after the settle (score 0 moved) and the bell is up",
    "ok": true,
-   "detail": "{\"count\":100,\"moved\":0,\"standing\":100,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+   "detail": "{\"count\":100,\"moved\":0,\"standing\":100,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1,\"bells\":1,\"bellsDown\":0,\"bellFlags\":[false]}"
   },
   {
    "name": "wall 100: after 5 more seconds untouched it is still the same (no creep)",
@@ -65,7 +65,7 @@
   {
    "name": "wall 400: nothing moved after the settle (score 0 moved) and the bell is up",
    "ok": true,
-   "detail": "{\"count\":400,\"moved\":0,\"standing\":400,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+   "detail": "{\"count\":400,\"moved\":0,\"standing\":400,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1,\"bells\":1,\"bellsDown\":0,\"bellFlags\":[false]}"
   },
   {
    "name": "wall 400: after 5 more seconds untouched it is still the same (no creep)",
@@ -85,7 +85,7 @@
   {
    "name": "wall 1000: nothing moved after the settle (score 0 moved) and the bell is up",
    "ok": true,
-   "detail": "{\"count\":1000,\"moved\":0,\"standing\":1000,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+   "detail": "{\"count\":1000,\"moved\":0,\"standing\":1000,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1,\"bells\":1,\"bellsDown\":0,\"bellFlags\":[false]}"
   },
   {
    "name": "wall 1000: after 5 more seconds untouched it is still the same (no creep)",
@@ -105,7 +105,7 @@
   {
    "name": "wall 2000: nothing moved after the settle (score 0 moved) and the bell is up",
    "ok": true,
-   "detail": "{\"count\":2000,\"moved\":0,\"standing\":2000,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+   "detail": "{\"count\":2000,\"moved\":0,\"standing\":2000,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1,\"bells\":1,\"bellsDown\":0,\"bellFlags\":[false]}"
   },
   {
    "name": "wall 2000: after 5 more seconds untouched it is still the same (no creep)",
@@ -125,7 +125,7 @@
   {
    "name": "tower 100: nothing moved after the settle (score 0 moved) and the bell is up",
    "ok": true,
-   "detail": "{\"count\":100,\"moved\":0,\"standing\":100,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+   "detail": "{\"count\":100,\"moved\":0,\"standing\":100,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1,\"bells\":1,\"bellsDown\":0,\"bellFlags\":[false]}"
   },
   {
    "name": "tower 100: after 5 more seconds untouched it is still the same (no creep)",
@@ -145,7 +145,7 @@
   {
    "name": "tower 400: nothing moved after the settle (score 0 moved) and the bell is up",
    "ok": true,
-   "detail": "{\"count\":400,\"moved\":0,\"standing\":400,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+   "detail": "{\"count\":400,\"moved\":0,\"standing\":400,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1,\"bells\":1,\"bellsDown\":0,\"bellFlags\":[false]}"
   },
   {
    "name": "tower 400: after 5 more seconds untouched it is still the same (no creep)",
@@ -165,7 +165,7 @@
   {
    "name": "tower 1000: nothing moved after the settle (score 0 moved) and the bell is up",
    "ok": true,
-   "detail": "{\"count\":1000,\"moved\":0,\"standing\":1000,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+   "detail": "{\"count\":1000,\"moved\":0,\"standing\":1000,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1,\"bells\":1,\"bellsDown\":0,\"bellFlags\":[false]}"
   },
   {
    "name": "tower 1000: after 5 more seconds untouched it is still the same (no creep)",
@@ -185,7 +185,7 @@
   {
    "name": "tower 2000: nothing moved after the settle (score 0 moved) and the bell is up",
    "ok": true,
-   "detail": "{\"count\":2000,\"moved\":0,\"standing\":2000,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+   "detail": "{\"count\":2000,\"moved\":0,\"standing\":2000,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1,\"bells\":1,\"bellsDown\":0,\"bellFlags\":[false]}"
   },
   {
    "name": "tower 2000: after 5 more seconds untouched it is still the same (no creep)",
@@ -205,7 +205,7 @@
   {
    "name": "castle 100: nothing moved after the settle (score 0 moved) and the bell is up",
    "ok": true,
-   "detail": "{\"count\":100,\"moved\":0,\"standing\":100,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+   "detail": "{\"count\":100,\"moved\":0,\"standing\":100,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1,\"bells\":1,\"bellsDown\":0,\"bellFlags\":[false]}"
   },
   {
    "name": "castle 100: after 5 more seconds untouched it is still the same (no creep)",
@@ -225,7 +225,7 @@
   {
    "name": "castle 400: nothing moved after the settle (score 0 moved) and the bell is up",
    "ok": true,
-   "detail": "{\"count\":400,\"moved\":0,\"standing\":400,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+   "detail": "{\"count\":400,\"moved\":0,\"standing\":400,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1,\"bells\":1,\"bellsDown\":0,\"bellFlags\":[false]}"
   },
   {
    "name": "castle 400: after 5 more seconds untouched it is still the same (no creep)",
@@ -245,7 +245,7 @@
   {
    "name": "castle 1000: nothing moved after the settle (score 0 moved) and the bell is up",
    "ok": true,
-   "detail": "{\"count\":1000,\"moved\":0,\"standing\":1000,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+   "detail": "{\"count\":1000,\"moved\":0,\"standing\":1000,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1,\"bells\":1,\"bellsDown\":0,\"bellFlags\":[false]}"
   },
   {
    "name": "castle 1000: after 5 more seconds untouched it is still the same (no creep)",
@@ -265,10 +265,90 @@
   {
    "name": "castle 2000: nothing moved after the settle (score 0 moved) and the bell is up",
    "ok": true,
-   "detail": "{\"count\":2000,\"moved\":0,\"standing\":2000,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+   "detail": "{\"count\":2000,\"moved\":0,\"standing\":2000,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1,\"bells\":1,\"bellsDown\":0,\"bellFlags\":[false]}"
   },
   {
    "name": "castle 2000: after 5 more seconds untouched it is still the same (no creep)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "grand 100: exact count 100 bodies, 100 in the world",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "grand 100: settled and asleep (awake 0, drift 1.3 cm, 70 steps), nothing fell through",
+   "ok": true,
+   "detail": "ok=true"
+  },
+  {
+   "name": "grand 100: nothing moved after the settle (score 0 moved) and the bell is up",
+   "ok": true,
+   "detail": "{\"count\":100,\"moved\":0,\"standing\":100,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1,\"bells\":1,\"bellsDown\":0,\"bellFlags\":[false]}"
+  },
+  {
+   "name": "grand 100: after 5 more seconds untouched it is still the same (no creep)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "grand 400: exact count 400 bodies, 400 in the world",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "grand 400: settled and asleep (awake 0, drift 5.5 cm, 100 steps), nothing fell through",
+   "ok": true,
+   "detail": "ok=true"
+  },
+  {
+   "name": "grand 400: nothing moved after the settle (score 0 moved) and the bell is up",
+   "ok": true,
+   "detail": "{\"count\":400,\"moved\":0,\"standing\":400,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1,\"bells\":1,\"bellsDown\":0,\"bellFlags\":[false]}"
+  },
+  {
+   "name": "grand 400: after 5 more seconds untouched it is still the same (no creep)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "grand 1000: exact count 1000 bodies, 1000 in the world",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "grand 1000: settled and asleep (awake 0, drift 3.6 cm, 160 steps), nothing fell through",
+   "ok": true,
+   "detail": "ok=true"
+  },
+  {
+   "name": "grand 1000: nothing moved after the settle (score 0 moved) and the bell is up",
+   "ok": true,
+   "detail": "{\"count\":1000,\"moved\":0,\"standing\":1000,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1,\"bells\":1,\"bellsDown\":0,\"bellFlags\":[false]}"
+  },
+  {
+   "name": "grand 1000: after 5 more seconds untouched it is still the same (no creep)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "grand 2000: exact count 2000 bodies, 2000 in the world",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "grand 2000: settled and asleep (awake 0, drift 9.8 cm, 90 steps), nothing fell through",
+   "ok": true,
+   "detail": "ok=true"
+  },
+  {
+   "name": "grand 2000: nothing moved after the settle (score 0 moved) and the bell is up",
+   "ok": true,
+   "detail": "{\"count\":2000,\"moved\":0,\"standing\":2000,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1,\"bells\":6,\"bellsDown\":0,\"bellFlags\":[false,false,false,false,false,false]}"
+  },
+  {
+   "name": "grand 2000: after 5 more seconds untouched it is still the same (no creep)",
    "ok": true,
    "detail": ""
   },
@@ -285,12 +365,12 @@
   {
    "name": "a big rod volley aimed at the bell drops it (Bell down after 1 rods)",
    "ok": true,
-   "detail": "{\"count\":250,\"moved\":9,\"standing\":241,\"shots\":1,\"bellDrop\":0.9754993915557861,\"bellDown\":true,\"bellDownAtStep\":114}"
+   "detail": "{\"count\":250,\"moved\":9,\"standing\":241,\"shots\":1,\"bellDrop\":0.9754993915557861,\"bellDown\":true,\"bellDownAtStep\":114,\"bells\":1,\"bellsDown\":1,\"bellFlags\":[true]}"
   },
   {
    "name": "the score counts shots, moved and standing, and they add up",
    "ok": true,
-   "detail": "{\"count\":250,\"moved\":9,\"standing\":241,\"shots\":1,\"bellDrop\":0.9754993915557861,\"bellDown\":true,\"bellDownAtStep\":114}"
+   "detail": "{\"count\":250,\"moved\":9,\"standing\":241,\"shots\":1,\"bellDrop\":0.9754993915557861,\"bellDown\":true,\"bellDownAtStep\":114,\"bells\":1,\"bellsDown\":1,\"bellFlags\":[true]}"
   },
   {
    "name": "replay: the same fort rebuilt and the same shots fed again give the same hash at the same step, and the bell falls again",
@@ -310,7 +390,7 @@
   {
    "name": "Rebuild resets the score (0 moved, bell up, no shots)",
    "ok": true,
-   "detail": "{\"count\":250,\"moved\":0,\"standing\":250,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+   "detail": "{\"count\":250,\"moved\":0,\"standing\":250,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1,\"bells\":1,\"bellsDown\":0,\"bellFlags\":[false]}"
   },
   {
    "name": "the same three rods give the same hash and the same moved count in two fresh sessions",
@@ -373,7 +453,7 @@
     "settleSteps": 70,
     "driftCm": 1.1,
     "tiltMax": 0.0011,
-    "ms": 321
+    "ms": 333
    },
    {
     "shape": "wall",
@@ -384,7 +464,7 @@
     "settleSteps": 90,
     "driftCm": 2.9,
     "tiltMax": 0.0343,
-    "ms": 663
+    "ms": 803
    },
    {
     "shape": "wall",
@@ -395,7 +475,7 @@
     "settleSteps": 100,
     "driftCm": 5.5,
     "tiltMax": 0.0845,
-    "ms": 1678
+    "ms": 2169
    },
    {
     "shape": "wall",
@@ -406,7 +486,7 @@
     "settleSteps": 120,
     "driftCm": 7,
     "tiltMax": 0.1332,
-    "ms": 3968
+    "ms": 4176
    },
    {
     "shape": "tower",
@@ -417,7 +497,7 @@
     "settleSteps": 100,
     "driftCm": 5.5,
     "tiltMax": 0.0001,
-    "ms": 186
+    "ms": 251
    },
    {
     "shape": "tower",
@@ -428,7 +508,7 @@
     "settleSteps": 120,
     "driftCm": 5.7,
     "tiltMax": 0.0002,
-    "ms": 850
+    "ms": 1422
    },
    {
     "shape": "tower",
@@ -439,7 +519,7 @@
     "settleSteps": 110,
     "driftCm": 6,
     "tiltMax": 0.0002,
-    "ms": 2238
+    "ms": 2944
    },
    {
     "shape": "tower",
@@ -450,7 +530,7 @@
     "settleSteps": 60,
     "driftCm": 3.3,
     "tiltMax": 0.0001,
-    "ms": 6402
+    "ms": 8040
    },
    {
     "shape": "castle",
@@ -461,7 +541,7 @@
     "settleSteps": 70,
     "driftCm": 1.3,
     "tiltMax": 0.0012,
-    "ms": 121
+    "ms": 137
    },
    {
     "shape": "castle",
@@ -472,7 +552,7 @@
     "settleSteps": 100,
     "driftCm": 5.5,
     "tiltMax": 0.002,
-    "ms": 514
+    "ms": 526
    },
    {
     "shape": "castle",
@@ -483,7 +563,7 @@
     "settleSteps": 160,
     "driftCm": 3.6,
     "tiltMax": 0.0002,
-    "ms": 1789
+    "ms": 2130
    },
    {
     "shape": "castle",
@@ -494,7 +574,51 @@
     "settleSteps": 180,
     "driftCm": 4.8,
     "tiltMax": 0.0003,
-    "ms": 3326
+    "ms": 3986
+   },
+   {
+    "shape": "grand",
+    "pieces": 100,
+    "brickScale": 1,
+    "courses": 5,
+    "heightM": 0.8,
+    "settleSteps": 70,
+    "driftCm": 1.3,
+    "tiltMax": 0.0012,
+    "ms": 121
+   },
+   {
+    "shape": "grand",
+    "pieces": 400,
+    "brickScale": 1,
+    "courses": 12,
+    "heightM": 1.65,
+    "settleSteps": 100,
+    "driftCm": 5.5,
+    "tiltMax": 0.002,
+    "ms": 514
+   },
+   {
+    "shape": "grand",
+    "pieces": 1000,
+    "brickScale": 1,
+    "courses": 10,
+    "heightM": 1.41,
+    "settleSteps": 160,
+    "driftCm": 3.6,
+    "tiltMax": 0.0002,
+    "ms": 2257
+   },
+   {
+    "shape": "grand",
+    "pieces": 2000,
+    "brickScale": 1,
+    "courses": 9,
+    "heightM": 1.28,
+    "settleSteps": 90,
+    "driftCm": 9.8,
+    "tiltMax": 0.0336,
+    "ms": 6627
    }
   ],
   "bellHit": {
@@ -510,13 +634,13 @@
     "pieces": 250,
     "built": 250,
     "brickScale": 1,
-    "buildAndSettleMs": 151,
+    "buildAndSettleMs": 164,
     "settleSteps": 80,
     "driftCm": 2.7,
     "settledOk": true,
-    "msPerStepAsleep": 0.146,
-    "msPerStepUnderFire": 1.18,
-    "worstStepMs": 7.3,
+    "msPerStepAsleep": 0.169,
+    "msPerStepUnderFire": 1.3,
+    "worstStepMs": 4,
     "peakAwake": 174,
     "moved": 22,
     "bellDown": true,
@@ -526,13 +650,13 @@
     "pieces": 1000,
     "built": 1000,
     "brickScale": 1,
-    "buildAndSettleMs": 1082,
+    "buildAndSettleMs": 1258,
     "settleSteps": 160,
     "driftCm": 3.6,
     "settledOk": true,
-    "msPerStepAsleep": 0.377,
-    "msPerStepUnderFire": 3.19,
-    "worstStepMs": 6.4,
+    "msPerStepAsleep": 0.371,
+    "msPerStepUnderFire": 3.32,
+    "worstStepMs": 6.9,
     "peakAwake": 422,
     "moved": 11,
     "bellDown": true,

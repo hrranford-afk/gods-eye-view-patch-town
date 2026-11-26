@@ -22,7 +22,7 @@ async function main() {
     for (var si = 0; si < SIM.FORT.SHAPES.length; si++) for (var ci = 0; ci < counts.length; ci++) {
       sh = SIM.FORT.SHAPES[si]; n = counts[ci]; var d = SIM.FORT.design(sh, n, 1, lee); tot++;
       bells = d.pieces.filter(function (p) { return p.k === 'bell'; }).length;
-      if (d.count !== n || d.pieces.length !== n || bells !== 1) bad.push(sh + ' ' + n + ' gave ' + d.pieces.length + ' with ' + bells + ' bells');
+      if (d.count !== n || d.pieces.length !== n || bells !== (d.shape === 'grand' ? SIM.FORT.GRAND_BELLS : 1)) bad.push(sh + ' ' + n + ' gave ' + d.pieces.length + ' with ' + bells + ' bells');
       if (d.scale !== 1 || d.pieces.some(function (p) { return !/^(brick|beam|bell)$/.test(p.k); })) bad.push(sh + ' ' + n + ' has a shrunk or odd piece kind');
       if (d.pieces.some(function (p) { return p.y < lee.H(p.x, p.z) - 1e-6; })) bad.push(sh + ' ' + n + ' has a piece below the ground');
       if (!d.onPad) bad.push(sh + ' ' + n + ' does not fit the levelled pad');

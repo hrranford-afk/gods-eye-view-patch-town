@@ -1,0 +1,801 @@
+{
+ "when": "2026-11-26T10:00:20.081Z",
+ "node": "v22.22.0",
+ "checks": [
+  {
+   "name": "grand 2000: exactly 2000 pieces (2000), 6 bells, full-size bricks, nothing below ground, on the pad, shape stays grand",
+   "ok": true,
+   "detail": "{\"brick\":1986,\"beam\":8,\"bell\":6} footprint 10.02 x 9.01 m, 1.29 m tall"
+  },
+  {
+   "name": "grand 5000: exactly 5000 pieces (5000), 6 bells, full-size bricks, nothing below ground, on the pad, shape stays grand",
+   "ok": true,
+   "detail": "{\"brick\":4958,\"beam\":36,\"bell\":6} footprint 13.05 x 12.04 m, 2.37 m tall"
+  },
+  {
+   "name": "grand 5000: the gate passage is open (no piece in the doorway, 0.6 m wide and 0.7 m high), beams lie across it above",
+   "ok": true,
+   "detail": "0 pieces in the doorway"
+  },
+  {
+   "name": "grand 10000: exactly 10000 pieces (10000), 6 bells, full-size bricks, nothing below ground, on the pad, shape stays grand",
+   "ok": true,
+   "detail": "{\"brick\":9916,\"beam\":78,\"bell\":6} footprint 14.87 x 13.25 m, 2.85 m tall"
+  },
+  {
+   "name": "grand 20000: exactly 20000 pieces (20000), 6 bells, full-size bricks, nothing below ground, on the pad, shape stays grand",
+   "ok": true,
+   "detail": "{\"brick\":19784,\"beam\":210,\"bell\":6} footprint 17.90 x 16.89 m, 4.06 m tall"
+  },
+  {
+   "name": "grand 20000: the gate passage is open (no piece in the doorway, 0.6 m wide and 0.7 m high), beams lie across it above",
+   "ok": true,
+   "detail": "0 pieces in the doorway"
+  },
+  {
+   "name": "grand 1700: exactly 1700 pieces (1700), 6 bells, full-size bricks, nothing below ground, on the pad, shape stays grand",
+   "ok": true,
+   "detail": "{\"brick\":1686,\"beam\":8,\"bell\":6} footprint 10.02 x 9.01 m, 1.29 m tall"
+  },
+  {
+   "name": "grand 3000: exactly 3000 pieces (3000), 6 bells, full-size bricks, nothing below ground, on the pad, shape stays grand",
+   "ok": true,
+   "detail": "{\"brick\":2978,\"beam\":16,\"bell\":6} footprint 10.62 x 9.61 m, 1.41 m tall"
+  },
+  {
+   "name": "grand 8000: exactly 8000 pieces (8000), 6 bells, full-size bricks, nothing below ground, on the pad, shape stays grand",
+   "ok": true,
+   "detail": "{\"brick\":7932,\"beam\":62,\"bell\":6} footprint 14.87 x 13.86 m, 2.97 m tall"
+  },
+  {
+   "name": "grand 12000: exactly 12000 pieces (12000), 6 bells, full-size bricks, nothing below ground, on the pad, shape stays grand",
+   "ok": true,
+   "detail": "{\"brick\":11906,\"beam\":88,\"bell\":6} footprint 16.08 x 14.46 m, 3.58 m tall"
+  },
+  {
+   "name": "grand 15000: exactly 15000 pieces (15000), 6 bells, full-size bricks, nothing below ground, on the pad, shape stays grand",
+   "ok": true,
+   "detail": "{\"brick\":14810,\"beam\":184,\"bell\":6} footprint 17.29 x 16.28 m, 3.94 m tall"
+  },
+  {
+   "name": "grand design is deterministic: same count and seed give the same pieces; another seed gives another bond pattern with the same count",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "below 1602 pieces the designer says so and builds a castle of exactly that count (1000 pieces)",
+   "ok": true,
+   "detail": "shape castle"
+  },
+  {
+   "name": "grand 2000: 2000 bodies built (exact) and 2000 in the world",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "grand 2000: settled and asleep (awake 0, drift 9.8 cm, 90 steps), nothing fell through, no retry needed",
+   "ok": true,
+   "detail": "ok=true tilt 0.034"
+  },
+  {
+   "name": "grand 2000: after the settle 0 pieces have moved and all 6 bells are up (Bells down: 0 of 6)",
+   "ok": true,
+   "detail": "{\"moved\":0,\"bells\":6,\"down\":0}"
+  },
+  {
+   "name": "grand 2000: a big rod aimed at the gate drops the gatehouse bell (after 3 rods; Bells down: 1 of 6)",
+   "ok": true,
+   "detail": "{\"flags\":[false,true,false,false,false,false],\"moved\":7,\"rods\":3}"
+  },
+  {
+   "name": "grand 2000: the replay code works on this fort (same shots again, same hash at the same step)",
+   "ok": true,
+   "detail": "{\"ok\":true,\"expected\":\"80af3589\",\"got\":\"80af3589\",\"steps\":510}"
+  },
+  {
+   "name": "grand 5000: 5000 bodies built (exact) and 5000 in the world",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "grand 5000: settled and asleep (awake 0, drift 10.0 cm, 100 steps), nothing fell through, no retry needed",
+   "ok": true,
+   "detail": "ok=true tilt 0.016"
+  },
+  {
+   "name": "grand 5000: after the settle 0 pieces have moved and all 6 bells are up (Bells down: 0 of 6)",
+   "ok": true,
+   "detail": "{\"moved\":0,\"bells\":6,\"down\":0}"
+  },
+  {
+   "name": "grand 5000: a big rod aimed at the gate drops the gatehouse bell (after 3 rods; Bells down: 1 of 6)",
+   "ok": true,
+   "detail": "{\"flags\":[false,true,false,false,false,false],\"moved\":16,\"rods\":3}"
+  },
+  {
+   "name": "grand 5000: the replay code works on this fort (same shots again, same hash at the same step)",
+   "ok": true,
+   "detail": "{\"ok\":true,\"expected\":\"7c480db5\",\"got\":\"7c480db5\",\"steps\":510}"
+  },
+  {
+   "name": "grand 10000: 10000 bodies built (exact) and 10000 in the world",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "grand 10000: settled and asleep (awake 0, drift 9.9 cm, 100 steps), nothing fell through, no retry needed",
+   "ok": true,
+   "detail": "ok=true tilt 0.009"
+  },
+  {
+   "name": "grand 10000: after the settle 0 pieces have moved and all 6 bells are up (Bells down: 0 of 6)",
+   "ok": true,
+   "detail": "{\"moved\":0,\"bells\":6,\"down\":0}"
+  },
+  {
+   "name": "grand 10000: a big rod aimed at the gate drops the gatehouse bell (after 3 rods; Bells down: 1 of 6)",
+   "ok": true,
+   "detail": "{\"flags\":[false,true,false,false,false,false],\"moved\":9,\"rods\":3}"
+  },
+  {
+   "name": "grand 10000: the replay code works on this fort (same shots again, same hash at the same step)",
+   "ok": true,
+   "detail": "{\"ok\":true,\"expected\":\"003db97f\",\"got\":\"003db97f\",\"steps\":510}"
+  },
+  {
+   "name": "grand 20000: 20000 bodies built (exact) and 20000 in the world",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "grand 20000: settled and asleep (awake 0, drift 8.9 cm, 100 steps), nothing fell through, no retry needed",
+   "ok": true,
+   "detail": "ok=true tilt 0.006"
+  },
+  {
+   "name": "grand 20000: after the settle 0 pieces have moved and all 6 bells are up (Bells down: 0 of 6)",
+   "ok": true,
+   "detail": "{\"moved\":0,\"bells\":6,\"down\":0}"
+  },
+  {
+   "name": "grand 20000: a big rod aimed at the gate drops the gatehouse bell (after 3 rods; Bells down: 1 of 6)",
+   "ok": true,
+   "detail": "{\"flags\":[false,true,false,false,false,false],\"moved\":4,\"rods\":3}"
+  },
+  {
+   "name": "grand 20000: the replay code works on this fort (same shots again, same hash at the same step)",
+   "ok": true,
+   "detail": "{\"ok\":true,\"expected\":\"b8abf1c9\",\"got\":\"b8abf1c9\",\"steps\":510}"
+  },
+  {
+   "name": "grand 1700 seed 2: exact, settled, asleep, nothing moved, all bells up",
+   "ok": true,
+   "detail": "drift 10.2 cm"
+  },
+  {
+   "name": "grand 2500 seed 3: exact, settled, asleep, nothing moved, all bells up",
+   "ok": true,
+   "detail": "drift 9.8 cm"
+  },
+  {
+   "name": "grand 3000 seed 4: exact, settled, asleep, nothing moved, all bells up",
+   "ok": true,
+   "detail": "drift 10.4 cm"
+  },
+  {
+   "name": "grand replay code (3000-piece fort, fixed volley at the gate) is repeatable: 33227fdb",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep 3 modules at the foot stands at 15 courses (the Grand fort uses up to 24)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep 3 modules at the foot stands at 20 courses (the Grand fort uses up to 24)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep 3 modules at the foot stands at 24 courses (the Grand fort uses up to 24)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep 3 modules at the foot stands at 25 courses (the Grand fort uses up to 24)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep 3 modules at the foot stands at 30 courses (the Grand fort uses up to 24)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep 3 modules at the foot stands at 35 courses (the Grand fort uses up to 24)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep 5 modules at the foot stands at 24 courses (the Grand fort uses up to 30)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep 5 modules at the foot stands at 30 courses (the Grand fort uses up to 30)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep 5 modules at the foot stands at 33 courses (the Grand fort uses up to 30)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep 5 modules at the foot stands at 36 courses (the Grand fort uses up to 30)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep 5 modules at the foot stands at 40 courses (the Grand fort uses up to 30)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep 7 modules at the foot stands at 30 courses (the Grand fort uses up to 30)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep 7 modules at the foot stands at 33 courses (the Grand fort uses up to 30)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep 7 modules at the foot stands at 36 courses (the Grand fort uses up to 30)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep 7 modules at the foot stands at 40 courses (the Grand fort uses up to 30)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep 9 modules at the foot stands at 30 courses (the Grand fort uses up to 33)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep 9 modules at the foot stands at 33 courses (the Grand fort uses up to 33)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep 9 modules at the foot stands at 36 courses (the Grand fort uses up to 33)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "keep 9 modules at the foot stands at 40 courses (the Grand fort uses up to 33)",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "numbers": {
+  "designs": [
+   {
+    "pieces": 2000,
+    "footprintM": [
+     10.02,
+     9.01
+    ],
+    "heightM": 1.29,
+    "params": {
+     "W": 16,
+     "D": 12,
+     "tw": 1,
+     "hc": 4,
+     "t": 2,
+     "gw": 5,
+     "kb": 3,
+     "kh": 8,
+     "ig": 1,
+     "ti": 1,
+     "hi": 2
+    },
+    "kinds": {
+     "brick": 1986,
+     "beam": 8,
+     "bell": 6
+    }
+   },
+   {
+    "pieces": 5000,
+    "footprintM": [
+     13.05,
+     12.04
+    ],
+    "heightM": 2.37,
+    "params": {
+     "W": 19,
+     "D": 17,
+     "tw": 1,
+     "hc": 8,
+     "t": 2,
+     "gw": 9,
+     "kb": 5,
+     "kh": 17,
+     "ig": 1,
+     "ti": 1,
+     "hi": 6
+    },
+    "kinds": {
+     "brick": 4958,
+     "beam": 36,
+     "bell": 6
+    }
+   },
+   {
+    "pieces": 10000,
+    "footprintM": [
+     14.87,
+     13.25
+    ],
+    "heightM": 2.85,
+    "params": {
+     "W": 22,
+     "D": 19,
+     "tw": 2,
+     "hc": 9,
+     "t": 2,
+     "gw": 13,
+     "kb": 8,
+     "kh": 21,
+     "ig": 1,
+     "ti": 2,
+     "hi": 7
+    },
+    "kinds": {
+     "brick": 9916,
+     "beam": 78,
+     "bell": 6
+    }
+   },
+   {
+    "pieces": 20000,
+    "footprintM": [
+     17.9,
+     16.89
+    ],
+    "heightM": 4.06,
+    "params": {
+     "W": 27,
+     "D": 25,
+     "tw": 2,
+     "hc": 13,
+     "t": 2,
+     "gw": 13,
+     "kb": 11,
+     "kh": 31,
+     "ig": 1,
+     "ti": 2,
+     "hi": 11
+    },
+    "kinds": {
+     "brick": 19784,
+     "beam": 210,
+     "bell": 6
+    }
+   },
+   {
+    "pieces": 1700,
+    "footprintM": [
+     10.02,
+     9.01
+    ],
+    "heightM": 1.29,
+    "params": {
+     "W": 16,
+     "D": 12,
+     "tw": 1,
+     "hc": 3,
+     "t": 2,
+     "gw": 5,
+     "kb": 3,
+     "kh": 6,
+     "ig": 1,
+     "ti": 1,
+     "hi": 2
+    },
+    "kinds": {
+     "brick": 1686,
+     "beam": 8,
+     "bell": 6
+    }
+   },
+   {
+    "pieces": 3000,
+    "footprintM": [
+     10.62,
+     9.61
+    ],
+    "heightM": 1.41,
+    "params": {
+     "W": 15,
+     "D": 13,
+     "tw": 1,
+     "hc": 6,
+     "t": 2,
+     "gw": 7,
+     "kb": 3,
+     "kh": 9,
+     "ig": 1,
+     "ti": 1,
+     "hi": 4
+    },
+    "kinds": {
+     "brick": 2978,
+     "beam": 16,
+     "bell": 6
+    }
+   },
+   {
+    "pieces": 8000,
+    "footprintM": [
+     14.87,
+     13.86
+    ],
+    "heightM": 2.97,
+    "params": {
+     "W": 22,
+     "D": 20,
+     "tw": 2,
+     "hc": 8,
+     "t": 2,
+     "gw": 13,
+     "kb": 7,
+     "kh": 22,
+     "ig": 1,
+     "ti": 1,
+     "hi": 6
+    },
+    "kinds": {
+     "brick": 7932,
+     "beam": 62,
+     "bell": 6
+    }
+   },
+   {
+    "pieces": 12000,
+    "footprintM": [
+     16.08,
+     14.46
+    ],
+    "heightM": 3.58,
+    "params": {
+     "W": 24,
+     "D": 21,
+     "tw": 2,
+     "hc": 9,
+     "t": 2,
+     "gw": 13,
+     "kb": 9,
+     "kh": 27,
+     "ig": 1,
+     "ti": 2,
+     "hi": 7
+    },
+    "kinds": {
+     "brick": 11906,
+     "beam": 88,
+     "bell": 6
+    }
+   },
+   {
+    "pieces": 15000,
+    "footprintM": [
+     17.29,
+     16.28
+    ],
+    "heightM": 3.94,
+    "params": {
+     "W": 26,
+     "D": 24,
+     "tw": 2,
+     "hc": 12,
+     "t": 2,
+     "gw": 13,
+     "kb": 9,
+     "kh": 30,
+     "ig": 1,
+     "ti": 2,
+     "hi": 10
+    },
+    "kinds": {
+     "brick": 14810,
+     "beam": 184,
+     "bell": 6
+    }
+   }
+  ],
+  "grandMin": 1602,
+  "settle": [
+   {
+    "pieces": 2000,
+    "built": 2000,
+    "courses": 9,
+    "heightM": 1.28,
+    "settleSteps": 90,
+    "driftCm": 9.8,
+    "tilt": 0.0336,
+    "buildAndSettleMs": 5422,
+    "bells": 6,
+    "msPerStepAsleep": 0.628,
+    "msPerStepAfterHit": 16.28,
+    "worstStepMs": 52.1,
+    "peakAwake": 1838,
+    "rodsToDropGateBell": 3,
+    "movedAfterHit": 7,
+    "bellsDownAfterHit": 1,
+    "rescued": 0
+   },
+   {
+    "pieces": 5000,
+    "built": 5000,
+    "courses": 18,
+    "heightM": 2.36,
+    "settleSteps": 100,
+    "driftCm": 10,
+    "tilt": 0.0157,
+    "buildAndSettleMs": 19017,
+    "bells": 6,
+    "msPerStepAsleep": 1.569,
+    "msPerStepAfterHit": 49.77,
+    "worstStepMs": 132.3,
+    "peakAwake": 4988,
+    "rodsToDropGateBell": 3,
+    "movedAfterHit": 16,
+    "bellsDownAfterHit": 1,
+    "rescued": 0
+   },
+   {
+    "pieces": 10000,
+    "built": 10000,
+    "courses": 22,
+    "heightM": 2.85,
+    "settleSteps": 100,
+    "driftCm": 9.9,
+    "tilt": 0.0092,
+    "buildAndSettleMs": 59749,
+    "bells": 6,
+    "msPerStepAsleep": 2.713,
+    "msPerStepAfterHit": 131.41,
+    "worstStepMs": 324.1,
+    "peakAwake": 9996,
+    "rodsToDropGateBell": 3,
+    "movedAfterHit": 9,
+    "bellsDownAfterHit": 1,
+    "rescued": 0
+   },
+   {
+    "pieces": 20000,
+    "built": 20000,
+    "courses": 32,
+    "heightM": 4.05,
+    "settleSteps": 100,
+    "driftCm": 8.9,
+    "tilt": 0.0058,
+    "buildAndSettleMs": 171002,
+    "bells": 6,
+    "msPerStepAsleep": 8.629,
+    "msPerStepAfterHit": 163.25,
+    "worstStepMs": 616.6,
+    "peakAwake": 11480,
+    "rodsToDropGateBell": 3,
+    "movedAfterHit": 4,
+    "bellsDownAfterHit": 1,
+    "rescued": 0
+   }
+  ],
+  "perf": [
+   {
+    "pieces": 5000,
+    "msPerStepAsleep": 1.569,
+    "msPerStepAfterHit": 49.77,
+    "worstStepMs": 132.3,
+    "peakAwake": 4988
+   },
+   {
+    "pieces": 10000,
+    "msPerStepAsleep": 2.713,
+    "msPerStepAfterHit": 131.41,
+    "worstStepMs": 324.1,
+    "peakAwake": 9996
+   },
+   {
+    "pieces": 20000,
+    "msPerStepAsleep": 8.629,
+    "msPerStepAfterHit": 163.25,
+    "worstStepMs": 616.6,
+    "peakAwake": 11480
+   }
+  ],
+  "grandCode": "33227fdb",
+  "keeps": [
+   {
+    "baseModules": 3,
+    "courses": 15,
+    "heightM": 1.8,
+    "pieces": 813,
+    "stands": true,
+    "driftCm": 7.7,
+    "tilt": 0.0002
+   },
+   {
+    "baseModules": 3,
+    "courses": 20,
+    "heightM": 2.4,
+    "pieces": 1083,
+    "stands": true,
+    "driftCm": 5.4,
+    "tilt": 0.0003
+   },
+   {
+    "baseModules": 3,
+    "courses": 24,
+    "heightM": 2.88,
+    "pieces": 1299,
+    "stands": true,
+    "driftCm": 7.4,
+    "tilt": 0.0004
+   },
+   {
+    "baseModules": 3,
+    "courses": 25,
+    "heightM": 3,
+    "pieces": 1353,
+    "stands": true,
+    "driftCm": 7.9,
+    "tilt": 0.0004
+   },
+   {
+    "baseModules": 3,
+    "courses": 30,
+    "heightM": 3.6,
+    "pieces": 1623,
+    "stands": false,
+    "driftCm": 13.4,
+    "tilt": 0.0007
+   },
+   {
+    "baseModules": 3,
+    "courses": 35,
+    "heightM": 4.2,
+    "pieces": 1893,
+    "stands": false,
+    "driftCm": 18,
+    "tilt": 0.0007
+   },
+   {
+    "baseModules": 5,
+    "courses": 24,
+    "heightM": 2.88,
+    "pieces": 1713,
+    "stands": true,
+    "driftCm": 6.7,
+    "tilt": 0.0001
+   },
+   {
+    "baseModules": 5,
+    "courses": 30,
+    "heightM": 3.6,
+    "pieces": 2037,
+    "stands": true,
+    "driftCm": 10.1,
+    "tilt": 0.0002
+   },
+   {
+    "baseModules": 5,
+    "courses": 33,
+    "heightM": 3.96,
+    "pieces": 2199,
+    "stands": false,
+    "driftCm": 12.2,
+    "tilt": 0.0003
+   },
+   {
+    "baseModules": 5,
+    "courses": 36,
+    "heightM": 4.32,
+    "pieces": 2361,
+    "stands": false,
+    "driftCm": 15.6,
+    "tilt": 0.0004
+   },
+   {
+    "baseModules": 5,
+    "courses": 40,
+    "heightM": 4.8,
+    "pieces": 2577,
+    "stands": false,
+    "driftCm": 18.4,
+    "tilt": 0.0005
+   },
+   {
+    "baseModules": 7,
+    "courses": 30,
+    "heightM": 3.6,
+    "pieces": 3243,
+    "stands": true,
+    "driftCm": 8.8,
+    "tilt": 0.0002
+   },
+   {
+    "baseModules": 7,
+    "courses": 33,
+    "heightM": 3.96,
+    "pieces": 3405,
+    "stands": true,
+    "driftCm": 10.7,
+    "tilt": 0.0003
+   },
+   {
+    "baseModules": 7,
+    "courses": 36,
+    "heightM": 4.32,
+    "pieces": 3567,
+    "stands": false,
+    "driftCm": 12.7,
+    "tilt": 0.0004
+   },
+   {
+    "baseModules": 7,
+    "courses": 40,
+    "heightM": 4.8,
+    "pieces": 3783,
+    "stands": false,
+    "driftCm": 15.7,
+    "tilt": 0.0006
+   },
+   {
+    "baseModules": 9,
+    "courses": 30,
+    "heightM": 3.6,
+    "pieces": 5529,
+    "stands": true,
+    "driftCm": 7.9,
+    "tilt": 0.0002
+   },
+   {
+    "baseModules": 9,
+    "courses": 33,
+    "heightM": 3.96,
+    "pieces": 5691,
+    "stands": true,
+    "driftCm": 9.4,
+    "tilt": 0.0002
+   },
+   {
+    "baseModules": 9,
+    "courses": 36,
+    "heightM": 4.32,
+    "pieces": 5853,
+    "stands": true,
+    "driftCm": 11.1,
+    "tilt": 0.0003
+   },
+   {
+    "baseModules": 9,
+    "courses": 40,
+    "heightM": 4.8,
+    "pieces": 6069,
+    "stands": false,
+    "driftCm": 13.7,
+    "tilt": 0.0004
+   }
+  ],
+  "note": "Node on a shared cloud CPU, one thread, software only, plain (no SIMD) Rapier. These are not iPad numbers and not any real device."
+ }
+}

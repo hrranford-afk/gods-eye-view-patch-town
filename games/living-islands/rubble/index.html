@@ -48,7 +48,7 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
 <div id="hint">Tap or click the ground to aim. Hold Fire. Drag to turn the camera, wheel or pinch to zoom.</div>
 <div id="side">
   <div class="card"><label>Fort pieces: <span id="piecesV"></span><input id="pieces" type="range" min="0" max="15" step="1" value="8"></label>
-    <div class="row" style="margin-top:6px"><select id="shape"><option value="castle">Castle</option><option value="tower">Tower</option><option value="wall">Wall</option></select><button class="btn" id="rubbleSw">Rubble field: off</button></div>
+    <div class="row" style="margin-top:6px"><select id="shape"><option value="grand">Grand fort</option><option value="castle">Castle</option><option value="tower">Tower</option><option value="wall">Wall</option></select><button class="btn" id="rubbleSw">Rubble field: off</button></div>
     <div class="row" style="margin-top:6px"><button class="btn big" id="buildFort" style="font-size:16px;min-width:0;flex:1">Build fort</button></div>
     <div class="row" style="margin-top:6px"><select id="tier"><option value="ipad">iPad preset</option><option value="radeon">Radeon preset</option></select></div>
     <div id="fortInfo" style="margin-top:6px;opacity:.85;font-size:12px"></div>
@@ -82,7 +82,7 @@ import RAPIER from './vendor/rapier-0.21-compat/rapier.mjs';
 (async function () {
 'use strict';
 var $ = function (id) { return document.getElementById(id); };
-var TR = window.RTerrain, SIM = window.RSim, KINDS = SIM.KINDS, DT = SIM.DT;
+var TR = window.RTerrain, SIM = window.RSim, RFORT = window.RFort, KINDS = SIM.KINDS, DT = SIM.DT;
 var Q = new URLSearchParams(location.search);
 function fatal(msg) { var f = $('fatal'); f.style.display = 'flex'; f.textContent = msg; }
 try { await RAPIER.init(); } catch (e) { fatal('The physics engine could not start: ' + e.message); throw e; }
@@ -285,7 +285,7 @@ var ring = new THREE.Mesh(new THREE.RingGeometry(0.25, 0.4, 24).rotateX(-Math.PI
 /* ---------- session ---------- */
 var amp = 1.1, tideNow = 0, autoTide = false, groundMode = -1, ammoKind = 'marble', power = 1;
 var aim = { yaw: 0, elev: 0.3, target: null };
-var pieces = 250, ses = null, loading = false, shape = Q.get('shape') === 'tower' ? 'tower' : Q.get('shape') === 'wall' ? 'wall' : 'castle', rubble = Q.get('rubble') === '1', fortSeed = +(Q.get('seed') || 1) || 1, builtKey = '';
+var pieces = 250, ses = null, loading = false, shape = ['grand', 'tower', 'wall'].indexOf(Q.get('shape')) >= 0 ? Q.get('shape') : 'castle', rubble = Q.get('rubble') === '1', fortSeed = +(Q.get('seed') || 1) || 1, builtKey = '';
 var cfgBase = function () { return { pieces: pieces, seed: fortSeed, ammoCap: ammoCapFor(), tide: tideNow, ground: groundMode, track: true, hooks: hooks, fort: shape, rubble: rubble, defer: true, tight: false }; };
 var settleT0 = 0, readyAt = 0;
 function keyNow() { return shape + '|' + piecesFromSlider(+$('pieces').value) + '|' + rubble; }
@@ -298,12 +298,17 @@ function build(p, again) {
     /* the settle phase: a slice of it every frame so the page stays alive; shots wait for 'Ready' */
     (function slice() {
       var done = ses.settleChunk(25);
-      if (!done) { var st = ses.settling; $('status').textContent = 'Settling... ' + Math.min(99, Math.round((st ? st.n : 0) / 120 * 100)) + '%'; return setTimeout(slice, 0); }
+      if (!done) { var st = ses.settling; settleText(st); return setTimeout(slice, 0); }
       loading = false; ses.settleMs = performance.now() - settleT0; frameFort(); aimAtBell(); fortUI();
       var f = ses.sim.fort; status('Ready' + (ses.settleNote ? ': ' + ses.settleNote : ''), 1800);
       $('buildFort').classList.remove('on'); res();
     })();
   }, 30); });
+}
+/* Settling...: the bricks are let to rest and fall asleep before the first shot. Over 10 s of real time a progress line appears and the player waits for Ready. */
+function settleText(st) {
+  var secs = (performance.now() - settleT0) / 1000, n = st ? st.n : 0;
+  $('status').textContent = secs < 10 ? 'Settling... ' + Math.min(99, Math.round(n / 120 * 100)) + '%' : 'Settling... ' + n + ' of at most 600 steps, ' + Math.round(secs) + ' s so far. A big fort needs a moment to get comfy: please wait for Ready before the first shot.';
 }
 function frameFort() {                                  /* the camera looks at the fort by default */
   var f = ses && ses.sim.fort, d = f ? f.design : null; if (!d) return;
@@ -315,6 +320,7 @@ function fortUI() {
   var f = ses && ses.sim.fort; if (!f) { $('fortInfo').textContent = ''; return; }
   var d = f.design, sc = 'full size (0.30 m)';
   $('fortInfo').textContent = f.shape + ': ' + f.count + ' pieces exactly (asked ' + f.requested + '), ' + sc + ' bricks, ' + (d.height).toFixed(1) + ' m tall' + (f.rubble ? ', plus ' + f.rubble + ' loose rubble' : '') +
+    (d.fallback ? '. A Grand fort needs at least ' + RFORT.grandMin() + ' pieces, so this is a castle' : d.shape === 'grand' ? '. ' + f.bells.length + ' bells: keep, gatehouse, four corner towers' : '') +
     '. Settled in ' + f.settleSteps + ' steps, drift ' + (f.settleMax * 100).toFixed(1) + ' cm' + (ses.settleNote ? '. ' + ses.settleNote : '') + '.';
 }
 var scoreT = 0;
@@ -323,7 +329,8 @@ function scoreUI(force) {
   var sc = ses.score(), el = $('score');
   if (!sc) { el.style.display = 'none'; return; }
   el.style.display = 'block'; el.classList.toggle('down', sc.bellDown);
-  el.innerHTML = (sc.bellDown ? '<span style="font-size:22px">Bell down!</span> (fell ' + (sc.bellDrop * 100).toFixed(0) + ' cm)<br>' : 'Bell: ' + (ses.settling ? 'settling' : 'still up') + ' (down at 32 cm)<br>') +
+  el.innerHTML = (sc.bells > 1 ? (sc.bellDown ? '<span style="font-size:22px">Every bell is down!</span><br>' : '') + 'Bells down: <b>' + sc.bellsDown + '</b> of ' + sc.bells + ' (a bell is down at 32 cm)<br>' :
+    sc.bellDown ? '<span style="font-size:22px">Bell down!</span> (fell ' + (sc.bellDrop * 100).toFixed(0) + ' cm)<br>' : 'Bell: ' + (ses.settling ? 'settling' : 'still up') + ' (down at 32 cm)<br>') +
     'pieces moved <b>' + sc.moved + '</b> &nbsp; standing <b>' + sc.standing + '</b> &nbsp; shots <b>' + sc.shots + '</b>';
 }
 function status(t, ms) { var s = $('status'); s.textContent = t; s.style.display = t ? 'block' : 'none'; if (ms) setTimeout(function () { if (s.textContent === t) s.style.display = 'none'; }, ms); }
@@ -399,7 +406,7 @@ addEventListener('resize', function () { renderer.setSize(innerWidth, innerHeigh
 cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix();
 
 /* ---------- controls ---------- */
-function setPiecesLabel() { var n = piecesFromSlider(+$('pieces').value); $('piecesV').textContent = n + (n > 4000 ? ' (past the 4,000 the iPad ran fine: untested)' : ''); $('buildFort').classList.toggle('on', !!ses && keyNow() !== builtKey); }
+function setPiecesLabel() { var n = piecesFromSlider(+$('pieces').value); $('piecesV').textContent = n + (n > 4000 ? ' (past the 4,000 the iPad ran fine: untested)' : '') + (shape === 'grand' && n < RFORT.grandMin() ? ' (too few for a Grand fort: a castle is built)' : ''); $('buildFort').classList.toggle('on', !!ses && keyNow() !== builtKey); }
 $('pieces').addEventListener('input', setPiecesLabel); $('pieces').addEventListener('change', setPiecesLabel);
 $('shape').addEventListener('change', function () { shape = this.value; setPiecesLabel(); });
 $('rubbleSw').addEventListener('click', function () { rubble = !rubble; this.textContent = 'Rubble field: ' + (rubble ? 'on' : 'off'); this.classList.toggle('on', rubble); setPiecesLabel(); });

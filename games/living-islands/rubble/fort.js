@@ -77,6 +77,96 @@
     deck(B, p.hk, 0, 0); return p.hk + 1;
   }
 
+  /* ---------- the Grand fort ---------- */
+  /* An outer curtain wall (crenelled) with four corner towers, mid-wall towers, a gatehouse on the front (+z, towards the launcher) with a passage and a beam lintel,
+     an inner ward wall round a battered keep, and bells on the keep, the gatehouse and every corner tower. Plan sizes are in modules (0.60 m).
+     Everything is deterministic from the parameters and the seed. */
+  var GCAPW = 6, GKT = 3, GATE_A = 6, GBELLS = 6;
+  function keepSize(i, p) { return Math.max(3, p.kb - Math.floor(i / GKT)); }
+  /* the keep: a stepped (battered) tower, each tier one module narrower (0.30 m a side) every GKT courses down to 3 modules wide; a two-beam deck on top; returns the course the bell stands on */
+  function keepAt(B, cx, cz, p) {
+    var c, s;
+    for (c = 0; c < p.kh; c++) { s = keepSize(c, p) * MOD; block(B, c, cx - s / 2, cz - s / 2, s, s, 0); }
+    deck(B, p.kh, cx, cz); return p.kh + 1;
+  }
+  function shapeKeep(B, p) { B.bells = []; var top = keepAt(B, 0, 0, p); B.bells.push({ x: 0, z: 0, c: top }); return top; }
+  function gDims(p) {
+    var M = MOD, d = { W: p.W * M, D: p.D * M, tw: p.tw, t: p.t * M, hc: p.hc, ht: Math.min(MAXC, p.hc + 2), hg: Math.min(MAXC, Math.max(p.hc + 2, GATE_A + 3)), gw: p.gw * M };
+    d.dt = Math.ceil(p.tw * BW / M - 1e-9) + 1;                  /* plan depth of a mid tower or the gatehouse in modules: the wall thickness plus one module standing out */
+    d.ci = Math.max(1, Math.ceil(p.ti * BW / M - 1e-9)) * M; d.Wi = (p.kb + 2 * p.ig) * M + 2 * d.ci;      /* the ward's walls run between its corner piers in whole modules, so every course ends flush */
+    d.zk = -d.D / 2 + p.tw * BW + 2 * M + d.Wi / 2;               /* the keep and its ward sit towards the back, the courtyard is in front of them */
+    return d;
+  }
+  /* where the mid-wall towers stand: centres along each side, evenly spread between the corner towers, none within two modules of the gatehouse */
+  function gMids(d) {
+    var M = MOD, out = { front: [], back: [], left: [], right: [] }, sides = [['front', d.W], ['back', d.W], ['left', d.D], ['right', d.D]], i, k, n, us, xc, key, sp = 9 * M;
+    for (k = 0; k < 4; k++) {
+      key = sides[k][0]; us = sides[k][1] - 2 * d.t; n = Math.floor(us / sp);
+      for (i = 1; i <= n; i++) { xc = Math.round((-us / 2 + i * us / (n + 1)) / (M / 2)) * (M / 2); if (key === 'front' && Math.abs(xc) < d.gw / 2 + 2 * M) continue; out[key].push(xc); }
+    }
+    return out;
+  }
+  function gFit(p) {
+    var d = gDims(p), M = MOD;
+    if (p.t * M < p.tw * BW + M - 1e-9) return false;
+    if (d.gw + 4 * M > d.W - 2 * d.t + 1e-9) return false;              /* the gatehouse leaves at least two modules of wall each side */
+    if (d.Wi / 2 > d.W / 2 - d.t - M + 1e-9) return false;    /* the ward wall clears the corner towers */
+    if (d.zk + d.Wi / 2 > d.D / 2 - p.tw * BW - 3 * M + 1e-9) return false;     /* and the front wall, with room for the courtyard */
+    return true;
+  }
+  /* wall pieces between obstacles along one side: obs is a list of [lo, hi] on the side's axis */
+  function wallSegs(B, c, axis, fixed0, a0, a1, obs, tw, top, g) {
+    var cur = a0, i, hi; obs.sort(function (a, b) { return a[0] - b[0]; });
+    for (i = 0; i <= obs.length; i++) {
+      hi = i < obs.length ? obs[i][0] : a1;
+      if (hi - cur >= BL - 0.01) wall(B, c, axis, axis === 'x' ? cur : fixed0, axis === 'x' ? fixed0 : cur, hi - cur, tw, top, g);
+      if (i < obs.length) cur = Math.max(cur, obs[i][1]);
+    }
+  }
+  /* the gatehouse, one course: centred on x = 0, standing from zf0 for dtm modules. gwm is odd, so each pier is a whole number of modules (laid as blocks: every end is flush and nothing hangs
+     over the passage): a passage 0.6 m wide and 6 courses high between two piers, then beams across it (they rest 0.3 m on each pier), then solid up to the roof. */
+  function gatehouse(B, c, gwm, dtm, zf0) {
+    var x1 = gwm / 2 * MOD, x0 = -x1, nrows = Math.round(dtm * MOD / BW), d = dtm * MOD, r, z, pw = x1 - 0.3;
+    if (c > GATE_A) { block(B, c, x0, zf0, x1 - x0, d, 1); return; }
+    if (c < GATE_A) { block(B, c, x0, zf0, pw, d, 1); block(B, c, 0.3, zf0, pw, d, 1); return; }
+    for (r = 0; r < nrows; r++) {
+      z = zf0 + BW / 2 + r * BW;
+      row(B, c, 'x', z, x0, x1 - 0.6 - x0, false, false, false, 1); row(B, c, 'x', z, 0.6, x1 - 0.6, false, false, false, 1); put(B, kn('beam'), 0, z, c, 0, 1);
+    }
+  }
+  function shapeGrand(B, p) {
+    var d = gDims(p), M = MOD, c, i, sx, sz, W2 = d.W / 2, D2 = d.D / 2, t = d.t, tww = p.tw * BW, mids = gMids(d), mt = 2 * M, dtm = d.dt * M, obs, top, tp, zg = D2 - dtm + M;
+    var Wi2 = d.Wi / 2, ci = d.ci, zk = d.zk, twi = p.ti * BW, mk = function (v) { return [v - M, v + M]; };
+    B.bells = [];
+    for (c = 0; c < d.ht; c++) for (sx = -1; sx <= 1; sx += 2) for (sz = -1; sz <= 1; sz += 2) block(B, c, sx < 0 ? -W2 : W2 - t, sz < 0 ? -D2 : D2 - t, t, t, 1);   /* corner towers */
+    for (c = 0; c <= p.hc; c++) {                                                                                                                                   /* mid-wall towers: one module standing out */
+      for (i = 0; i < mids.front.length; i++) block(B, c, mids.front[i] - M, zg, mt, dtm, 1);
+      for (i = 0; i < mids.back.length; i++) block(B, c, mids.back[i] - M, -D2 - M, mt, dtm, 1);
+      for (i = 0; i < mids.left.length; i++) block(B, c, -W2 - M, mids.left[i] - M, dtm, mt, 1);
+      for (i = 0; i < mids.right.length; i++) block(B, c, W2 - dtm + M, mids.right[i] - M, dtm, mt, 1);
+    }
+    for (c = 0; c < p.hc; c++) {                                                                                                                                    /* the curtain walls, the top course crenelled */
+      tp = c === p.hc - 1;
+      obs = mids.front.map(mk); obs.push([-d.gw / 2, d.gw / 2]); wallSegs(B, c, 'x', D2 - tww, -W2 + t, W2 - t, obs, p.tw, tp, 1);
+      wallSegs(B, c, 'x', -D2, -W2 + t, W2 - t, mids.back.map(mk), p.tw, tp, 1);
+      wallSegs(B, c, 'z', -W2, -D2 + t, D2 - t, mids.left.map(mk), p.tw, tp, 1);
+      wallSegs(B, c, 'z', W2 - tww, -D2 + t, D2 - t, mids.right.map(mk), p.tw, tp, 1);
+    }
+    for (c = 0; c < d.hg; c++) gatehouse(B, c, p.gw, d.dt, zg);
+    for (c = 0; c < p.hi + 1; c++) for (sx = -1; sx <= 1; sx += 2) for (sz = -1; sz <= 1; sz += 2) block(B, c, sx < 0 ? -Wi2 : Wi2 - ci, zk + (sz < 0 ? -Wi2 : Wi2 - ci), ci, ci, 1);   /* the ward wall: a closed ring */
+    for (c = 0; c < p.hi; c++) {
+      tp = false;                                          /* the ward wall has a flat top */
+      wallSegs(B, c, 'x', zk - Wi2, -Wi2 + ci, Wi2 - ci, [], p.ti, tp, 1);
+      wallSegs(B, c, 'x', zk + Wi2 - twi, -Wi2 + ci, Wi2 - ci, [], p.ti, tp, 1);
+      wallSegs(B, c, 'z', -Wi2, zk - Wi2 + ci, zk + Wi2 - ci, [], p.ti, tp, 1);
+      wallSegs(B, c, 'z', Wi2 - twi, zk - Wi2 + ci, zk + Wi2 - ci, [], p.ti, tp, 1);
+    }
+    top = keepAt(B, 0, zk, p);
+    B.bells.push({ x: 0, z: zk, c: top }, { x: 0, z: zg + dtm / 2, c: d.hg });
+    for (sx = -1; sx <= 1; sx += 2) for (sz = -1; sz <= 1; sz += 2) B.bells.push({ x: sx * (W2 - t / 2), z: sz * (D2 - t / 2), c: d.ht });
+    return top;
+  }
+
   /* ---------- growing a shape to the piece count ---------- */
   /* the stand limits (found by test): a wall stands to about 5 thicknesses, a tower or keep to about 5 widths plus a few courses */
   function mm() { return Math.max(1, Math.ceil(0.6 / MOD - 1e-9)); }
@@ -94,6 +184,25 @@
         function (p) { if (p.tw >= CAPW) return false; if ((p.tw + 1) * BW > Math.min(p.wm, p.dm) * MOD / 2 - p.km * MOD / 2 - 0.25 * SC) return false; if (p.hw < Math.min(4 * p.tw + 1, MAXC - 1)) return 0; p.tw++; return true; },
         function (p) { if (p.km >= CAPK * mm()) return false; if ((p.km + 1) * MOD / 2 > Math.min(p.wm, p.dm) * MOD / 2 - p.tw * BW - 0.25 * SC) return false; if (p.hk < Math.min(4 * p.km / mm() + 4, MAXC)) return 0; p.km++; return true; }] }
   };
+  /* the tallest keep in courses, by how wide its foot is (found by test_grand.js --tall, BRICKLAB_TO_ISLAND section 13): a plain 3-module tower stood to 25, a 5-module foot to 30,
+     a 9-module foot to 36; past that it does not topple, it sinks and slides more than 12 cm while settling. The caps keep a margin under those. */
+  function keepCapH(kb) { return kb < 5 ? 24 : kb < 9 ? 30 : 33; }
+  var KEEPCAP = keepCapH;
+  SHAPES.keep = { fn: shapeKeep, start: function () { return { kb: 3, kh: 4, kt: 3 }; }, inc: [function (p) { if (p.kh >= keepCapH(p.kb)) return false; p.kh++; return true; }] };
+  SHAPES.grand = { fn: shapeGrand, nb: GBELLS,
+    start: function () { return { W: 13, D: 11, tw: 1, hc: 3, t: 2, gw: 5, kb: 3, kh: 5, ig: 1, ti: 1, hi: 2 }; },
+    inc: [
+      function (p) { if (p.hc >= MAXC - 2) return false; if (p.hc >= Math.min(MAXC - 2, 7 * p.tw + 1)) return p.tw >= GCAPW ? false : 0; p.hc++; if (p.hi < Math.min(p.hc - 1, 7 * p.ti + 1) && p.hi < p.hc - 2) p.hi++; return true; },
+      function (p) { if (p.tw >= GCAPW) return false; if (p.hc < Math.min(MAXC - 2, 7 * p.tw)) return 0; p.tw++; p.t = Math.max(p.t, Math.ceil(p.tw * BW / MOD - 1e-9) + 1); return gFit(p) ? true : 0; },
+      function (p) { if (p.W >= Math.floor(PADX / MOD) - 2) return false; if (p.W > 1.25 * p.D) return 0; p.W++; return true; },
+      function (p) { if (p.D >= Math.floor(PADZ / MOD) - 2) return false; if (p.D > p.W / 1.05) return 0; p.D++; return true; },
+      function (p) { if (p.kb >= 12) return false; if (p.kh < GKT * (p.kb - 3) + 6) return 0; p.kb++; return gFit(p) ? true : 0; },
+      function (p) { if (p.kh >= keepCapH(p.kb)) return p.kb >= 12 ? false : 0; p.kh++; return true; },
+      function (p) { if (p.kh >= keepCapH(p.kb)) return p.kb >= 12 ? false : 0; p.kh++; return true; },
+      function (p) { if (p.gw >= 13) return false; p.gw += 2; return gFit(p) ? true : 0; },
+      function (p) { if (p.ti >= Math.min(p.tw, GCAPW)) return 0; if (p.hi < Math.min(p.hc - 2, 7 * p.ti)) return 0; p.ti++; return gFit(p) ? true : 0; },
+      function (p) { if (p.hi >= Math.min(p.hc - 2, 7 * p.ti + 1)) return p.ti >= GCAPW ? false : 0; p.hi++; return true; }
+    ] };
   function clone(o) { var r = {}, k; for (k in o) r[k] = o[k]; return r; }
   function count(shape, p, ph, mph) { var B = newB(); B.ph = ph; B.merlPhase = mph; SHAPES[shape].fn(B, p); return B.p.length; }
   function grow(shape, budget, ph, mph) {                         /* budget counts every piece but the bell */
@@ -131,17 +240,17 @@
   }
   /* one attempt at one brick scale: returns the builder plus whether the footing stays on the level pad */
   function attempt(shape, n, ph, mph, sc) {
-    var S = SHAPES[shape], B, p, top, i, trimmed = 0, ex, need;
-    setScale(sc); p = grow(shape, n - 1, ph, mph); B = newB(); B.ph = ph; B.merlPhase = mph; top = S.fn(B, p);
-    if (B.p.length > n - 1) {                           /* tiny counts: drop outer pieces from the top down, keep the core and the bell */
+    var S = SHAPES[shape], B, p, top, i, trimmed = 0, ex, need, NB = S.nb || 1;
+    setScale(sc); p = grow(shape, n - NB, ph, mph); B = newB(); B.ph = ph; B.merlPhase = mph; top = S.fn(B, p);
+    if (B.p.length > n - NB) {                          /* tiny counts: drop outer pieces from the top down, keep the core and the bell */
       var keep = [], outer = [];
       for (i = 0; i < B.p.length; i++) (B.p[i].g === 0 ? keep : outer).push(B.p[i]);
-      outer.sort(function (a, b) { return a.c - b.c; }); trimmed = B.p.length - (n - 1);
+      outer.sort(function (a, b) { return a.c - b.c; }); trimmed = B.p.length - (n - NB);
       outer.length = Math.max(0, outer.length - trimmed);
-      if (keep.length > n - 1) { keep.sort(function (a, b) { return a.c - b.c; }); keep.length = n - 1; }
+      if (keep.length > n - NB) { keep.sort(function (a, b) { return a.c - b.c; }); keep.length = n - NB; }
       B.p = keep.concat(outer); var topc = 0; for (i = 0; i < keep.length; i++) topc = Math.max(topc, keep[i].c + 1); top = Math.min(top, Math.max(1, topc));
     }
-    ex = extents(B.p); need = n - 1 - B.p.length;
+    ex = extents(B.p); need = n - NB - B.p.length;
     if (need > 0) { footing(B, need, ex.x / SXZ, ex.z / SXZ); }
     var ex2 = extents(B.p);
     var fc = 0; for (i = 0; i < B.p.length; i++) if (B.p[i].g === 2 && B.p[i].c > fc) fc = B.p[i].c;
@@ -152,10 +261,12 @@
   function design(shape, n, seed, site, force, tight) {
     var L = site.layout.wall, cx = L.x, cz = L.z, ph = (seed >>> 0) & 1, mph = (seed >>> 1) & 1, i, e, A = null, si;
     if (!SHAPES[shape]) shape = 'castle';
+    var asked = shape, fallback = false;
     SXZ = tight ? 1.003 : 1.01; SY = tight ? 1.002 : 1.005;
     var pd = (site.sculpt && site.sculpt.pad) || { hw: 2.6, hd: 2.4 };       /* the levelled pad the fort stands on (half width, half depth, metres) */
     PADX = 2 * (pd.hw - 0.5); PADZ = 2 * (pd.hd - 0.6); REACHX = pd.hw - 0.05; REACHZ = pd.hd - 0.05; CAPW = pd.hw > 5 ? 20 : 6; CAPK = pd.hw > 5 ? 8 : 3;
     n = Math.max(8, n | 0);
+    if (shape === 'grand' && !force) { setScale(1); if (count('grand', SHAPES.grand.start(), ph, mph) > n - GBELLS) { shape = 'castle'; fallback = true; } }      /* too few pieces for a Grand fort: a castle instead, and the page says so */
     if (force) { setScale(force.scale || 1); var BB = newB(); BB.ph = ph; BB.merlPhase = mph; var tp = SHAPES[shape].fn(BB, force.params); A = { B: BB, p: force.params, top: tp, trimmed: 0, ex: extents(BB.p), fits: true, sc: force.scale || 1 }; n = BB.p.length + 1; }
     else A = attempt(shape, n, ph, mph, 1);
     setScale(A.sc);
@@ -163,12 +274,15 @@
     for (gx = -fx; gx <= fx + 1e-6; gx += 0.3) for (gz = -fz; gz <= fz + 1e-6; gz += 0.3) { hh = site.H(cx + gx, cz + gz); if (hh < gmin) gmin = hh; if (hh > gmax) gmax = hh; }
     baseY = gmax + 0.002;
     for (i = 0; i < B.p.length; i++) { e = B.p[i]; pieces.push({ k: e.k, x: cx + e.x * SXZ, y: baseY + BH * SY * e.c + (e.k.indexOf('beam') === 0 || e.k.indexOf('brick') === 0 ? BH / 2 : 0) + 0.0006, z: cz + e.z * SXZ, a: e.a, g: e.g }); }
-    bell = { k: 'bell', x: cx, y: baseY + BH * SY * A.top + BELL_HH + 0.0008, z: cz, a: 0, g: 0 };
-    pieces.push(bell);
+    var bellList = B.bells && B.bells.length ? B.bells : [{ x: 0, z: 0, c: A.top }], bells = [], bi;
+    for (bi = 0; bi < bellList.length; bi++) { bell = { k: 'bell', x: cx + bellList[bi].x * SXZ, y: baseY + BH * SY * bellList[bi].c + BELL_HH + 0.0008, z: cz + bellList[bi].z * SXZ, a: 0, g: 0 }; pieces.push(bell); bells.push(bell); }
+    bell = bells[0];
     return { pieces: pieces, count: pieces.length, shape: shape, scale: A.sc, params: A.p, baseY: baseY, spread: gmax - gmin, bell: bell, courses: A.top, trimmed: A.trimmed, half: A.ex, cx: cx, cz: cz,
-      height: BH * SY * A.top + 0.2, onPad: A.fits, footLayers: A.footLayers, tight: !!tight };
+      bells: bells, asked: asked, fallback: fallback, height: BH * SY * Math.max(A.top, B.bells && B.bells.length ? Math.max.apply(null, B.bells.map(function (b) { return b.c; })) : 0) + 0.2, onPad: A.fits, footLayers: A.footLayers, tight: !!tight };
   }
 
-  var API = { design: design, BELL_HH: BELL_HH, SHAPES: ['wall', 'tower', 'castle'] };
+  /* the fewest pieces a Grand fort can be made of: below this the designer builds a castle instead */
+  function grandMin() { var m = 0, ph, mph; setScale(1); for (ph = 0; ph < 2; ph++) for (mph = 0; mph < 2; mph++) m = Math.max(m, count('grand', SHAPES.grand.start(), ph, mph) + GBELLS); return m; }
+  var API = { design: design, grandMin: grandMin, BELL_HH: BELL_HH, SHAPES: ['wall', 'tower', 'castle', 'grand'], GRAND_BELLS: GBELLS, KEEPCAP: KEEPCAP };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.RFort = API;
 })(typeof window !== 'undefined' ? window : globalThis);
