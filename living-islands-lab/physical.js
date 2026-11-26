@@ -241,6 +241,13 @@ function mat(col, o) { return new T.MeshStandardMaterial(Object.assign({ color: 
 function inst(geo, m, n, shadow) { const im = new T.InstancedMesh(geo, m, n); im.frustumCulled = false; im.castShadow = !!shadow; im.receiveShadow = true; im.setColorAt(0, new T.Color(1, 1, 1)); im.count = 0; return im; }   /* the colour buffer is sized from count, so it is made before count is set to 0 */
 let _q, _e, _m, _s, _p, _c;   /* scratch objects, made when three.js is there (this file loads before it) */
 function scratch() { _q = new T.Quaternion(); _e = new T.Euler(); _m = new T.Matrix4(); _s = new T.Vector3(); _p = new T.Vector3(); _c = new T.Color(); }
+/* the wave sea (islands_look.html &waves=1, sea_waves.js): the height and tilt of the water under a floating thing. null when the page has no wave sea, and the old flat bob stays. ry is the thing's yaw (the tilt is given in its own frame). */
+function surfAt(x, z, ry) {
+  let s = null; try { s = C.li().sea; } catch (e) { s = null; } if (!s || !s.on()) return null;
+  const n = s.n(x, z), c = Math.cos(ry || 0), sn = Math.sin(ry || 0), lx = n[0] * c - n[2] * sn, lz = n[0] * sn + n[2] * c;
+  return { y: s.h(x, z), rx: Math.atan2(lz, n[1]), rz: -Math.atan2(lx, n[1]) };
+}
+function seaPose(o, lift) { const sf = surfAt(o.position.x, o.position.z, o.rotation.y); if (!sf) return; o.rotation.order = 'YXZ'; o.position.y = sf.y + lift; o.rotation.x = sf.rx; o.rotation.z = sf.rz; }
 function setI(im, i, x, y, z, sx, sy, sz, ry, rx, rz, col) { _e.set(rx || 0, ry || 0, rz || 0, 'YXZ'); _q.setFromEuler(_e); _p.set(x, y, z); _s.set(sx, sy, sz); _m.compose(_p, _q, _s); im.setMatrixAt(i, _m); if (col !== undefined) im.setColorAt(i, _c.setHex(col).convertSRGBToLinear()); }
 const PIECE_COL = { planks: [0xa88a5c, 0x9a7448, 0xb59868], rope: [0xb19a6b, 0xa68f60, 0xc2ad7c], glass: [0x58b8a4, 0x6fb9a8, 0x4aa38f], metal: [0x8d9291, 0x7b8180, 0x9a6a4a] };
 function buildKit() {
@@ -494,7 +501,7 @@ function runsTick(dt) {
     const aboard = list.filter(c => c.phys && c.phys.st === 'boat' && c.phys.run === 'run').length;
     P.run = runStep(run, dt, { sail, leave, blocked: bf.hold, aboard }); P.run.berth = bf.berth || P.run.berth; P.run.dock = dock;
     const k = runK(P.run, { sail, leave }), e = k * k * (3 - 2 * k); td.visible = P.run.phase !== 'gone';
-    td.position.set(start.x + (dock.x - start.x) * e, tide + .03 + Math.sin(P.t * 1.1) * .04, start.z + (dock.z - start.z) * e); td.rotation.y = Math.atan2(-(P.run.phase === 'out' ? (start.z - dock.z) : (dock.z - start.z)), P.run.phase === 'out' ? (start.x - dock.x) : (dock.x - start.x));
+    td.position.set(start.x + (dock.x - start.x) * e, tide + .03 + Math.sin(P.t * 1.1) * .04, start.z + (dock.z - start.z) * e); td.rotation.y = Math.atan2(-(P.run.phase === 'out' ? (start.z - dock.z) : (dock.z - start.z)), P.run.phase === 'out' ? (start.x - dock.x) : (dock.x - start.x)); seaPose(td, .03);
     if (P.run.phase === 'gone') { P.run = null; td.visible = false; }
   }
   list.forEach(c => { const ph_ = c.phys; if (!ph_) return;
@@ -600,7 +607,7 @@ function arrivalTick(dt) {
   const a = P.arr; if (!a) return; const O = A.objs(), td = O && O.tender, S = A.spots(); if (!td || !S) return; a.t += dt; const d = C.W.camp.dir, wp = S.tender.wp, tide = C.tide(), p1 = { x: wp.x + d[0] * 16, z: wp.z + d[1] * 16 }, p0 = { x: p1.x + d[0] * 45, z: p1.z + d[1] * 45 };
   let k, vis = true; if (a.t < 14) k = a.t / 14; else if (a.t < 19) k = 1; else if (a.t < 33) k = 1 + (a.t - 19) / 14; else { vis = false; k = 2; }
   const e = k <= 1 ? k * k * (3 - 2 * k) : 1 - (k - 1) * (k - 1) * (3 - 2 * (k - 1)) * 0 - 0; const f = k <= 1 ? e : 1 - ((k - 1) * (k - 1) * (3 - 2 * (k - 1)));
-  td.visible = vis; if (!vis) { P.arr = null; return; } td.position.set(p0.x + (p1.x - p0.x) * f, tide + .03 + Math.sin(P.t * 1.1) * .04, p0.z + (p1.z - p0.z) * f); td.rotation.y = Math.atan2(-(k <= 1 ? (p1.z - p0.z) : (p0.z - p1.z)), k <= 1 ? (p1.x - p0.x) : (p0.x - p1.x));
+  td.visible = vis; if (!vis) { P.arr = null; return; } td.position.set(p0.x + (p1.x - p0.x) * f, tide + .03 + Math.sin(P.t * 1.1) * .04, p0.z + (p1.z - p0.z) * f); td.rotation.y = Math.atan2(-(k <= 1 ? (p1.z - p0.z) : (p0.z - p1.z)), k <= 1 ? (p1.x - p0.x) : (p0.x - p1.x)); seaPose(td, .03);
 }
 
 /* ---- the opening: you arrive by boat, the dock is half built, the robots have stalled ---- */
@@ -620,14 +627,19 @@ function openingSetup() {   /* the half-built dock: some planks fitted already, 
   const L = layout(), s = simR(); if (!L || !L.dock || !s) return false; const rp = C.li().repair; if (!rp || !rp.ready()) return false;
   const all = rp.sockets().filter(q => q.kind === 'plank'), fitted = all.filter(q => q.filled).length, want = Math.floor(all.length / 2) - fitted; if (want > 0) fitPlanks(want);
   P.dockOpen0 = Math.max(1, openSockets()); const V = buildKit(); V.tools.visible = true; V.tools.position.set(L.dock.tools.x, gy(L.dock.tools.x, L.dock.tools.z), L.dock.tools.z);
+  if (A.S().easy) { for (let i = 0; i < Math.min(2, s.robots.length); i++) { const r = s.robots[i]; r.charge = .9; r.state = 'bay'; r.timer = .3 + i * 3; r.tstall = false; }   /* easy start: nothing is stalled at the dock, two carriers are already at their orders (the tutorial carrier waits in its bay with a flat battery) */
+    return true; }
   const n = Math.min(lite() ? 1 : 2, s.robots.length), st = A.S().robots.slice(); while (st.length < 3) st.push(false); for (let i = 0; i < n; i++) st[i] = true; A.patch({ robots: st });
   for (let i = 0; i < n; i++) { const r = s.robots[i], pos = L.dock.stand[i % 2]; r.charge = .9; r.state = 'task'; r.x = pos.x; r.z = pos.z; r.yaw = L.dock.psi; r.tstall = true; r.tmove = false; r.twork = false; r.since = 0; P.err[i] = { e: errandNew(pos.x, pos.z, [{ x: pos.x, z: pos.z, act: 'hold', dur: 1e9, yaw: L.dock.psi }], r.v), role: 'dock' }; }
   return n > 0;
 }
+/* EASY START (Job 7e): the old camp's spares crate stands at the landward end of the half-built dock. The page (gift_day.js) draws it and owns its card; this is only where it stands and the gold ring over it. */
+function sparesSpot() { const L = layout(); if (!L || !L.dock) return null; const p = L.dock.W(.5, -1.9); return { x: p.x, z: p.z, yaw: L.dock.psi }; }
 function floatsTick() {
   const op = ph().op, V = P.V; if (!op || !op.on || !V) return; const tide = C.tide(); let n = 0, bd = null; try { bd = root.LI_BOAT_DRIVE.page; } catch (e) { bd = null; }
   const bs = bd && bd.state && bd.state(), boat = bs && bs.ready && bs.avail ? bs.b : null;
-  op.floats.forEach(f => { if (f.gone) return; setI(V.floats, n, f.x, tide + .03 + Math.sin(P.t * 1.3 + f.id * 2) * .05, f.z, f.kind === 'rope' ? .5 : 1, f.kind === 'rope' ? 2.4 : 1, f.kind === 'rope' ? 1.6 : 1, f.id * 1.1, 0, Math.sin(P.t + f.id) * .05, PIECE_COL[f.kind][0]); n++;
+  op.floats.forEach(f => { if (f.gone) return; const sf = surfAt(f.x, f.z, f.id * 1.1);   /* crates and timber ride the wave sea when there is one */
+    setI(V.floats, n, f.x, sf ? sf.y + .03 : tide + .03 + Math.sin(P.t * 1.3 + f.id * 2) * .05, f.z, f.kind === 'rope' ? .5 : 1, f.kind === 'rope' ? 2.4 : 1, f.kind === 'rope' ? 1.6 : 1, f.id * 1.1, sf ? sf.rx : 0, sf ? sf.rz : Math.sin(P.t + f.id) * .05, PIECE_COL[f.kind][0]); n++;
     if (boat && bs.mode === 'drive') { const used = Object.values(boat.load || {}).reduce((a, c) => a + c, 0), cap = boat.engine ? 8 : 4; if (used < cap && hypot(boat.x - f.x, boat.z - f.z) < 2.9) { f.gone = true; bd.give({ load: { [f.kind]: ((boat.load || {})[f.kind] || 0) + 1 } }); A.toast('Loaded ' + f.kind + '. ' + (used + 1) + ' of ' + cap + ' in the boat.', 3200); puff(f.x, tide + .2, f.z, 4, 'dust'); P.dirty = true; P.cheer = P.t + 1.6; } } });
   V.floats.count = n; V.floats.instanceMatrix.needsUpdate = true; if (V.floats.instanceColor) V.floats.instanceColor.needsUpdate = true;
 }
@@ -635,6 +647,7 @@ function floatsTick() {
 /* ---- the marker: one pulsing ring over the next thing that needs you ---- */
 function markerPos() {
   const L = layout(), S = A.spots(), s = A.S(), op = ph().op; if (!L) return null; const b = ph().b, w = b ? siteWant() : null, bl = beachLanding() || S.tender.wp; let bd = null; try { bd = root.LI_BOAT_DRIVE.page.state(); } catch (e) { bd = null; }
+  if (s.easy && !(s.spares && s.spares.open)) { const sp = sparesSpot(); if (sp) return { x: sp.x, z: sp.z, r: 1.7, tag: 'spares' }; }   /* easy start: the spares crate is the first thing that needs you */
   if (op && op.on && !s.dockDone) { const loaded = bd && bd.b && bd.b.load ? Object.values(bd.b.load).reduce((a, c) => a + c, 0) : 0, left = op.floats.filter(f => !f.gone);
     if (loaded > 0 && (!left.length || loaded >= 4)) return { x: bl.x, z: bl.z, r: 3.2, tag: 'unload' }; const bx = bd && bd.b ? bd.b.x : 0, bz = bd && bd.b ? bd.b.z : 0, f = left.slice().sort((p, q) => hypot(p.x - bx, p.z - bz) - hypot(q.x - bx, q.z - bz))[0]; if (f) return { x: f.x, z: f.z, r: 2.4, tag: 'float' }; if (loaded > 0) return { x: bl.x, z: bl.z, r: 3.2, tag: 'unload' }; }
   if (P.beam && P.beam.robotAt) { const e = beamEnds(P.beam.pos, P.beam.yaw, P.beam.len); return { x: e.A.x, z: e.A.z, r: 1.6, tag: 'beamA' }; }   /* Job 6c: no glow while no robot is at its end (the card and the hint say why) */
@@ -681,6 +694,7 @@ function robotNote(i) {   /* what a dock robot is doing, in words (the card of t
 }
 function goldId() {   /* the one next thing that needs you */
   const m = P.mk; if (!m || !P.ready) return null; const op = ph().op;
+  if (m.tag === 'spares') return 'spares';
   if (m.tag === 'float') { const f = op && op.floats.filter(q => !q.gone).sort((a, b) => hypot(a.x - m.x, a.z - m.z) - hypot(b.x - m.x, b.z - m.z))[0]; return f ? 'pfloat' + f.id : null; }
   if (m.tag === 'beam') return 'pbeam'; if (m.tag === 'beamA') return 'pbeamA'; if (m.tag === 'site') return 'psite'; if (m.tag === 'lantern') return 'plantern';
   if (m.tag === 'crate' || m.tag === 'heavy' || m.tag === 'open') { const c = crateList().find(q => q.pos && hypot(q.pos.x - m.x, q.pos.z - m.z) < .6); return c ? (c.phys && c.phys.heavy ? 'crate' : 'pcrate') + c.n : null; } return null;
@@ -690,7 +704,7 @@ function buildLine() {
   const b = ph() && ph().b; if (b && b.id === 'jetty' && ph().q) return BUILD_NAME[ph().q] + ': next, after the dock'; if (!b || b.id === 'jetty' || !P.ready) return null; const plan = planFor(b.id), pr = progress(b, plan), w = isDone(b) ? null : needsPlayer(b, plan), k = isDone(b) ? null : wantUnit(b, plan);
   return BUILD_NAME[b.id] + ': ' + pr.name.toLowerCase() + ' - ' + (w === 'stake' ? 'needs you' : w === 'hold' ? 'needs your hands' : w === 'beam' ? 'needs a beam carry' : k ? ((stockOf()[k] || 0) < 1 ? 'needs ' + k + ' on the heap' : 'robots bring ' + k) : 'robots at work');
 }
-function hint() { if (P.ready && P.beam && !P.beam.robotAt && !(P.mk && P.mk.tag === 'unload')) return P.beam.robot === null && robotWhy() ? robotWhy() : 'Wait for the robot.'; const m = P.mk; if (!P.ready || !m) return null; const w = m.tag === 'site' ? siteWant() : null; return { unload: 'Row to the beach and unload.', float: 'Row to the glow.', beam: 'Wait for the robot.', beamA: P.beam && P.beam.crate ? HOLD_WORDS.heavy.before : HOLD_WORDS.beam.before, crate: HOLD_WORDS.crate.before, heavy: 'Tap the crate. It takes two.', open: 'Open the crate.', lantern: 'Tap the lantern to light it.', site: (HOLD_WORDS[w] || HOLD_WORDS.hold).before }[m.tag] || null; }
+function hint() { if (P.ready && P.beam && !P.beam.robotAt && !(P.mk && P.mk.tag === 'unload')) return P.beam.robot === null && robotWhy() ? robotWhy() : 'Wait for the robot.'; const m = P.mk; if (!P.ready || !m) return null; const w = m.tag === 'site' ? siteWant() : null; return { spares: 'Tap the spares crate on the dock.', unload: 'Row to the beach and unload.', float: 'Row to the glow.', beam: 'Wait for the robot.', beamA: P.beam && P.beam.crate ? HOLD_WORDS.heavy.before : HOLD_WORDS.beam.before, crate: HOLD_WORDS.crate.before, heavy: 'Tap the crate. It takes two.', open: 'Open the crate.', lantern: 'Tap the lantern to light it.', site: (HOLD_WORDS[w] || HOLD_WORDS.hold).before }[m.tag] || null; }
 
 /* ---- the lantern and the lights at dusk ---- */
 function lightsTick() {
@@ -791,7 +805,7 @@ function placeBoat() {   /* your little rowing boat lies near the dock from the 
 }
 function attach(api) { A = api; T = A.THREE(); C = A.C(); scratch(); P.on = true; SOFT(wireInput, 'wire'); return true; }
 root.LI_PHYS.attach = attach;
-root.LI_PHYS.page = { kitList, kitHtml, HOLD_WORDS, holdStatus, forceBuild: (id, stage) => { if (!id) { ph().b = null; P.structSig = null; return true; } const plan = planFor(id), b = newBuild(id); b.stage = stage; for (let k = 0; k < stage - 1 && k < 4; k++) b.placed[k] = plan.need[k]; if (stage >= 1 && stage <= 4) b.placed[stage - 1] = plan.need[stage - 1]; ph().b = b; P.structSig = null; return true; }, crateLock, robotWhy, onCrate, crateTap, openLid, unloaded, startCarry, invalidate: saved => { P.restoredOk = false; P.pendingSaved = saved || null; P.arrDone = P.arrDone && !!(saved && saved.op); }, canCommit, commitBuild, placeBoat, attach, begin: () => { P.ready = true; }, tick, targets: () => ownTargets(), activate, hint, buildLine, robotNote, finishDock: () => { const b = ph().b; if (b && b.id === 'jetty') { b.stage = 5; finishCheck(); } }, info, goldId, snapshot, restore, reset, swallowTap: () => { if (P.swallow > P.t) { P.swallow = 0; return true; } return false; }, startOpening, openingSetup, lightLantern, layoutReady: () => !!layout(),
+root.LI_PHYS.page = { sparesSpot, kitList, kitHtml, HOLD_WORDS, holdStatus, forceBuild: (id, stage) => { if (!id) { ph().b = null; P.structSig = null; return true; } const plan = planFor(id), b = newBuild(id); b.stage = stage; for (let k = 0; k < stage - 1 && k < 4; k++) b.placed[k] = plan.need[k]; if (stage >= 1 && stage <= 4) b.placed[stage - 1] = plan.need[stage - 1]; ph().b = b; P.structSig = null; return true; }, crateLock, robotWhy, onCrate, crateTap, openLid, unloaded, startCarry, invalidate: saved => { P.restoredOk = false; P.pendingSaved = saved || null; P.arrDone = P.arrDone && !!(saved && saved.op); }, canCommit, commitBuild, placeBoat, attach, begin: () => { P.ready = true; }, tick, targets: () => ownTargets(), activate, hint, buildLine, robotNote, finishDock: () => { const b = ph().b; if (b && b.id === 'jetty') { b.stage = 5; finishCheck(); } }, info, goldId, snapshot, restore, reset, swallowTap: () => { if (P.swallow > P.t) { P.swallow = 0; return true; } return false; }, startOpening, openingSetup, lightLantern, layoutReady: () => !!layout(),
   state: () => ({ ph: ph(), err: Object.keys(P.err).map(i => ({ i: +i, role: P.err[i].role, carry: P.err[i].carry || null, kind: P.err[i].kind || null })), beam: P.beam && { phase: P.beam.phase, robotAt: P.beam.robotAt, d: P.beam.c.d, total: P.beam.c.total, robot: P.beam.robot }, marker: P.mk, phase: P.phase, act: P.act && P.act.kind, hold: P.holdId, errs: P.errs.slice(), counts: P.V && { heaps: Object.fromEntries(KINDS.map(k => [k, P.V.heaps[k].count])), stage: P.V.stage.count, floats: P.V.floats.count }, dockOpen0: P.dockOpen0 }),
   hold: id => { P.holdId = id || null; }, startAct, siteAction, beamCard, layout: () => { const L = layout(); return L && { stores: L.stores, pad: L.pad, post: L.post, dock: L.dock && { psi: L.dock.psi, root: L.dock.root, tip: L.dock.tip, stand: L.dock.stand } }; },
   advance(sec) { const h = .1; let t = 0; while (t < sec - 1e-9) { const d = Math.min(h, sec - t); SOFT(() => rt().advance(d), 'adv'); tick(d); t += d; } return true; }, planFor, siteOf, puff, errs: () => P.errs.slice(), floats: () => (ph().op ? ph().op.floats : []) };

@@ -61,6 +61,44 @@ const needText = n => Object.keys(n).map(k => n[k] + ' ' + stockById(k).short.to
 function missing(stock, needs) { const m = {}; for (const k in needs) if ((stock[k] || 0) < needs[k]) m[k] = needs[k] - (stock[k] || 0); return m; }
 /* STARTER BUFFER (Job 6b): the first crate holds a sack of tins and a plank, enough for the rain cistern (the cheapest build), so the first build is never blocked */
 const STARTER = { metal: BUILD_NEEDS.cistern.metal, planks: BUILD_NEEDS.cistern.planks };
+/* EASY START (Job 7e, owner playtest: too hard at the start). The old camp left a SPARES CRATE on the dock; two of the three carriers are already working when you arrive; the third is the tutorial carrier with a flat battery.
+   Numbers (TUNING, from the real costs above): the first build is the rain cistern, which Easy cuts from 3 metal + 1 plank to 2 metal + 1 plank (3 units over the five stages); the crate holds 3 metal, 3 planks, 2 rope, 1 glass (the cistern, the
+   hide's 3 planks + 1 rope, with a little over), 2 batteries (one fixes the tutorial carrier, one is the spare), 1 track set and 1 lamp unit (the other two faults a carrier can have). Normal keeps the old start. */
+const EASY = { parts: { battery: 2, track: 1, lamp: 1 }, stock: { metal: 3, planks: 3, rope: 2, glass: 1 }, needs: { cistern: { metal: 2, planks: 1 } }, jobs: ['planks', 'metal', null], tutor: 2 };
+const NEEDS_NORMAL = JSON.parse(JSON.stringify(BUILD_NEEDS));
+const FAULTS = {
+  battery: { name: 'Flat battery', part: 'battery', partName: 'battery', why: 'The battery was flat: it has stood here since the old camp closed.', used: 'a spare battery', say: 'Flat battery. It needs a battery from the spares crate.' },
+  track: { name: 'Loose track', part: 'track', partName: 'track set', why: 'A track had come loose and would not grip.', used: 'a spare track set', say: 'A loose track. It needs a track set from the spares crate.' },
+  lamp: { name: 'Dark lamp', part: 'lamp', partName: 'lamp unit', why: 'The lamp eyes were dark, so it could not find its way.', used: 'a spare lamp unit', say: 'Dark lamp eyes. It needs a lamp unit from the spares crate.' }
+};
+const needsOf = (s, id) => (s && s.easy && EASY.needs[id]) || NEEDS_NORMAL[id] || (BUILDS.find(b => b.id === id) || {}).needs;
+/* the page calls this whenever the state's easy flag is known: the shared needs table (the build menu, the physical plans) follows it */
+function applyEasyNeeds(on) { for (const id in EASY.needs) { const t = BUILD_NEEDS[id]; for (const k in t) delete t[k]; Object.assign(t, on ? EASY.needs[id] : NEEDS_NORMAL[id]); } }
+const sparesText = () => 'Inside: ' + Object.keys(EASY.stock).map(k => EASY.stock[k] + ' ' + stockById(k).short.toLowerCase()).join(', ') + '; ' + EASY.parts.battery + ' batteries, ' + EASY.parts.track + ' track set, ' + EASY.parts.lamp + ' lamp unit.';
+/* open the spares crate (pure): the stock and the parts go to the player in one move, no hold needed */
+function openSpares(s) {
+  if (!s.easy) return { ok: false, why: 'There is no spares crate.', state: s }; if (s.spares && s.spares.open) return { ok: false, why: 'Already open. The parts are in your pockets.', state: s };
+  const st = Object.assign({}, s.stock); for (const k in EASY.stock) st[k] = Math.min(STOCK_CAP, (st[k] || 0) + EASY.stock[k]);
+  const sp = Object.assign({ battery: 0, track: 0, lamp: 0 }, s.sp); for (const k in EASY.parts) sp[k] += EASY.parts[k];
+  return { ok: true, state: Object.assign({}, s, { stock: st, sp, spares: { open: true } }) };
+}
+/* fit the part a faulty carrier needs (pure): the carrier starts, gets its first order, and its card says what was wrong and what was used */
+function fixRobot(s, i) {
+  const f = (s.fault || [])[i], F = f && FAULTS[f]; if (!F) return { ok: false, why: 'Nothing is wrong with that carrier.', state: s };
+  if (((s.sp || {})[F.part] || 0) < 1) return { ok: false, why: 'No ' + F.partName + ' yet. ' + (s.spares && s.spares.open ? 'Gather by hand or order one.' : 'Open the spares crate on the dock.'), state: s };
+  const sp = Object.assign({}, s.sp, { [F.part]: s.sp[F.part] - 1 }), fault = (s.fault || []).slice(); fault[i] = null;
+  const robots = (s.robots || []).slice(); while (robots.length <= i) robots.push(false); robots[i] = true;
+  const jobs = (s.jobs || []).slice(); while (jobs.length <= i) jobs.push(null); if (!jobs[i]) jobs[i] = EASY.jobs[i] || 'rope';
+  const fixed = (s.fixed || []).slice(); fixed[i] = { what: F.name, why: F.why, used: F.used };
+  return { ok: true, state: Object.assign({}, s, { sp, fault, robots, jobs, fixed }) };
+}
+/* the one gold line while Easy has something that needs you before anything else (null once it is done) */
+function easyHint(s) {
+  if (!s.easy) return null;
+  if (!(s.spares && s.spares.open)) return 'Tap the spares crate on the dock.';
+  const fi = (s.fault || []).findIndex(Boolean); if (fi >= 0 && s.spares && s.spares.open) return 'Fit a ' + FAULTS[s.fault[fi]].partName + ' to the stalled robot.';
+  return null;
+}
 const joinAnd = (a, w) => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' ' + (w || 'and') + ' ' + a[a.length - 1];
 /* what is missing and exactly where to get it, from the whole need: 'Needs 3 metal: you have 0. Set a robot to Metal (daytime) or gather by hand.' */
 function missingText(stock, needs) {
@@ -186,11 +224,13 @@ function pickFinds(seed, n) {
 }
 
 /* ---- state, stages, save and load ---- */
-function newState(seed) {
-  return { v: SAVE_VERSION, seed: seed >>> 0, gh: START_HOUR, stage: 'arrive', letter1: false, keyUsed: false, hutOpen: false,
+function newState(seed, opts) {
+  const base = { v: SAVE_VERSION, seed: seed >>> 0, gh: START_HOUR, stage: 'arrive', letter1: false, keyUsed: false, hutOpen: false,
     dry: null, water: false, finds: [], plank: false, shipSeen: false, crate1: false, parts: 0, partFrom: null, ordered: false, orders: [], delivered: [],
     robots: [], mods: [], kits: { battery: 0, solar: 0 }, jobs: [], stock: emptyStock(), boat: null, storm: null, phys: null, opening: false, dockDone: false, boards: null, boardsGh: 0, declinedGift: false, letter2: false, build: null, bottle: false, night: false, saved: false, ledger: newLedger(),
-    dial: { year: 1, creditThin: [1, 0.9, 0.6, 0.3, 0.1], note: 'stored for later years, not used on day 1' } };
+    dial: { year: 1, creditThin: [1, 0.9, 0.6, 0.3, 0.1], note: 'stored for later years, not used on day 1' }, easy: false, spares: { open: false }, sp: { battery: 0, track: 0, lamp: 0 }, fault: [], fixed: [] };
+  if (opts && opts.easy) { base.easy = true; base.robots = [true, true, false]; base.jobs = EASY.jobs.slice(); base.fault = [null, null, 'battery']; }   /* two carriers are working when you arrive; the third is the tutorial carrier */
+  return base;
 }
 const boatOf = o => { const K = root.LI_BOAT_DRIVE; return K && K.sanitize ? K.serializeBoat(K.sanitize(o)) : (o && typeof o === 'object' ? JSON.parse(JSON.stringify(o)) : null); };
 const jobsDone = s => (s.dry ? 1 : 0) + (s.water ? 1 : 0) + (s.finds.length >= 2 ? 1 : 0);
@@ -226,6 +266,8 @@ function State(o) {
   s.storm = o.storm && typeof o.storm === 'object' ? (root.LI_STORM && root.LI_STORM.sanitize ? root.LI_STORM.sanitize(o.storm) : null) : null;   /* the storm and the haul's part of the save (storm.js sanitises it; absent = no storm yet) */
   s.opening = bool(o.opening); s.dockDone = bool(o.dockDone);
   s.boards = BOARDS_STATES.includes(o.boards) ? o.boards : null; s.boardsGh = num(o.boardsGh, 0, 0, 24 * 1500); s.declinedGift = bool(o.declinedGift) && (s.boards === 'declined' || s.boards === 'tender');   /* the soft flag only exists after a decline */
+  s.easy = bool(o.easy); s.spares = { open: !!(o.spares && o.spares.open === true) && s.easy }; s.sp = { battery: Math.round(num(o.sp && o.sp.battery, 0, 0, 9)), track: Math.round(num(o.sp && o.sp.track, 0, 0, 9)), lamp: Math.round(num(o.sp && o.sp.lamp, 0, 0, 9)) };
+  s.fault = Array.isArray(o.fault) ? o.fault.slice(0, 4).map(f => (FAULTS[f] ? f : null)) : []; s.fixed = Array.isArray(o.fixed) ? o.fixed.slice(0, 4).map(f => (f && typeof f.what === 'string' ? { what: f.what.slice(0, 40), why: String(f.why || '').slice(0, 120), used: String(f.used || '').slice(0, 40) } : null)) : [];
   s.mods = Array.isArray(o.mods) ? o.mods.slice(0, 4).map(m => ({ bat: !!(m && m.bat), solar: !!(m && m.solar) })) : [];
   s.kits = { battery: Math.round(num(o.kits && o.kits.battery, 0, 0, 9)), solar: Math.round(num(o.kits && o.kits.solar, 0, 0, 9)) };
   s.jobs = Array.isArray(o.jobs) ? o.jobs.slice(0, 4).map(j => (stockById(j) ? j : null)) : [];
@@ -257,6 +299,7 @@ function canned(stage, seed) {
 }
 /* a gentle hint for the player now (one short plain sentence, never an order) */
 function hintFor(s) {
+  { const e = easyHint(s); if (e) return e; }
   switch (stageOf(s)) {
     case 'dock': return 'The robots wait for supplies. Row to the glow.';
     case 'arrive': return 'A crate sits above the tideline, with a paper label. Tap it.';
@@ -277,13 +320,13 @@ function canBuild(s, id) {
   if (s.build) return { ok: false, why: 'You have chosen one thing for the year ahead.' };
   if (b.cash > s.ledger.cash) return { ok: false, why: 'Not enough cash for the local work: ' + pound(b.cash) + ' needed, you have ' + pound(s.ledger.cash) + '.' };
   if (b.credit > s.ledger.credit) return { ok: false, why: 'Not enough delivery credit.' };
-  const m = missing(s.stock || {}, b.needs); if (Object.keys(m).length) return { ok: false, why: 'Short of stock: ' + needText(m) + ' more from the robots.', short: m };
+  const m = missing(s.stock || {}, needsOf(s, id)); if (Object.keys(m).length) return { ok: false, why: 'Short of stock: ' + needText(m) + ' more from the robots.', short: m };
   return { ok: true };
 }
 function doBuild(s, id) {
   const c = canBuild(s, id); if (!c.ok) return { ok: false, why: c.why, state: s };
   const b = BUILDS.find(x => x.id === id), r = spend(s.ledger, { cash: b.cash, credit: b.credit, text: 'Build: ' + b.name }, s.gh);
-  const st = Object.assign({}, s.stock); for (const k in b.needs) st[k] -= b.needs[k];
+  const st = Object.assign({}, s.stock), nd = needsOf(s, id); for (const k in nd) st[k] -= nd[k];
   return { ok: true, state: Object.assign({}, s, { ledger: r.ledger, build: id, stock: st }) };
 }
 /* HAND GATHERING (Job 6b). A hold on a pile or a heap, one unit every HAND_UNIT_S seconds of holding: about one robot's output per minute on a matching order (tests/night-test.js measures the robots from the camp routine). */
@@ -388,7 +431,7 @@ const PROPS = [
 const PROP_TRIS_MAX = 160, propInfo = id => PROPS.find(p => 'prop_' + p.id === id) || null;
 const CORE = { PROPS, PROP_TRIS_MAX, propInfo, BOARDS_TAKE, BOARDS_WET, BOARDS_AFTER_H, BOARDS_STATES, boardsDue, boardsText, boardsStep, boardsLater, KEY_USES, keyOf, CAL_MONTHS, CAL_SEASONS, CAL_YEAR, CAL_MONTH, calOf, LETTER_DAYS, letterOk, STOP_ICONS, arrowDeg, PLACES, AMBIENT, ambientStep, STARTER, missingText, WAIT, waitStep, KITS, FIT_S, CAMP_CAP, modsOf, partsText, batteryLine, fitKit, ROBOT_RATE, HAND_UNIT_S, LITTER_UNITS, litterStock, rateText, handRate, handStep, STOCKS, BUILD_NEEDS, UNITS_PER_TRIP, STOCK_CAP, emptyStock, missing, needText, addHaul, setJob, START_CASH, START_CREDIT, START_HOUR, BASE_YEARLY, CATALOGUE, BUILDS, BOTTLES, FINDS, SHELTERS, LETTER1, LETTER2, STAGES, STAGE_LABEL, WEATHER_DELAY, SAVE_KEY, SAVE_VERSION,
   pound, signed, newLedger, spend, recent, entryLine, creditYears, creditNote, itemById, etaFor, placeOrder, resolveDelivery, etaText, bottleIndex, bottleMessage, pickFinds,
-  newState, stageOf, progress, jobsDone, serialize, deserialize, validState, canned, hintFor, canBuild, doBuild, hashStr, mulberry };
+  newState, EASY, FAULTS, needsOf, applyEasyNeeds, sparesText, openSpares, fixRobot, easyHint, stageOf, progress, jobsDone, serialize, deserialize, validState, canned, hintFor, canBuild, doBuild, hashStr, mulberry };
 if (typeof module !== 'undefined' && module.exports) module.exports = CORE;
 root.LI_GIFT = root.LI_GIFT || {}; root.LI_GIFT.core = CORE;
 
@@ -506,6 +549,12 @@ function buildDom() {
   applyZoom(); addEventListener('resize', applyZoom);
 }
 function applyZoom() { const z = (C && C.ui) ? C.ui() : 1; if (G.ui.root) { G.ui.root.style.zoom = z === 1 ? '' : String(z); } }
+/* the delivery boat rides the wave sea when the page has one (&waves=1): height and tilt from sea_waves.js through the page; with no wave sea it is left as it was */
+function seaRide(o) {
+  let w = null; try { w = C.li().sea; } catch (e) { w = null; } if (!w || !w.on()) return;
+  const n = w.n(o.position.x, o.position.z), c = Math.cos(o.rotation.y), s = Math.sin(o.rotation.y), lx = n[0] * c - n[2] * s, lz = n[0] * s + n[2] * c;
+  o.rotation.order = 'YXZ'; o.position.y = w.h(o.position.x, o.position.z) + .03; o.rotation.x = Math.atan2(lz, n[1]); o.rotation.z = -Math.atan2(lx, n[1]);
+}
 function toast(t, ms) { G.toast = t; const e = G.ui.toast; e.textContent = t; e.classList.add('on'); clearTimeout(G.toastT); G.toastT = setTimeout(() => e.classList.remove('on'), ms || 4200); }
 function closeCard() { G.ui.layer.innerHTML = ''; G.cardOpen = null; }
 function card(id, html, cls) {
@@ -652,13 +701,13 @@ function labelSprite(text, w, hgt) {
   const t = canvasTex(512, 128, (g, W, Hh) => { g.fillStyle = 'rgba(255,248,230,.95)'; g.fillRect(0, 0, W, Hh); g.strokeStyle = '#b44'; g.lineWidth = 6; g.strokeRect(3, 3, W - 6, Hh - 6); g.fillStyle = '#7a2a2a'; g.font = 'bold 34px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, W / 2, Hh / 2); });
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true })); sp.scale.set(w, hgt, 1); sp.renderOrder = 20; return sp;
 }
-function mkCrate(num, open) {
+function mkCrate(num, open, label) {
   const g = new THREE.Group(), wood = lambert(0x9a7448), dark = lambert(0x6e5233);
   const b = new THREE.Mesh(new THREE.BoxGeometry(1.1, .72, .8), wood); b.position.y = .36; g.add(b);
   for (const z of [-.28, 0, .28]) { const s = new THREE.Mesh(new THREE.BoxGeometry(1.14, .1, .06), dark); s.position.set(0, .5, z * 1.4 + (z ? 0 : 0)); g.add(s); }
   for (const x of [-.5, .5]) { const s = new THREE.Mesh(new THREE.BoxGeometry(.08, .76, .84), dark); s.position.set(x, .38, 0); g.add(s); }
   const lid = new THREE.Mesh(new THREE.BoxGeometry(1.14, .06, .84), wood); lid.position.set(0, .75, 0); g.add(lid); g.userData.lid = lid;
-  const lab = new THREE.Mesh(new THREE.PlaneGeometry(.5, .28), new THREE.MeshBasicMaterial({ map: canvasTex(128, 72, (c, W, Hh) => { c.fillStyle = '#f4ead0'; c.fillRect(0, 0, W, Hh); c.strokeStyle = '#a89868'; c.lineWidth = 3; c.strokeRect(2, 2, W - 4, Hh - 4); c.fillStyle = '#3a2d1c'; c.font = 'bold 26px Georgia,serif'; c.textAlign = 'center'; c.fillText(num ? 'No. ' + String(num).padStart(4, '0') : 'FOR YOU', W / 2, 34); c.beginPath(); c.arc(W / 2, 54, 9, 0, 6.3); c.lineWidth = 3; c.stroke(); c.fillRect(W / 2 - 1, 44, 12, 4); }) }));
+  const lab = new THREE.Mesh(new THREE.PlaneGeometry(.5, .28), new THREE.MeshBasicMaterial({ map: canvasTex(128, 72, (c, W, Hh) => { c.fillStyle = '#f4ead0'; c.fillRect(0, 0, W, Hh); c.strokeStyle = '#a89868'; c.lineWidth = 3; c.strokeRect(2, 2, W - 4, Hh - 4); c.fillStyle = '#3a2d1c'; c.font = 'bold 26px Georgia,serif'; c.textAlign = 'center'; c.fillText(num ? 'No. ' + String(num).padStart(4, '0') : (label || 'FOR YOU'), W / 2, 34); c.beginPath(); c.arc(W / 2, 54, 9, 0, 6.3); c.lineWidth = 3; c.stroke(); c.fillRect(W / 2 - 1, 44, 12, 4); }) }));
   lab.position.set(0, .4, .41); g.add(lab);
   if (open) lid.position.set(.2, .98, -.32), lid.rotation.x = -.9;
   return shadowed(g);
@@ -848,6 +897,7 @@ function targets() {
   if (O.props) PROPS.forEach(q => { const o = O.props.O[q.id]; if (o && o.visible) add('prop_' + q.id, o.position, q.id === 'speaker' ? 1.0 : .5, 40); });
   S.finds.forEach((f, i) => add('find' + i, f, .2, 44, !f.taken));
   if (S.wreck) add('wreck', S.wreck, 1.4, 60);
+  if (s.easy && G.spares && G.spares.mesh.visible) add('spares', G.spares.pos, .5, 56);
   G.crates && G.crates.forEach((c, i) => { if (c.mesh && c.mesh.visible) add('crate' + (i + 1), c.pos, .5, 52); });
   const rt = C.li().campstart && C.li().campstart.rt(); let bots = []; try { bots = rt ? rt.robots() : []; } catch (e) { bots = []; }
   try { const B = G.objs.bays; if (B && B.list) B.list.forEach(b => { const sc = screenOf(b.x, groundY(b.x, b.z) + .5, b.z); if (sc) T.push({ id: 'bay_' + b.id, x: sc.x, y: sc.y, r: 40 }); }); } catch (e) { /* none */ }
@@ -869,6 +919,7 @@ const INSPECT = [
   { re: /^crate0$/, f: s => ({ name: 'The crate', use: 'Washed up on the beach. A brass key hangs from the lid.', needs: null, action: s.letter1 ? 'Read the letter again' : 'Lift the lid' }) },
   { re: /^prop_[a-z]+$/, f: (s, id) => { const q = propInfo(id); return q ? { name: q.name, use: q.use, needs: null, action: q.note } : null; } },
   { re: /^key$/, f: s => { const k = keyOf(s); return { name: k.name, use: k.use, needs: null, action: 'Look' }; } },
+  { re: /^spares$/, f: s => { const o = !!(s.spares && s.spares.open); return { name: 'The spares crate', use: o ? 'Empty now: the parts and the stock are yours.' : 'The old camp left it on the dock. ' + sparesText(), needs: null, action: o ? 'Look' : 'Open it' }; } },
   { re: /^hut$/, f: s => ({ name: 'The hut', use: 'Your shelter. The door sticks.', needs: s.hutOpen ? 'The brass key (the door is open now)' : 'The one brass key from the crate' + (s.letter1 ? ' (you have it)' : ''), action: 'Look inside' }) },
   { re: /^lean$/, f: () => ({ name: 'The lean-to', use: 'A dry place out of the rain.', needs: null, action: 'Look' }) },
   { re: /^barrel$/, f: () => ({ name: 'Water barrel', use: 'Catches rain. Rain is the only water on this island.', needs: null, action: 'Check it' }) },
@@ -890,7 +941,7 @@ function inspectInfo(id) {
   if (!i) { const e = INSPECT.find(q => q.re.test(id)); if (e) { try { i = e.f(s, id); } catch (x) { i = null; } } }
   if (!i) return null; return Object.assign({ id, needs: null, action: null, locked: null }, i);
 }
-function goldId() { try { const g = PHYS() && PHYS().goldId && PHYS().goldId(); if (g) return g; } catch (e) { /* none */ } const s = G.s; if (!s.letter1 && !G.crateDone) return 'crate0'; if (exploreInfo() && exploreHint(s)) return 'dest'; return null; }
+function goldId() { { const s0 = G.s; if (s0 && s0.easy) { if (!(s0.spares && s0.spares.open)) return 'spares'; const fi = faultIdx(s0); if (fi >= 0 && !G.fit) return 'bot' + fi; } } try { const g = PHYS() && PHYS().goldId && PHYS().goldId(); if (g) return g; } catch (e) { /* none */ } const s = G.s; if (!s.letter1 && !G.crateDone) return 'crate0'; if (exploreInfo() && exploreHint(s)) return 'dest'; return null; }
 const INS = { hov: null, hovT: 0, sel: null, el: null, ring: null, gring: null, mx: -1, my: -1, coarse: false };
 function inspectDom() {
   if (INS.el) return; const d = (cls, css) => { const e = document.createElement('div'); e.className = cls; e.style.cssText = css; document.body.appendChild(e); return e; };
@@ -1035,6 +1086,7 @@ function onStage(now) {
 function activate(id) {
   const s = G.s, S = G.spots;
   if (PHYS() && PHYS().activate(id)) return;
+  if (id === 'spares') return sparesCard();
   if (id === 'dest') { const i = exploreInfo(); if (i) toast(i.line + ' Follow the gold arrow, ' + Math.round(i.dist) + ' m.', 4800); return; }
   if (id === 'boat') { if (BDP()) BDP().activate('boat'); return; }
   if (/^prop_[a-z]+$/.test(id)) { const q = propInfo(id); if (q) toast(q.name + '. ' + q.use, 7000); return; }
@@ -1157,14 +1209,14 @@ function deliveryTick(dt) {
     if (d.t > 9) { d.phase = 'out'; d.t = 0; td.visible = true; td.userData.p0 = [sh.position.x - dir[0] * 4, sh.position.z - dir[1] * 4]; td.position.set(td.userData.p0[0], tide, td.userData.p0[1]); td.rotation.y = Math.atan2(-(wp.z - td.userData.p0[1]), wp.x - td.userData.p0[0]); }
   } else if (d.phase === 'out') {
     const p0 = td.userData.p0, p1 = [wp.x + dir[0] * 2.5, wp.z + dir[1] * 2.5], k = clamp(d.t / 13, 0, 1), e = k * k * (3 - 2 * k);
-    td.position.set(p0[0] + (p1[0] - p0[0]) * e, tide + .03 + bob, p0[1] + (p1[1] - p0[1]) * e); td.rotation.y = Math.atan2(-(p1[1] - p0[1]), p1[0] - p0[0]);
+    td.position.set(p0[0] + (p1[0] - p0[0]) * e, tide + .03 + bob, p0[1] + (p1[1] - p0[1]) * e); td.rotation.y = Math.atan2(-(p1[1] - p0[1]), p1[0] - p0[0]); seaRide(td);
     if (k >= 1) { d.phase = 'drop'; d.t = 0; }
   } else if (d.phase === 'drop') {
-    td.position.y = tide + .03 + bob; if (d.t > 2.2 && !d.dropped) { d.dropped = true; addDeliveryCrate(1, true); td.userData.cargo.visible = false; toast('Crate number 1. Nobody on the boat. It just knows the way.', 6500); focus(S.tender.drop.x, S.tender.drop.z, 22); }
+    td.position.y = tide + .03 + bob; seaRide(td); if (d.t > 2.2 && !d.dropped) { d.dropped = true; addDeliveryCrate(1, true); td.userData.cargo.visible = false; toast('Crate number 1. Nobody on the boat. It just knows the way.', 6500); focus(S.tender.drop.x, S.tender.drop.z, 22); }
     if (d.t > 5 && (!PHYS() || PHYS().unloaded())) { d.phase = 'back'; d.t = 0; }
   } else if (d.phase === 'back') {
     const p0 = [wp.x + dir[0] * 2.5, wp.z + dir[1] * 2.5], p1 = td.userData.p0, k = clamp(d.t / 14, 0, 1), e = k * k * (3 - 2 * k);
-    td.position.set(p0[0] + (p1[0] - p0[0]) * e, tide + .03 + bob, p0[1] + (p1[1] - p0[1]) * e); td.rotation.y = Math.atan2(-(p1[1] - p0[1]), p1[0] - p0[0]);
+    td.position.set(p0[0] + (p1[0] - p0[0]) * e, tide + .03 + bob, p0[1] + (p1[1] - p0[1]) * e); td.rotation.y = Math.atan2(-(p1[1] - p0[1]), p1[0] - p0[0]); seaRide(td);
     if (k >= 1) { d.phase = 'away'; d.t = 0; td.visible = false; }
   } else if (d.phase === 'away') {
     const k = clamp(d.t / 8, 0, 1); sh.position.x += dir[0] * dt * 3.2 * k; sh.position.z += dir[1] * dt * 3.2 * k; sh.position.y = tide - .15 + bob; sh.scale.setScalar(1 - .5 * k);
@@ -1220,11 +1272,14 @@ function robotState(i) { try { const b = C.li().campstart.rt().robots()[i]; retu
 function robotCard(i) {
   const s = G.s, on = s.robots[i], b = robotState(i); if (!b) return; focus(b.x, b.z, 13);
   const job = (s.jobs || [])[i], jn = job ? stockById(job).name.toLowerCase() : null;
-  const c = card('bot', '<h2>' + (on ? 'Old carrier' : 'Old carrier. Needs a part.') + '</h2><p>' + (on ? (jn ? 'Order: ' + jn + '. It works the tide line and brings the pile to the yard. Planks and rope: washed up at the tide line. <small>' + rateText(job) + '</small>' : 'Running, but it has no order. It waits at its post.') : 'Switched off. Dust in the tracks, one worn link.') + '</p>' + (on ? '<p><small>Status light: ' + (LAMP_WORDS[b.lamp] || b.lamp || 'on') + '. A small mark is stamped on the chassis. You have seen it on the letter.</small> ' + mark(22) + '</p>' : '<p><small>Parts in hand: ' + s.parts + '. ' + (s.parts ? '' : 'The missing part is a track link: it is in the first crate from the boat, or in the old hull on the shore.') + '</small></p>')); c.appendChild(xbtn());
+  const F = !on && (s.fault || [])[i] ? FAULTS[s.fault[i]] : null, fx = on ? (s.fixed || [])[i] : null;   /* easy start: a named fault, and what was done about it */
+  const c = card('bot', '<h2>' + (on ? 'Old carrier' : F ? 'Old carrier. ' + F.name + '.' : 'Old carrier. Needs a part.') + '</h2><p>' + (on ? (jn ? 'Order: ' + jn + '. It works the tide line and brings the pile to the yard. Planks and rope: washed up at the tide line. <small>' + rateText(job) + '</small>' : 'Running, but it has no order. It waits at its post.') : (F ? F.say + ' The lamp eyes are dim.' : 'Switched off. Dust in the tracks, one worn link.')) + '</p>' + (on ? '<p><small>Status light: ' + (LAMP_WORDS[b.lamp] || b.lamp || 'on') + '. A small mark is stamped on the chassis. You have seen it on the letter.</small> ' + mark(22) + '</p>' : '<p><small>Parts in hand: ' + s.parts + '. ' + (s.parts ? '' : 'The missing part is a track link: it is in the first crate from the boat, or in the old hull on the shore.') + '</small></p>')); c.appendChild(xbtn());
+  if (fx) c.appendChild(h('p', '', '<b>Mended.</b> <small>' + fx.why + ' You used ' + fx.used + '.</small>'));
   { const st = on ? stopOf(i) : null; if (st) c.appendChild(h('p', '', '<b>' + st.say + '</b>')); else if (on) c.appendChild(h('p', '', '<b>Working.</b> <small>' + (b.state === 'out' ? 'Walking to the shore.' : b.state === 'carry' ? 'Carrying a load to the yard.' : b.state === 'work' ? 'Gathering at the shore.' : 'On the job.') + '</small>')); }
   if (on) STOCKS.forEach(k => { const d = h('div', 'gd-item'); d.innerHTML = '<div><b>' + k.name + '</b></div>'; d.appendChild(btn(job === k.id ? 'Ordered' : 'Gather', () => giveOrder(i, k.id), job === k.id ? '' : 'pri', job === k.id)); c.appendChild(d); });
   if (on) { const m = modsOf(s, i); c.appendChild(h('p', '', '<small>' + batteryLine(m, b.charge) + '</small>')); KITS.forEach(k => { const key = k.id === 'battery' ? 'bat' : 'solar', have = (s.kits || {})[k.id] || 0; if (have || m[key]) c.appendChild(row(btn(m[key] ? k.name + ': fitted' : 'Fit ' + k.name.toLowerCase() + ' (' + have + ' kit)', () => startFit(i, k.id), 'pri', !!m[key]))); }); if (G.fit && G.fit.i === i) c.appendChild(h('p', '', '<small>Hold on the charging post to swap the part in.</small>')); }
-  const bs = []; if (!on) bs.push(btn('Fit a part (' + s.parts + ')', () => startRobot(i), 'pri', s.parts < 1)); if (on) bs.push(btn('Stock and builds', robotsCard)); bs.push(btn('Close', closeCard)); c.appendChild(row(...bs));
+  const bs = []; if (!on && F) bs.push(btn('Fit a ' + F.partName + ' (' + ((s.sp || {})[F.part] || 0) + ')', () => startFit(i, 'fix'), 'pri', ((s.sp || {})[F.part] || 0) < 1)); else if (!on) bs.push(btn('Fit a part (' + s.parts + ')', () => startRobot(i), 'pri', s.parts < 1));
+  if (!on && F && !((s.sp || {})[F.part])) c.appendChild(h('p', '', '<small>' + (s.spares && s.spares.open ? 'No ' + F.partName + ' left.' : 'Open the spares crate on the dock first.') + '</small>')); if (on) bs.push(btn('Stock and builds', robotsCard)); bs.push(btn('Close', closeCard)); c.appendChild(row(...bs));
 }
 function giveOrder(i, id) {
   G.s = setJob(G.s, i, id); toast('Order given: ' + stockById(id).name.toLowerCase() + '. It heads for the shore.', 4500);
@@ -1246,6 +1301,7 @@ function startRobot(i) {
 }
 /* FITTING A KIT (Job 6b): the card sets G.fit; the carrier is called home; when it stands in its bay, a hold on the charging post swaps the part in, with a visible part and the old one left beside the post. */
 function startFit(i, kit) {
+  if (kit === 'fix') { const q = fixRobot(G.s, i); if (!q.ok) return toast(q.why, 3600); G.fit = { i, kit, p: 0 }; closeCard(); toast('Hold on the charging post to fit the ' + FAULTS[G.s.fault[i]].partName + '.', 5200); G.sig = null; renderUi(); return; }
   const r = fitKit(G.s, i, kit); if (!r.ok) return toast(r.why, 3600); G.fit = { i, kit, p: 0 }; closeCard();
   const b = robotState(i); toast(b && b.state === 'bay' ? 'Hold on the charging post to fit the ' + KITS.find(k => k.id === kit).name.toLowerCase() + '.' : 'Carrier ' + (i + 1) + ' is coming home. Then hold on the charging post.', 5200); G.sig = null; renderUi();
 }
@@ -1257,16 +1313,38 @@ function fitFx(on) {
   else if (O.fitPart) O.fitPart.visible = false;
 }
 function finishFit() {
-  const f = G.fit; if (!f) return; const r = fitKit(G.s, f.i, f.kit); G.fit = null; fitFx(false); if (!r.ok) return toast(r.why, 3600); G.s = r.state; const b = robotState(f.i), O = G.objs;
+  const f = G.fit; if (!f) return; const r = f.kit === 'fix' ? fixRobot(G.s, f.i) : fitKit(G.s, f.i, f.kit); G.fit = null; fitFx(false); if (!r.ok) return toast(r.why, 3600); G.s = r.state; const b = robotState(f.i), O = G.objs;
+  if (f.kit === 'fix') { try { const q = C.li().campstart.rt().sim().robots[f.i]; if (q) { q.fault = null; q.off = false; q.charge = .95; q.state = 'bay'; q.timer = .4; } } catch (e) { G.err.push('fix ' + e.message); } toast('Fitted: ' + G.s.fixed[f.i].used.replace('a spare ', 'the ') + '. Carrier ' + (f.i + 1) + ' lights up and goes to work.', 6000); afterChange(); setTimeout(() => { if (!G.cardOpen) robotCard(f.i); }, 1200); return; }
   if (b) { const T = THREE, old = new T.Mesh(new T.BoxGeometry(.3, .18, .22), new T.MeshLambertMaterial({ color: 0x5a5148 })); const a = (O.oldParts = O.oldParts || []).length, x = b.x + .9 + a * .35, z = b.z + 1.2; old.position.set(x, groundY(x, z) + .1, z); old.rotation.y = a * 1.1; G.root.add(old); O.oldParts.push(old); if (O.oldParts.length > 4) { G.root.remove(O.oldParts.shift()); } }
   toast('Fitted: ' + KITS.find(k => k.id === f.kit).name.toLowerCase() + ' on carrier ' + (f.i + 1) + '. The old part lies by the post.', 5200); afterChange();
 }
+/* ---------------- EASY START (Job 7e): the spares crate on the dock, the tutorial carrier with a flat battery ---------------- */
+const EASY_ON = GIFT && Q0.get('easy') !== '0' && Q0.get('physical') !== '0';   /* &easy=0 is the Normal start; the Menu button flips it for the next new day */
+function sparesEnsure() {
+  const s = G.s; if (!s || !s.easy || !G.ready) { if (G.spares) G.spares.mesh.visible = false; return; }
+  if (!G.spares) { const sp = PHYS() && PHYS().sparesSpot ? PHYS().sparesSpot() : null; if (!sp) return; const m = mkCrate(0, false, 'SPARES'); place(m, sp, sp.yaw); G.root.add(m); G.spares = { mesh: m, pos: { x: sp.x, z: sp.z }, lid: null }; }
+  const g = G.spares, o = !!(s.spares && s.spares.open); g.mesh.visible = true;
+  if (g.lid !== o) { g.lid = o; const lid = g.mesh.userData.lid; if (o) { lid.position.set(.2, .98, -.32); lid.rotation.x = -.9; } else { lid.position.set(0, .75, 0); lid.rotation.x = 0; } }
+}
+const partsLine = s => { const p = s.sp || {}; return [p.battery ? p.battery + (p.battery > 1 ? ' batteries' : ' battery') : '', p.track ? p.track + ' track set' : '', p.lamp ? p.lamp + ' lamp unit' : ''].filter(Boolean).join(', '); };
+function sparesCard() {
+  const s = G.s, o = !!(s.spares && s.spares.open); if (G.spares) focus(G.spares.pos.x, G.spares.pos.z, 15);
+  const c = card('spares', '<h2>The spares crate</h2><p>' + (o ? 'Empty now. Everything is in your pockets' + (partsLine(s) ? ': ' + partsLine(s) + '.' : '.') : 'The old camp left it on the dock, tied down, with a label and no note. ' + sparesText()) + '</p><p><small>' + (o ? 'Parts go on the carriers that stall; the planks, tins, rope and glass are on the heap for the first build.' : 'The batteries, track set and lamp unit fix a stalled carrier. The rest goes on the heap for the first build (the rain cistern needs ' + needText(BUILD_NEEDS.cistern) + ').') + '</small></p>'); c.appendChild(xbtn());
+  c.appendChild(row(...(o ? [] : [btn('Open it', openSparesNow, 'pri')]), btn('Close', closeCard)));
+}
+function openSparesNow() {
+  const r = openSpares(G.s); if (!r.ok) return toast(r.why, 3600); G.s = r.state; closeCard(); sparesEnsure(); try { if (PHYS()) PHYS().openLid(G.spares.mesh); } catch (e) { /* the lid is already open */ }
+  toast('Spares: ' + sparesText().replace('Inside: ', '') + ' It is all yours.', 6500); afterChange(); try { save(); } catch (e) { /* none */ }
+}
+const faultIdx = s => (s.fault || []).findIndex(Boolean);
+function easyToggle() { G.easyNext = !(G.easyNext === undefined ? !!G.s.easy : G.easyNext); toast('Next new day: ' + (G.easyNext ? 'Easy start' : 'Normal start') + '. Use Skip to: New to begin it.', 5200); G.sig = null; renderUi(); }
 /* the robots, every frame: the unstarted ones are held in their bays; a started one with no order waits; one with an order goes out. Each finished trip adds stock. */
 function holdRobots() {
+  try { sparesEnsure(); } catch (e) { G.err.push('spares ' + e.message); }
   let rt = null; try { rt = C.li().campstart.rt(); } catch (e) { return; } if (!rt) return;
   try { const sim = rt.sim(); G.deliv = G.deliv || [];
     sim.robots.forEach((r, i) => {
-      sim.shifts = true; r.off = !G.s.robots[i]; { const m = (G.s.mods || [])[i] || {}; r.cap = m.bat ? CAMP_CAP : 1; r.solar = !!m.solar; r.fit = !!(G.fit && G.fit.i === i); }   /* Job 6b: night shifts and the fitted parts */
+      sim.shifts = true; r.off = !G.s.robots[i]; r.fault = ((G.s.fault || [])[i]) || null; { const m = (G.s.mods || [])[i] || {}; r.cap = m.bat ? CAMP_CAP : 1; r.solar = !!m.solar; r.fit = !!(G.fit && G.fit.i === i); }   /* Job 6b: night shifts and the fitted parts */
       if (!G.s.robots[i]) { r.state = 'bay'; r.timer = 1e9; r.charge = Math.min(r.charge, .3); r.load = false; r.want = undefined; G.deliv[i] = r.delivered; return; }
       const job = (G.s.jobs || [])[i], st = job && stockById(job);
       r.want = st ? st.site : undefined;
@@ -1376,12 +1454,12 @@ function sleepToMorning() {
 function pulse(which) { G.pulse = which; setTimeout(() => { if (G.pulse === which) G.pulse = null; renderUi(); }, 9000); renderUi(); }
 function renderUi() {
   if (!G.ui.strip) return; const s = G.s, stage = stageOf(s);
-  const sig = [stage, jobsDone(s), s.plank, s.letter1, s.letter2, s.build, s.ledger.cash, s.ledger.credit, s.parts, s.water, G.pulse, G.helpPlank, G.crates.length, dayNo(), s.dry, s.crate1, s.finds.length, s.shipSeen, s.bottle, s.robots.join(), stockLine(s.stock), (s.jobs || []).join(), s.ordered, G.bottleOn, s.night, (PHYS() && PHYS().buildLine && PHYS().buildLine()) || '', (PHYS() && PHYS().hint && PHYS().hint()) || '', exploreHint(s) || '', fitHint() || '', JSON.stringify(s.mods || []), JSON.stringify(s.kits || {}), phaseNow(), G.wait ? G.wait.mode : '', lanternOn(), G.fit ? G.fit.i + G.fit.kit : ''].join('|');
+  const sig = [stage, s.easy, s.spares && s.spares.open, partsLine(s), String(G.easyNext), (s.fault || []).join(), jobsDone(s), s.plank, s.letter1, s.letter2, s.build, s.ledger.cash, s.ledger.credit, s.parts, s.water, G.pulse, G.helpPlank, G.crates.length, dayNo(), s.dry, s.crate1, s.finds.length, s.shipSeen, s.bottle, s.robots.join(), stockLine(s.stock), (s.jobs || []).join(), s.ordered, G.bottleOn, s.night, (PHYS() && PHYS().buildLine && PHYS().buildLine()) || '', (PHYS() && PHYS().hint && PHYS().hint()) || '', exploreHint(s) || '', fitHint() || '', JSON.stringify(s.mods || []), JSON.stringify(s.kits || {}), phaseNow(), G.wait ? G.wait.mode : '', lanternOn(), G.fit ? G.fit.i + G.fit.kit : ''].join('|');
   const tm = document.getElementById('gd-time'); if (tm) tm.textContent = hhmm(s.gh);
   const wx = document.getElementById('gd-wx'); if (wx && wx.textContent !== weatherState()) wx.textContent = weatherState();
   const bp = document.getElementById('gd-barrel'); if (bp) bp.textContent = 'Barrel: ' + Math.round(G.barrel || 0) + ' of 40 litres';   /* updated in place: a rebuilt HUD every frame while it rains made buttons impossible to press */
   if (sig === G.sig) return; G.sig = sig; const P = progress(s);
-  const hintText = (G.wait && G.wait.mode ? (G.wait.mode === 'manual' ? 'Waiting for dawn. Tap anywhere to stop.' : 'Time is passing. Tap anywhere to stop.') : null) || (PHYS() && PHYS().hint && PHYS().hint()) || fitHint() || exploreHint(s) || nightHint(s) || (GD_CLEAN ? shortHint(s) : hintFor(s));
+  const hintText = (G.wait && G.wait.mode ? (G.wait.mode === 'manual' ? 'Waiting for dawn. Tap anywhere to stop.' : 'Time is passing. Tap anywhere to stop.') : null) || (!G.fit && easyHint(G.s)) || (PHYS() && PHYS().hint && PHYS().hint()) || fitHint() || exploreHint(s) || nightHint(s) || (GD_CLEAN ? shortHint(s) : hintFor(s));
   G.ui.hint.innerHTML = ''; const sp = h('span', '', hintText); G.ui.hint.appendChild(sp);
   const mk = {};   /* every action button, made once; where it goes depends on the HUD mode */
   if (s.letter1) { const led = btn('<small style="display:block;font-weight:600;opacity:.7">Ledger</small>Cash ' + pound(s.ledger.cash) + '<br>Credit ' + pound(s.ledger.credit), ledgerCard, G.pulse === 'ledger' ? 'pulse' : ''); led.id = 'gd-ledger-btn'; led.style.textAlign = 'right'; led.style.lineHeight = '1.25'; mk.ledger = led; }
@@ -1408,6 +1486,7 @@ function renderUi() {
     if (mk.build && main !== 'build') R.appendChild(mk.build);   /* OWNER 25 Nov: the Build button is permanent once the letter is read, not behind Menu */
     const mb = btn(G.menuOpen ? 'Close menu' : 'Menu', () => { G.menuOpen = !G.menuOpen; document.body.classList.toggle('gd-menuopen', G.menuOpen); G.sig = null; renderUi(); }); mb.id = 'gd-menu-btn'; R.appendChild(mb);
     const mn = h('div', 'gd-pill'); mn.id = 'gd-menu'; ['notes', 'cat', 'chart', 'sleep', 'wait'].forEach(k => { if (mk[k] && k !== main) mn.appendChild(mk[k]); }); mn.appendChild(sk);
+    if (GIFT && Q0.get('physical') !== '0') { const eb = btn('Start: ' + ((G.easyNext === undefined ? !!s.easy : G.easyNext) ? 'Easy' : 'Normal'), easyToggle); eb.id = 'gd-easy-btn'; mn.appendChild(eb); }
     const dv = btn(document.body.classList.contains('gd-showdev') ? 'Hide test controls' : 'Test controls', () => { document.body.classList.toggle('gd-showdev'); G.sig = null; renderUi(); }); dv.id = 'gd-dev-btn'; mn.appendChild(dv); R.appendChild(mn);
   }
   const L = G.ui.left; L.innerHTML = '';
@@ -1418,6 +1497,7 @@ function renderUi() {
     if (s.water) { const w = h('div', 'gd-pill', 'Barrel: ' + Math.round(G.barrel || 0) + ' of 40 litres'); w.id = 'gd-barrel'; w.style.fontSize = '14px'; L.appendChild(w); }
     if (hasStock) { const w = btn(stockLine(s.stock) + '<small style="display:block;font-size:11px;font-weight:600;opacity:.75">' + rateText(null) + '<br>Washed up at the tide line</small>', robotsCard); w.id = 'gd-stock-btn'; w.title = 'Washed up at the tide line'; w.style.fontSize = '14px'; w.style.textAlign = 'left'; L.appendChild(w); }
     if (GD_CLEAN && (hasStock || s.water)) { const c = btn('Hide', () => { G.leftCollapsed = true; G.sig = null; renderUi(); }); c.style.fontSize = '13px'; c.id = 'gd-left-hide'; L.appendChild(c); }
+    if (s.easy && partsLine(s)) { const w = h('div', 'gd-pill', 'Parts: ' + partsLine(s)); w.style.fontSize = '14px'; L.appendChild(w); }
     if (s.parts) { const w = h('div', 'gd-pill', 'Parts: ' + s.parts); w.style.fontSize = '14px'; L.appendChild(w); }
   }
 }
@@ -1439,7 +1519,7 @@ function shortHint(s) {
 }
 /* ---------------- skip to ---------------- */
 function applyWorldToState() {
-  const s = G.s, O = G.objs, S = G.spots; if (!S || !O.crate) return;
+  const s = G.s, O = G.objs, S = G.spots; if (!S || !O.crate) return; applyEasyNeeds(!!s.easy);
   O.crate.userData.lid.position.set(s.letter1 ? .2 : 0, s.letter1 ? .98 : .75, s.letter1 ? -.32 : 0); O.crate.userData.lid.rotation.x = s.letter1 ? -.9 : 0; if (O.key) O.key.visible = !s.letter1; G.crateDone = s.letter1;
   O.hut.userData.door.position.x = s.hutOpen ? -1.6 : -.9; O.hut.userData.patch.visible = s.dry === 'hut'; O.tarp.visible = s.dry === 'tarp';
   G.crates.forEach(c => G.root.remove(c.mesh)); G.crates = [];
@@ -1457,7 +1537,7 @@ function applyWorldToState() {
 }
 function clockSet(gh) { const c = ck(); if (!c) return; if (G.clk0 === undefined) G.clk0 = clk0(); c.setHours(G.clk0 + gh); c.freeze(true); G.clockMode = 'hold'; }
 function skipTo(v) {
-  if (!v) return; if (v === 'new') { wipeSave(); G.s = newState(G.s.seed); closeCard(); applyWorldToState(); toast('A new start. The save is forgotten.', 4000); return; }
+  if (!v) return; if (v === 'new') { wipeSave(); G.s = newState(G.s.seed, { easy: G.easyNext === undefined ? EASY_ON : G.easyNext }); closeCard(); applyWorldToState(); toast('A new start. The save is forgotten.', 4000); return; }
   closeCard(); let st;
   if (v === 'storm') { closeCard(); if (SHP()) SHP().start(); return; }
   if (v === 'day2') { st = canned('done', G.s.seed); st.gh = 31.2; st.orders.forEach(o => { o.delivered = true; }); st.delivered = st.orders.map(o => o.item); st.stock = Object.assign({}, st.stock, { planks: (st.stock.planks || 0) + 4 }); }   /* the night shift brought a few more */
@@ -1614,7 +1694,7 @@ function start() {
   if (!buildWorld()) { setTimeout(start, 500); return; }
   const loaded = Q0.get('stage') || Q0.get('day') ? null : load(), seed = C.seed;
   const qs = Q0.get('stage'), qd = Q0.get('day');
-  G.s = newState(seed); G.crates = []; G.barrel = 0;
+  G.s = newState(seed, { easy: EASY_ON && !qs && !qd }); G.crates = []; G.barrel = 0;
   if (qs && STAGES.includes(qs)) G.s = canned(qs, seed);
   else if (qd && parseInt(qd, 10) >= 2) { G.s = canned('done', seed); G.s.gh = 31.2; G.s.orders.forEach(o => { o.delivered = true; }); G.s.delivered = G.s.orders.map(o => o.item); }
   else if (loaded) G.s = loaded;

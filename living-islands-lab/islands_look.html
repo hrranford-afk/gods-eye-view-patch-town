@@ -57,6 +57,7 @@ body.noui #top,body.noui #bar,body.noui #info,body.noui #gpuInfo,body.noui #benc
 <script src="gift_day.js"></script>
 <script>if(/[?&]game=gift/.test(location.search)&&!/[?&]physical=0/.test(location.search))document.write('<script src="physical.js"><\/script>');</script>
 <script>if(/[?&]game=gift/.test(location.search))document.write('<script src="boat_drive.js"><\/script>');</script>
+<script>if(/[?&]game=gift/.test(location.search)&&!/[?&]waves=0/.test(location.search)||/[?&]waves=1/.test(location.search))document.write('<script src="sea_waves.js"><\/script>');</script>
 <script>if(/[?&]game=gift/.test(location.search)&&!/[?&]storm=0/.test(location.search))document.write('<script src="storm.js"><\/script>');</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="li_sea.js"></script>
@@ -107,7 +108,8 @@ const MCON=Q.get('macro')==='1'&&!!window.MacroSea;   /* the macro sea (macro_se
 const CKON=(Q.get('clock')==='1'||MDON)&&!!window.SkyClock;   /* the sky clock (sky_clock.js, see SKY_CLOCK_BUILD.md): sun, moon, stars, tide, light and window glows from one game clock; implies the sea=2 look; absent = unchanged */
 const CKDOME=CKON&&Q.get('clockdome')!=='0';   /* ?clockdome=0 is the AR profile: lights, emissives and tide from the clock, but no sky dome, no stars, no floor tint and no exposure change */
 const LTON=Q.get('light')==='1'&&!!window.LightRange;   /* the lighthouse and fog layer (light_range.js, see LIGHTHOUSE_BUILD.md): one lighthouse, a rotating beam, a ring of sight, arrivals that see the light; absent = unchanged */
-const SEA2=Q.get('sea')==='2'||FLOW||SBX||WXON||MCON||CKON||WORLD;          /* the sea pass: dark wind-chopped sea with glitter (see SEA_PASS.md); absent = the old sea */
+const WAVES=(Q.get('waves')==='1'||(Q.get('waves')===null&&Q.get('game')==='gift'))&&!!window.LI_SEA_WAVES;   /* the wave sea (sea_waves.js, GIFT_JOB7SEA.md): a Gerstner sum in the vertex stage, the same sum on the CPU for the boat, crates and timber; &waves=1 on, &waves=0 off, on by default only with game=gift; absent = the old flat sea */
+const SEA2=Q.get('sea')==='2'||FLOW||SBX||WXON||MCON||CKON||WORLD||WAVES;          /* the sea pass: dark wind-chopped sea with glitter (see SEA_PASS.md); absent = the old sea */
 const SEAT=Q.get('seat')!==null?parseFloat(Q.get('seat')):null;   /* freeze the sea clock (tests, shots) */   /* the landing pass: plain daylight, no blur, one playable shoreline */
 const CPON=Q.get('start')==='camp'&&!!window.LI_CAMP;   /* the camp start (camp_start.js, see CAMP_START.md): day one of the shelter ladder, no village; kit pieces, the robot yard and robots with a day routine; absent = unchanged */
 const ULO=window.LI_ULTRA?LI_ULTRA.options(Q.toString()):null;   /* the ultra tier (ultra.js, ULTRA_TIER.md): &q=ultra; AR never; absent = nothing changes */
@@ -1417,6 +1419,94 @@ function sbOverlayFrame(){if(!SBO.on||!SBO.cv)return;const cv=SBO.cv,w=cv.client
 }
 /* the tide-dependent numbers of the home landing: wade distance and windows by boat draft, read from the real height field */
 function sbLanding(){if(!LD.on||!LD.L)return null;const L=LD.L,prof=d=>-H(L.x+L.dir[0]*d,L.z+L.dir[1]*d);return SB.landingWindows(prof,8);}
+/* ------------------------------------------------------------ THE WAVE SEA (&waves=1, on by default with game=gift; sea_waves.js) ------------------------------------------------------------
+   The same sea fragment shader as before (sky, sun, fog, shallows, foam, weather patch), but the surface is a polar mesh whose vertices ride a Gerstner sum, so the water really rises and falls and a boat can feel it.
+   The vertex stage mirrors LI_SEA_WAVES.disp line for line; wvH() is the CPU twin the boat, crates and timber read. Waves shrink toward the shore (the shallows are flat on purpose: damp below) and fade with camera distance.
+   Weather: the page's weather state (weather.js windMs and name) and the storm layer set the inputs; they move toward their target over a few seconds and the phase of every wave is kept, so the sea never jumps. */
+const WVS={on:false,tier:'ipad',T:null,W:null,P:null,cur:null,key:'',name:'calm',s:0,tau:5,scale:.35,minL:2.2,params:null,tris:0,failed:'',t:0};
+const WV_VS=`#define TS ${TS.toFixed(1)}
+uniform float uTide;uniform sampler2D uH;uniform vec4 uW[NW];uniform vec3 uW2[NW];uniform float uWHs;
+varying vec3 vW;varying vec2 vRest;varying vec2 vSl;varying float vJ;varying float vLift;varying float vSw;
+void main(){vec2 p0=position.xz;float dist=length(vec3(p0.x,0.0,p0.y)-cameraPosition);
+  float gh=texture2D(uH,p0/(2.0*TS)+0.5).r*8.0-5.0;float depth=uTide-gh;float damp=mix(0.12,1.0,smoothstep(0.05,1.6,depth));   /* the shallows stay nearly flat */
+  float dx=0.0,dz=0.0,dy=0.0,dyu=0.0,jxx=0.0,jzz=0.0,jxz=0.0,hx=0.0,hz=0.0;
+  for(int i=0;i<NW;i++){vec4 w=uW[i];vec3 w2=uW2[i];float L=6.2831853/w.z;float Af=w.w*(1.0-smoothstep(L*6.0,L*14.0,dist));float A=Af*damp;
+    float th=w.z*dot(w.xy,p0)-w2.y+w2.z;float s=sin(th),c=cos(th);float qa=w2.x*A,kA=w.z*A;
+    dx-=qa*w.x*s;dz-=qa*w.y*s;dy+=A*c;dyu+=Af*c;jxx+=w2.x*kA*w.x*w.x*c;jzz+=w2.x*kA*w.y*w.y*c;jxz+=w2.x*kA*w.x*w.y*c;hx-=w.x*kA*s;hz-=w.y*kA*s;}
+  float J=(1.0-jxx)*(1.0-jzz)-jxz*jxz;vSw=dyu;vJ=J;vSl=vec2(-hx,-hz)/max(J,0.25);vRest=p0;vLift=clamp(0.5+0.5*dy/max(uWHs,0.05)*0.55,0.0,1.0);
+  vec4 wp=modelMatrix*vec4(p0.x+dx,dy,p0.y+dz,1.0);vW=wp.xyz;gl_Position=projectionMatrix*viewMatrix*wp;}`;
+/* the fragment patches: the rest position is what the shallows, shadow and rim look at; the wave slope tilts the normal; folded crests make foam; troughs read darker. Anchors that are missing switch the wave sea off, never throw. */
+function wvPatchFS(src){
+  const R=(a,b)=>{if(src.split(a).length!==2)throw new Error('wave shader patch failed: '+a.slice(0,48));src=src.replace(a,b);};
+  R('varying vec3 vW;','varying vec3 vW;varying vec2 vRest;varying vec2 vSl;varying float vJ;varying float vLift;varying float vSw;uniform float uWFT,uWFoam,uWStreak;');
+  R('vec2 p=vW.xz;vec4 s=hs(p);','vec2 p=vRest;vec4 s=hs(p);');
+  R('body=mix(body,shalC,sh*(0.55+0.45*nz2));','body=mix(body,shalC,sh*(0.55+0.45*nz2));body*=mix(1.0,mix(0.45,1.0,smoothstep(0.08,0.70,vLift)),clamp(uWFoam,0.0,1.0));');
+  R('vec3 N=normalize(vec3(-g.x,1.0,-g.y));','vec3 N=normalize(vec3(-g.x+vSl.x,1.0,-g.y+vSl.y));');
+  R('float foam=clamp(max(max(fo,cap),wake)*(0.95+0.5*expo),0.0,1.0);',
+    'float wfold=smoothstep(uWFT-0.02,uWFT-0.34,vJ);float wcap=wfold*smoothstep(0.58,0.95,vLift)*smoothstep(0.50,0.78,nz2)*uWFoam;float wtr=wfold*smoothstep(0.38,0.75,vLift)*smoothstep(0.58,0.88,nz)*0.30*uWFoam;'+
+    'float wst=texture2D(uN,vec2(dot(p,W)*0.04-t*0.05,dot(p,Wp)*1.2)).a;float wsk=smoothstep(0.62,0.80,wst)*uWStreak*0.30*(0.45+0.55*smoothstep(0.35,0.85,vLift));'+
+    'float wfm=max(max(wcap,wtr),wsk)*smoothstep(0.3,1.2,depth);float foam=clamp(max(max(max(fo,cap),wake),wfm)*(0.95+0.5*expo),0.0,1.0);');
+  /* the shoreline wash rides the same swell: the water line climbs the beach as a crest passes, so the lap and the foam band rise and fall with the real waves */
+  R('float expo=s.g;float lap=','float dwash=depth+0.55*vSw*smoothstep(1.8,0.3,depth);float expo=s.g;float lap=');
+  R('0.0,depth+(nz-0.5)*0.10);','0.0,dwash+(nz-0.5)*0.10);');
+  R('float ph=depth*(3.4/(0.6+expo))','float ph=dwash*(3.4/(0.6+expo))');
+  R('smoothstep(0.20+0.7*expo,0.08,depth)','smoothstep(0.20+0.7*expo,0.08,dwash)');
+  return src;}
+function wvTierName(){const a=Q.get('wtier');if(a&&LI_SEA_WAVES.TIERS[a]&&a!=='max')return a;return DEV==='radeon'?'radeon':DEV==='desktop'?'desktop':DEV==='ipad'?'ipad':(ULT.on?'desktop':'ipad');}
+function wvGeo(T,R){const rings=T.rings,segs=T.segs,pos=new Float32Array((rings+1)*segs*3),idx=new Uint32Array(rings*segs*6);let p=0,q=0;
+  for(let i=0;i<=rings;i++){const u=i/rings,r=R*(0.30*u+0.70*u*u);for(let j=0;j<segs;j++){const a=j/segs*Math.PI*2;pos[p++]=Math.cos(a)*r;pos[p++]=0;pos[p++]=Math.sin(a)*r;}}   /* rings are tight in the middle where the islands are, about 3 m apart at the rim */
+  for(let i=0;i<rings;i++)for(let j=0;j<segs;j++){const a=i*segs+j,b=i*segs+(j+1)%segs,c=(i+1)*segs+j,d=(i+1)*segs+(j+1)%segs;idx[q++]=a;idx[q++]=c;idx[q++]=b;idx[q++]=b;idx[q++]=c;idx[q++]=d;}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setIndex(new THREE.BufferAttribute(idx,1));return g;}
+/* called by buildSea with the finished material: swaps in the vertex stage and the fragment patches, returns the new geometry (or null and the old sea stays) */
+function wvInstall(mat){
+  const SW=LI_SEA_WAVES;try{
+    WVS.tier=wvTierName();WVS.T=SW.TIERS[WVS.tier];const NW=WVS.T.nTot;
+    const fs=wvPatchFS(mat.fragmentShader);
+    WVS.P=SW.weatherParams('calm',0);WVS.cur=Object.assign({},WVS.P);WVS.W=SW.buildWaves(WVS.cur,WVS.T,{scale:WVS.scale});WVS.params={waves:WVS.W,level:0,minL:WVS.minL};
+    mat.uniforms.uW={value:Array.from({length:NW},()=>new THREE.Vector4())};mat.uniforms.uW2={value:Array.from({length:NW},()=>new THREE.Vector3())};
+    mat.uniforms.uWHs={value:.3};mat.uniforms.uWFT={value:.5};mat.uniforms.uWFoam={value:.35};mat.uniforms.uWStreak={value:0};
+    mat.defines=Object.assign({},mat.defines||{},{NW});mat.vertexShader=WV_VS;mat.fragmentShader=fs;
+    WVS.on=true;WVS.tris=WVS.T.tris;return wvGeo(WVS.T,TABLE_R+.4);
+  }catch(e){WVS.on=false;WVS.failed=String(e&&e.message||e);if(window.console&&console.warn)console.warn('waves off: '+WVS.failed);return null;}}
+/* the weather this frame wants: a name and how far it has risen. Calm days stay calm; the weather's wind speed rises the sea; the storm layer's rain, storm and Great Wash use their own types. */
+function wvTarget(){const st=WXR&&WXR.state,SW=LI_SEA_WAVES;let name='calm',s=0;
+  if(st){const sw=clamp(((st.windMs||0)-3.5)/17.5,0,1),nm=st.name;
+    if(nm==='fog'){name='fog';s=1;}else if(nm==='storm'){name='gale';s=clamp(.15+sw,0,1);}else if(nm==='rain'||nm==='showers'){name='squall';s=clamp(sw*1.4,0,1);}else{name='calm';s=0;}}
+  let big=false;try{const K=window.__storm;if(K){const q=K.state();if(q.on&&q.phase==='run'){big=!!(K.save&&K.save().big);if(q.quiet>0&&name==='calm'){name='squall';s=clamp(q.quiet*.7,0,1);}}}}catch(e){}
+  if(big&&name==='gale')name='wash';
+  if(WVS.force&&SW.WEATHER[WVS.force[0]]){name=WVS.force[0];s=clamp(WVS.force[1],0,1);}   /* tests: __li.sea.force('gale',1) */
+  const o=Q.get('wxsea');if(o){const a=o.split(',');if(SW.WEATHER[a[0]]){name=a[0];s=a[1]!==undefined?clamp(parseFloat(a[1]),0,1):1;}}   /* tests and shots: &wxsea=gale,0.8 */
+  return {name,s};}
+function wvUpdate(dt){if(!WVS.on||!waterMesh)return;const SW=LI_SEA_WAVES,u=waterMesh.material.uniforms,tg=wvTarget(),TP=SW.weatherParams(tg.name,tg.s);WVS.name=tg.name;WVS.s=tg.s;
+  const f=WVS.frozen||SEAT!==null||Q.get('wxsea')?1:1-Math.exp(-dt/WVS.tau);let moved=0;
+  for(const k in WVS.P){if(typeof TP[k]!=='number')continue;const a=WVS.cur[k]===undefined?TP[k]:WVS.cur[k],b=a+(TP[k]-a)*(f>=1?1:f);if(Math.abs(b-a)>1e-9)moved=1;WVS.cur[k]=b;}
+  const uw=u.uWind.value;WVS.cur.wind=Math.atan2(uw.y,uw.x)*180/Math.PI;WVS.cur.surge=0;WVS.cur.vort=0;
+  if(moved||!WVS.built){WVS.W=SW.retune(WVS.W,WVS.cur,WVS.T,{scale:WVS.scale});WVS.built=1;WVS.params.waves=WVS.W;}
+  if(SEAT!==null)WVS.W.forEach(w=>{w.ph=w.w*SEAT;});else if(!clock.hold)SW.advance(WVS.W,dt);
+  WVS.t=clock.t;const NW=WVS.W.length,TAU2=Math.PI*2;
+  for(let i=0;i<NW;i++){const w=WVS.W[i];u.uW.value[i].set(w.dx,w.dz,w.k,w.A);u.uW2.value[i].set(w.Q,((w.ph%TAU2)+TAU2)%TAU2,w.phi);}
+  u.uWHs.value=WVS.W.hs;u.uWFT.value=WVS.cur.foamT;u.uWFoam.value=WVS.cur.foam;u.uWStreak.value=WVS.cur.streak;}
+/* SPRAY (desktop 4000 points, Radeon 12000, iPad 600): points that live on the crests where the sum folds, thrown off the wave and carried downwind; a ring of them round what the camera looks at. All on the GPU, no CPU work per point. They only show when the sea is up. */
+const WV_SPRAY_VS=`#define TS ${TS.toFixed(1)}
+uniform float uTide;uniform sampler2D uH;uniform vec4 uW[NW];uniform vec3 uW2[NW];uniform float uWT;uniform vec2 uWind;uniform vec3 uTgt;uniform float uAmt;uniform float uPxScale;uniform float uTT;attribute vec4 aS;varying float vA;
+void main(){float life=fract(aS.x+uTT*(0.25+0.5*aS.w));float r=3.0+aS.y*aS.y*46.0;float a=aS.z*6.2831853;vec2 p0=uTgt.xz+vec2(cos(a),sin(a))*r;
+  float gh=texture2D(uH,p0/(2.0*TS)+0.5).r*8.0-5.0;float depth=uTide-gh;float damp=mix(0.12,1.0,smoothstep(0.05,1.6,depth));float dist=length(vec3(p0.x,0.0,p0.y)-cameraPosition);
+  float dx=0.0,dz=0.0,dy=0.0,jxx=0.0,jzz=0.0,jxz=0.0;
+  for(int i=0;i<NW;i++){vec4 w=uW[i];vec3 w2=uW2[i];float L=6.2831853/w.z;float A=w.w*(1.0-smoothstep(L*6.0,L*14.0,dist))*damp;float th=w.z*dot(w.xy,p0)-w2.y+w2.z;float s=sin(th),c=cos(th);float qa=w2.x*A,kA=w.z*A;
+    dx-=qa*w.x*s;dz-=qa*w.y*s;dy+=A*c;jxx+=w2.x*kA*w.x*w.x*c;jzz+=w2.x*kA*w.y*w.y*c;jxz+=w2.x*kA*w.x*w.y*c;}
+  float J=(1.0-jxx)*(1.0-jzz)-jxz*jxz;float on=smoothstep(uWT+0.05,uWT-0.15,J)*uAmt*smoothstep(0.5,1.2,depth);
+  vec3 P=vec3(p0.x+dx,dy,p0.y+dz);P.xz+=uWind*life*0.9;P.y+=life*(1.0-life)*(0.35+0.9*aS.w)*0.9;
+  vec4 wp=modelMatrix*vec4(P,1.0);vA=on*(1.0-life)*smoothstep(0.0,0.1,life);gl_Position=projectionMatrix*viewMatrix*wp;gl_PointSize=uPxScale*(0.25+0.5*aS.w)*(0.5+life)/max(gl_Position.w,1.0)*22.0;if(on<=0.02)gl_Position=vec4(3.0,3.0,3.0,1.0);}`;
+const WV_SPRAY_FS=`precision highp float;uniform vec3 uCol;varying float vA;void main(){float d=length(gl_PointCoord-0.5);if(d>0.5)discard;gl_FragColor=vec4(uCol,vA*(1.0-d*2.0)*0.7);}`;
+function wvSpray(){const n=WVS.T.spray;if(!n||!waterMesh)return null;const u=waterMesh.material.uniforms,NW=WVS.T.nTot;
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(new Float32Array(n*3),3));const a=new Float32Array(n*4);for(let i=0;i<n;i++)for(let k=0;k<4;k++)a[i*4+k]=LI_SEA_WAVES.hash(i*4+k,5);g.setAttribute('aS',new THREE.BufferAttribute(a,4));
+  const m=new THREE.ShaderMaterial({vertexShader:WV_SPRAY_VS,fragmentShader:WV_SPRAY_FS,transparent:true,depthWrite:false,defines:{NW},uniforms:{uTide:u.uTide,uH:u.uH,uW:u.uW,uW2:u.uW2,uWind:u.uWind,uWT:u.uWFT,uTgt:{value:new THREE.Vector3()},uAmt:{value:0},uPxScale:{value:1},uTT:{value:0},uCol:{value:new THREE.Vector3(.92,.95,.96)}}});
+  const pts=new THREE.Points(g,m);pts.frustumCulled=false;pts.renderOrder=6;scene.add(pts);return pts;}
+function wvSprayUpdate(){const P=WVS.spray;if(!P)return;const u=P.material.uniforms,c=WVS.cur,k=clamp((c.wsKA-.03)/.12,0,1);u.uAmt.value=clamp((c.foam+c.streak)*.8,0,1)*k*k*(3-2*k);u.uTgt.value.set(cur.tx,0,cur.tz);u.uTT.value=clock.t;u.uPxScale.value=renderer.getPixelRatio()*(renderer.domElement.clientHeight||700)/700;P.visible=u.uAmt.value>.02;}
+/* the CPU twin: the surface height (world y) above (x, z), the same damping toward the shore as the vertex stage, and the unit normal. Everything that floats reads these. */
+function wvDamp(x,z){const depth=tide-H(x,z);return .12+.88*sm(clamp((depth-.05)/1.55,0,1));}
+function wvH(x,z){if(!WVS.on)return tide;return tide+wvDamp(x,z)*LI_SEA_WAVES.height(x,z,null,WVS.params);}
+function wvN(x,z){if(!WVS.on)return [0,1,0];const n=LI_SEA_WAVES.normal(x,z,null,WVS.params),d=wvDamp(x,z);const l=Math.hypot(n[0]*d,n[1],n[2]*d)||1;return [n[0]*d/l,n[1]/l,n[2]*d/l];}
 function buildSea(){
   const nmap=makeSeaNormal();
   const mat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{uTime:U.uTime,uTide:U.uTide,uH:{value:heightTex},uN:{value:nmap},uSun:{value:sunDir},uSunCol:{value:new THREE.Vector3(3.0,1.85,1.05)},uQ:{value:QL().hiWaves},uLand:{value:LAND?1:0},uTideV:{value:0},uWake:{value:WAKE},uSeaT:{value:SEAT===null?0:SEAT},uDbg:{value:parseFloat(Q.get('seadbg')||'0')},uPix:{value:.001},uWind:{value:new THREE.Vector2(.45,-.89).normalize()},uFlow:{value:FL.tex},uK:{value:FL.K||(FL.K=makeFlowNoise())},uAxis:{value:new THREE.Vector2(FL.F?Math.cos(FL.F.axis):1,FL.F?Math.sin(FL.F.axis):0)},uB:{value:SB?sbTex():null},...(MC.on?{uMsA:{value:MC.uA},uMsB:{value:MC.uB},uMsC:{value:MC.uC}}:{})},defines:NOPOST?{NOPOST:1}:{},
@@ -1503,7 +1593,7 @@ function buildSea(){
   if(MC.on)mat.fragmentShader=msPatch(mat.fragmentShader);
   if(WXR){mat.fragmentShader=LI_WEATHER.patchSea(mat.fragmentShader);WXR.attachSea(mat);}
   if(CKON){mat.fragmentShader=ckSeaPatch(mat.fragmentShader);mat.uniforms.uCkB={value:CK.uB};mat.uniforms.uCkH={value:CK.uH};mat.uniforms.uCkZ={value:CK.uZ};mat.uniforms.uCkG={value:CK.uG};}   /* after the weather patch: it reads text the weather patch has already rewritten */
-  waterMesh=new THREE.Mesh(new THREE.CircleGeometry(TABLE_R+.4,128).rotateX(-Math.PI/2),mat);waterMesh.renderOrder=5;scene.add(waterMesh);}
+  const wvG=WAVES?wvInstall(mat):null;waterMesh=new THREE.Mesh(wvG||new THREE.CircleGeometry(TABLE_R+.4,128).rotateX(-Math.PI/2),mat);waterMesh.renderOrder=5;if(wvG)waterMesh.frustumCulled=false;scene.add(waterMesh);if(wvG){WVS.spray=wvSpray();}}
 
 function buildTable(){const wood=makeWood();
   const Ro=TABLE_R+12;const prof=[[TABLE_R,-6],[TABLE_R,RIM_TOP-.35],[TABLE_R+.35,RIM_TOP],[TABLE_R+1.3,RIM_TOP+.5],[Ro-2,RIM_TOP+.45],[Ro-.6,RIM_TOP+.1],[Ro,RIM_TOP-.9],[Ro,-4],[Ro-1,-5.2],[Ro-1,-16]].map(p=>new THREE.Vector2(p[0],p[1]));
@@ -2196,7 +2286,7 @@ function frame(now){if(stopLoop)return;requestAnimationFrame(frame);
   if(tideAuto){tideT+=dt;tide=TIDE_RANGE*.92*Math.sin(tideT*2*Math.PI/55);el.tide.value=tide;}else if(MC.on&&!MC.tideTouched){tide=MC.tide;el.tide.value=tide;}else if(CKON&&!MC.on&&!MC.tideTouched){tide=CK.c.tide.level;el.tide.value=tide;}else tide=tideManual;
   if(window.LI_STORM_TIDE)tide=window.LI_STORM_TIDE(tide);   /* the gift's storm surge raises the water (storm.js); absent = nothing changes */
   U.uTide.value=tide;U.uTime.value=clock.t;waterMesh.position.y=tide;
-  if(SEA2){const u=waterMesh.material.uniforms;u.uSeaT.value=SEAT===null?clock.t:SEAT;u.uPix.value=2*Math.tan(camera.fov*Math.PI/360)/Math.max(1,renderH());u.uQ.value=QL().hiWaves;}
+  if(SEA2){const u=waterMesh.material.uniforms;u.uSeaT.value=SEAT===null?clock.t:SEAT;u.uPix.value=2*Math.tan(camera.fov*Math.PI/360)/Math.max(1,renderH());u.uQ.value=QL().hiWaves;if(WVS.on){wvUpdate(dt);wvSprayUpdate();}}
   el.tideLbl.textContent=(tide>=0?'+':'')+tide.toFixed(2)+' m';
   if(FLOW){FL.Tcur=flowTime();if(MC.dirtyFlow){MC.dirtyFlow=false;flowTexUpdate(FL.Tcur,true);}}applyCam(dt);if(XB.cam)XB.cam(dt);animate(dt);if(LIFE_RT)LIFE_RT.frame(dt,clock.t);if(CP.rt)CP.rt.frame(clock.hold?0:dt,clock.t);if(FLOW)flowFrame(dt);if(SB)sbOverlayFrame();if(WXR){WXR.frame(dt,camera);wxChipUpdate();}
   if(CKON)ckFrame(dt);
@@ -2953,7 +3043,7 @@ function init(){
   if(Q.get('auto')==='1'){tideAuto=true;el.auto.classList.add('on');}
   requestAnimationFrame(frame);updateInfo();
   setTimeout(()=>{const b=document.getElementById('boot');b.style.opacity=0;setTimeout(()=>b.remove(),700);},300);
-  window.__li={ready:true,seed:SEED,hash:stateHash,hashStatic:()=>stateHash(true),landArea,stats:()=>({...stats,tris:sceneTris(),fps:clock.fps,quality:tierName(),renderTris:renderer.info.render.triangles,calls:renderer.info.render.calls}),
+  window.__li={ready:true,seed:SEED,sea:{force:(n,v)=>{WVS.force=n?[n,v===undefined?1:v]:null;},spray:()=>WVS.spray?{n:WVS.T.spray,visible:WVS.spray.visible}:null,on:()=>WVS.on,tier:()=>WVS.tier,name:()=>WVS.name,s:()=>WVS.s,hs:()=>WVS.on?WVS.W.hs:0,h:wvH,n:wvN,tris:()=>WVS.tris,nw:()=>WVS.on?WVS.W.length:0,failed:()=>WVS.failed,freeze:v=>{WVS.frozen=!!v;},params:()=>WVS.params,cur:()=>JSON.parse(JSON.stringify(WVS.cur||{})),waterTris:()=>waterMesh&&waterMesh.geometry.index?waterMesh.geometry.index.count/3:0},hash:stateHash,hashStatic:()=>stateHash(true),landArea,stats:()=>({...stats,tris:sceneTris(),fps:clock.fps,quality:tierName(),renderTris:renderer.info.render.triangles,calls:renderer.info.render.calls}),
     setTide:v=>{MC.tideTouched=true;tideAuto=false;tideManual=v;el.tide.value=v;},setTideDir:d=>{FL.tideDir=d>0?1:-1;},setQuality,flow:FLOW?{params:()=>JSON.parse(JSON.stringify(FL.F)),dump:()=>JSON.stringify(FL.F),at:(x,z,T)=>flowAt(x,z,T),pure:(x,z,T)=>{const o=[0,0];flowRaw(FL.F,x,z,T,o,true);return o;},time:()=>flowTime(),tideAt:flowTideAt,positions:T=>flotPositions(T),counts:flotCounts,hAt:(x,z)=>hAt(x,z),boat:()=>FL.boat,arrows:on=>{FL.arrows=on;if(!on)flowArrowClear();},meshCounts:()=>FL.meshes.map(m=>m.count),N:()=>FL.sim.N}:null,flowAt:FLOW?(x,z,t)=>flowAt(x,z,t):null,
     depthAt:SB?(x,z)=>-H(x,z):null,bathy:SB?()=>SB.bathy():null,
     seabed:SB?{params:()=>JSON.parse(JSON.stringify(SB.P)),measures:()=>{const M=SB.measures();delete M._lists;return JSON.parse(JSON.stringify(M));},lists:()=>{const M=SB.measures(),o=M._lists;return JSON.parse(JSON.stringify({sills:o.sills,landing:o.landing,hauls:o.hauls,coves:o.coves,throats:o.throats}));},

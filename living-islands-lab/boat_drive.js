@@ -89,9 +89,12 @@ function swell(x, z, t, amp) {
   return a * (Math.sin(x * .21 + z * .13 - t * 1.05) * .6 + Math.sin(x * -.11 + z * .27 - t * .73 + 1.3) * .3 + Math.sin(x * .37 - z * .19 - t * 1.6 + 2.1) * .1);
 }
 /* heave, pitch and roll of a floating boat from the swell under five points, soft capped like boat_motion.floatMotion */
-function rock(b, t, amp, caps) {
-  const sp = specOf(b), k = Object.assign({ heave: .1, angle: .06 + .08 * clamp(amp, 0, 1) }, caps || {}), c = Math.cos(b.yaw), s = -Math.sin(b.yaw), hl = sp.L * .5, hw = sp.B * .5;
-  const h = (x, z) => swell(x, z, t, amp);
+function rock(b, t, amp, caps, surf) {
+  /* surf = optional (x, z) => height of the real wave sea above still water (sea_waves.js through the page): the hull then HEAVES by exactly that and the angles use looser caps (a gale lists the boat), where the cosmetic swell below keeps the tame caps */
+  const sp = specOf(b), k = Object.assign(surf ? { heave: 1e3, angle: .25 + .3 * clamp(amp, 0, 1) } : { heave: .1, angle: .06 + .08 * clamp(amp, 0, 1) }, caps || {}), c = Math.cos(b.yaw), s = -Math.sin(b.yaw), hl = sp.L * .5, hw = sp.B * .5;
+  const h = surf || ((x, z) => swell(x, z, t, amp));
+  if (surf) { const hb = h(b.x + c * hl, b.z + s * hl), hs = h(b.x - c * hl, b.z - s * hl), hp = h(b.x - s * hw, b.z + c * hw), hq = h(b.x + s * hw, b.z - c * hw);
+    return { heave: h(b.x, b.z), pitch: k.angle * Math.tanh(Math.atan((hb - hs) / sp.L) / k.angle), roll: k.angle * Math.tanh(Math.atan((hp - hq) / sp.B) / k.angle), real: true }; }
   const hb = h(b.x + c * hl, b.z + s * hl), hs = h(b.x - c * hl, b.z - s * hl), hp = h(b.x - s * hw, b.z + c * hw), hq = h(b.x + s * hw, b.z - c * hw);
   return { heave: k.heave * Math.tanh(h(b.x, b.z) / .08), pitch: k.angle * Math.tanh(Math.atan((hb - hs) / sp.L) / k.angle), roll: k.angle * Math.tanh(Math.atan((hp - hq) / sp.B) / k.angle) };
 }
@@ -266,6 +269,7 @@ const depthAt = (x, z) => tideNow() - C.H(x, z);
 function windNow() { const m = WIND_MS[A.weatherState()]; return { x: WIND_DIR.x, z: WIND_DIR.z, speed: m === undefined ? 6 : m }; }
 function seaMood() { return clamp((windNow().speed - 4) / 16, 0, 1); }
 const RIM = () => Math.max(40, (C.tableR ? C.tableR() : 122) - 7);
+function seaSurf() { try { const s = C.li().sea; if (s && s.on()) { const t = tideNow(); return (x, z) => s.h(x, z) - t; } } catch (e) { /* no wave sea */ } return null; }
 function envNow() { const R = RIM(); return { depth: depthAt, wind: windNow(), sea: seaMood(), t: P.t, inside: (x, z) => x * x + z * z < R * R }; }
 const dayNo = () => A.dayNo();
 
@@ -707,7 +711,7 @@ function frame(dt) {
   if (rowing) { const M = globalThis.LI_BOAT_MOTION, per = 60 / clamp(18 + (Math.abs(b.u) - .8) * 16.7, 16, 30), act = (P.mode === 'drive' || P.mode === 'errand') && Math.abs(inp.throttle) > .05;
     if (M) { const st = M.oarStroke(b.sc * per, per, act ? clamp(.45 + .55 * Math.abs(b.u) / 1.7, .45, 1) : 0); P.spec.oar = st; const inW = st.inWater; if (inW && !P.wasStroke && act) P.rowCatch = true; P.wasStroke = inW; } }
   /* the rocking: the swell at five points under the hull plus the heel and trim of the drive; heave and the grounded sill */
-  const r = K.rock(b, P.t, e.sea), spd = K.specOf(b);
+  const sea = seaSurf(), r = K.rock(b, P.t, e.sea, null, sea), spd = K.specOf(b);   /* the real wave sea when the page has one (&waves=1), else the cosmetic swell */
   let y = tide + r.heave; const gy = C.H(b.x, b.z) + .08; if (gy > y) y = gy;
   P.spec.x = b.x; P.spec.z = b.z; P.spec.yaw = b.yaw; P.spec.dy = y - .18; P.spec.dpt = r.pitch + b.pitch; P.spec.drl = r.roll + b.roll;
   if (P.motor) { P.motor.visible = b.engine; P.motor.rotation.y = clamp((P.inp.steer || 0) * -.45, -.5, .5); }

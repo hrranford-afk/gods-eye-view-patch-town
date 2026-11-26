@@ -300,6 +300,9 @@ const STOPS = {
   water_in_way: { icon: 'wave', label: 'Tide in the way', say: () => 'Stopped: the tide covers the shore piles. Waiting for the water to drop.' },
   idle_nothing: { icon: 'zz', label: 'Nothing to do', say: () => 'Nothing to gather right now. Waiting for the shore to refill.' },
   stuck: { icon: 'rock', label: 'Stuck', say: () => 'Stuck on a rock. It needs a hand.' },
+  fault_battery: { icon: 'off', label: 'Flat battery', say: () => 'Flat battery. It needs a battery from the spares crate.' },
+  fault_track: { icon: 'off', label: 'Loose track', say: () => 'A loose track. It needs a track set from the spares crate.' },
+  fault_lamp: { icon: 'off', label: 'Dark lamp', say: () => 'Dark lamp eyes. It needs a lamp unit from the spares crate.' },
   switched_off: { icon: 'off', label: 'Switched off', say: () => 'Switched off. It needs a track link to start.' },
   give_way: { icon: 'wait', label: 'Letting another pass', say: () => 'Letting another robot pass.' },
   resting: { icon: 'zz', label: 'Pausing', say: () => 'Pausing a moment at the post.' }
@@ -307,7 +310,7 @@ const STOPS = {
 const STOP_CODES = Object.keys(STOPS);
 function dryFree(sim) { return sim.pl.work.some((w, i) => dryNow(sim, w) && !sim.litter[i].taken && litSite(sim, w)); }
 function stopReason(sim, r) {
-  if (r.off) return 'switched_off';
+  if (r.off) return r.fault ? 'fault_' + r.fault : 'switched_off';   /* the Gift's easy start: a carrier with a named fault (gift_day.js sets r.fault) says which part it needs */
   const st = r.state;
   if (st === ST.TASK) return r.tstall ? (r.why || 'wait_player') : null;
   if (st === ST.WORK || st === ST.DROP || st === ST.SORT) return null;
