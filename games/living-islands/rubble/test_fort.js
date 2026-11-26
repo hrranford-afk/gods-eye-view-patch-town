@@ -35,7 +35,7 @@ async function main() {
   })();
 
   /* ---------- 2. each shape settles, sleeps, and stands ---------- */
-  var settleCounts = BENCH ? [250, 1000, 2000, 4000] : [100, 400, 1000];
+  var settleCounts = BENCH ? [250, 1000, 4000] : [100, 400, 1000];
   results.numbers.settle = [];
   for (var si = 0; si < SIM.FORT.SHAPES.length; si++) for (var ci = 0; ci < settleCounts.length; ci++) {
     var sh = SIM.FORT.SHAPES[si], n = settleCounts[ci], t0 = Date.now(), ses = SIM.makeSession(R, lee, { pieces: n, seed: 1, fort: sh }), sim = ses.sim, f = sim.fort, sc = ses.score();
@@ -78,6 +78,24 @@ async function main() {
     ses.sim.dispose();
   })();
 
+  /* ---------- 4. cost per physics step on a settled castle, and how far the range was tested (Node, software only: NOT an iPad) ---------- */
+  var perfCounts = BENCH ? [250, 1000, 2000, 4000, 8000, 12000, 20000] : [250, 1000];
+  results.numbers.perf = [];
+  perfCounts.forEach(function (n) {
+    var t0 = Date.now(), ses = SIM.makeSession(R, lee, { pieces: n, seed: 1, fort: 'castle', ammoCap: 60 }), sim = ses.sim, f = sim.fort, buildMs = Date.now() - t0, i, k, a, ms, sum = 0, worst = 0, peak = 0, st;
+    /* asleep: the settled fort with nothing happening */
+    sum = 0; for (i = 0; i < 60; i++) sum += ses.step(); var sleepMs = sum / 60;
+    /* under fire: three rods at the bell, then 4 s of steps; mean, worst and the most bodies awake */
+    a = SIM.aimAt(ses.muzzle(), { x: 0, y: f.bellHome, z: lee.layout.wall.z }, SIM.KINDS.rod.speed); sum = 0; var cnt = 0;
+    for (k = 0; k < 3; k++) { ses.fire('rod', a.yaw, a.elev, 1); for (i = 0; i < 60; i++) { ms = ses.step(); sum += ms; cnt++; if (ms > worst) worst = ms; if (sim.nActive > peak) peak = sim.nActive; } }
+    for (i = 0; i < 180; i++) { ms = ses.step(); sum += ms; cnt++; if (ms > worst) worst = ms; if (sim.nActive > peak) peak = sim.nActive; }
+    sc = ses.score();
+    results.numbers.perf.push({ pieces: n, built: f.count, brickScale: f.design.scale, buildAndSettleMs: buildMs, settleSteps: f.settleSteps, driftCm: +(f.settleMax * 100).toFixed(1), settledOk: f.settledOk, msPerStepAsleep: +sleepMs.toFixed(3), msPerStepUnderFire: +(sum / cnt).toFixed(2), worstStepMs: +worst.toFixed(1), peakAwake: peak, moved: sc.moved, bellDown: sc.bellDown, rescued: sim.rescued });
+    console.log('INFO  ' + n + ' pieces (' + f.count + ' built, brick scale ' + f.design.scale + '): settle ' + f.settleSteps + ' steps (' + buildMs + ' ms), asleep ' + sleepMs.toFixed(3) + ' ms/step, under fire ' + (sum / cnt).toFixed(2) + ' ms/step (worst ' + worst.toFixed(1) + ', peak awake ' + peak + ')');
+    check('perf run ' + n + ': exact count, settled, and a rod volley ran with at most 1 piece in 1000 put back by the tunnelling guard', f.count === n && f.settledOk && sim.rescued <= Math.ceil(n / 1000), 'rescued ' + sim.rescued);
+    sim.dispose();
+  });
+  results.numbers.note = 'Node on a shared cloud CPU, one thread, software only, plain (no SIMD) Rapier. These are not iPad numbers and not any real device. The owner ran 4,000 pieces on an iPad and it ran fine; that is a report, not a measurement from this page.';
   fs.writeFileSync(path.join(__dirname, 'test_fort_results.json'), JSON.stringify(results, null, 1));
   console.log('\n' + (fails ? fails + ' FAILED' : 'ALL PASSED') + ' (' + results.checks.length + ' checks)'); process.exit(fails ? 1 : 0);
 }

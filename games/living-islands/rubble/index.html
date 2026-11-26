@@ -51,11 +51,13 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
     <div class="row" style="margin-top:6px"><select id="shape"><option value="castle">Castle</option><option value="tower">Tower</option><option value="wall">Wall</option></select><button class="btn" id="rubbleSw">Rubble field: off</button></div>
     <div class="row" style="margin-top:6px"><button class="btn big" id="buildFort" style="font-size:16px;min-width:0;flex:1">Build fort</button></div>
     <div class="row" style="margin-top:6px"><select id="tier"><option value="ipad">iPad preset</option><option value="radeon">Radeon preset</option></select></div>
-    <div id="fortInfo" style="margin-top:6px;opacity:.85;font-size:12px"></div></div>
+    <div id="fortInfo" style="margin-top:6px;opacity:.85;font-size:12px"></div>
+    <div id="tested" style="margin-top:6px;opacity:.8;font-size:11px">Tested up to: reading the measured numbers...</div></div>
   <div class="card"><label>Ground
     <select id="ground"><option value="-1">Island map (sand, wet sand, shingle, turf, rock)</option><option value="0">All dry sand</option><option value="1">All wet sand</option><option value="2">All shingle</option><option value="3">All turf</option><option value="4">All rock</option></select></label>
     <label style="margin-top:6px">Tide: <span id="tideV"></span><input id="tide" type="range" min="-110" max="110" value="0"></label>
-    <div class="row" style="margin-top:4px"><button class="btn" id="autoTide">Auto tide: off</button><button class="btn" id="shadows">Shadows: on</button></div></div>
+    <div class="row" style="margin-top:4px"><button class="btn" id="autoTide">Auto tide: off</button><button class="btn" id="shadows">Shadows: on</button></div>
+    <div class="row" style="margin-top:4px"><button class="btn" id="look">Look: Pretty</button></div></div>
   <div class="card"><div class="row"><button class="btn" id="replay">Replay slow</button><button class="btn" id="bench">Bench...</button></div>
     <div style="margin-top:6px;opacity:.85">Slow motion is only the replay: it rebuilds the same scene and plays your shots again at one quarter speed.</div></div>
   <div class="card" id="aimbox"></div>
@@ -108,6 +110,7 @@ function ammoCapFor() { return tier === 'ipad' ? 40 : 400; }
 function piecesFromSlider(v) { return LEVELS_ALL[Math.max(0, Math.min(LEVELS_ALL.length - 1, v | 0))]; }
 function sliderFromPieces(n) { var i, b = 0; for (i = 0; i < LEVELS_ALL.length; i++) if (Math.abs(LEVELS_ALL[i] - n) < Math.abs(LEVELS_ALL[b] - n)) b = i; return b; }
 var shadowsOn = Q.get('shadows') !== '0';
+var pretty = Q.get('look') !== 'plain';                /* the look: Pretty (Castle Sound's warm sky, water, textures, bell, flag, windmill) or Plain (the first look, for comparing Bench numbers). It never touches the physics. */
 
 /* ---------- three.js ---------- */
 var cvs = $('c'), renderer = new THREE.WebGLRenderer({ canvas: cvs, antialias: tier === 'radeon', powerPreference: 'high-performance' });
@@ -120,6 +123,21 @@ scene.add(new THREE.HemisphereLight(0xdff0ff, 0x8a7a5a, 0.85));
 var sun = new THREE.DirectionalLight(0xfff0d0, 1.05); sun.position.set(-14, 22, 10); sun.castShadow = shadowsOn;
 (function () { var s = sun.shadow, d = 24; s.mapSize.set(tier === 'ipad' ? 1024 : 2048, tier === 'ipad' ? 1024 : 2048); s.camera.left = -d; s.camera.right = d; s.camera.top = d; s.camera.bottom = -d; s.camera.near = 1; s.camera.far = 70; s.bias = -0.0006; s.normalBias = 0.03; })();
 scene.add(sun); scene.add(sun.target);
+var hemi = scene.children.filter(function (o) { return o.isHemisphereLight; })[0];
+/* Castle Sound's sky: a warm sunset gradient with a glow and a few soft cloud bands (its shader, moved to follow the camera) */
+var skyMat = new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false,
+  vertexShader: 'varying vec3 v;void main(){v=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+  fragmentShader: 'varying vec3 v;void main(){vec3 n=normalize(v);float a=clamp(n.y+.18,0.,1.);float s=distance(n,normalize(vec3(-.8,.2,-.6)));gl_FragColor=vec4(mix(vec3(.99,.74,.58),vec3(.34,.44,.65),smoothstep(0.,.68,a))+vec3(1.,.72,.42)*exp(-20.*s)+vec3(.10,.07,.07)*smoothstep(.68,.98,sin(29.*n.y+2.2*sin(n.x*5.3)+n.z*5.)*.65+.35*sin(55.*n.y+n.x*8.))*smoothstep(-.15,.15,n.y),1.); }' });
+var skyMesh = new THREE.Mesh(new THREE.SphereGeometry(300, 24, 14), skyMat); skyMesh.renderOrder = -10; skyMesh.frustumCulled = false; scene.add(skyMesh);
+/* textures: a mortar-lined brick skin drawn on a canvas, and Castle Sound's wood photograph for beams (tex/wood.jpg, same file as its own) */
+var brickTex = (function () {
+  var c = document.createElement('canvas'); c.width = 128; c.height = 64; var g = c.getContext('2d'), i, r = SIM.rng(5);
+  g.fillStyle = '#f2e4d0'; g.fillRect(0, 0, 128, 64);
+  for (i = 0; i < 700; i++) { g.fillStyle = r() > 0.5 ? 'rgba(120,70,40,.16)' : 'rgba(255,245,225,.22)'; g.fillRect(r() * 128, r() * 64, 1 + r() * 4, 1 + r() * 2); }
+  g.lineWidth = 6; g.strokeStyle = '#b8a48c'; g.strokeRect(1, 1, 126, 62);
+  var t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; return t;
+})();
+var woodTex = new THREE.TextureLoader().load('tex/wood.jpg'); woodTex.encoding = THREE.sRGBEncoding; woodTex.wrapS = woodTex.wrapT = THREE.RepeatWrapping;
 
 /* ground mesh from the same grid the physics uses */
 var gGeo = new THREE.BufferGeometry(), gN = site.n, gPos = new Float32Array(gN * gN * 3), gCol = new Float32Array(gN * gN * 3), gIdx = new Uint32Array((gN - 1) * (gN - 1) * 6);
@@ -153,6 +171,56 @@ function recolor(tide, mode) {
 /* sea: a flat plane at the tide level */
 var sea = new THREE.Mesh(new THREE.PlaneGeometry(400, 400).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x3d8fb3, transparent: true, opacity: 0.72, roughness: 0.25, depthWrite: false }));
 sea.renderOrder = 2; scene.add(sea);
+var seaPlain = sea.material;
+/* Castle Sound's water: moving stripes of wave, a warm glint, fading into the horizon colour (its shader, plus fog by distance and a little see-through) */
+var seaPretty = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, uniforms: { time: { value: 0 } },
+  vertexShader: 'varying vec3 p;void main(){p=(modelMatrix*vec4(position,1.)).xyz;gl_Position=projectionMatrix*viewMatrix*vec4(p,1.);}',
+  fragmentShader: 'uniform float time;varying vec3 p;void main(){float w=sin(p.z*3.1+2.8*sin(p.x*.6+time*.5)+time*1.7)+.6*sin(p.z*6.+p.x*1.1-time*2.);float glint=smoothstep(.82,1.52,w)*exp(-.05*abs(p.x+1.5+p.z*.18));vec3 c=vec3(.14,.40,.46);c+=.035*w+glint*vec3(.75,.54,.34);float d=length(p-cameraPosition);c=mix(c,vec3(.93,.76,.66),smoothstep(60.,220.,d));gl_FragColor=vec4(c,mix(.80,1.,smoothstep(40.,160.,d)));}' });
+/* a flag on a pole and a small windmill, from Castle Sound's cloth and windmill ideas (own small copies; they never touch the physics) */
+var decor = new THREE.Group(); scene.add(decor);
+var flagCloth = null, mill = null;
+(function () {
+  var wd = new THREE.MeshStandardMaterial({ color: 0x8a5a2b, roughness: 0.85 }), px = -3.1, pz = -5.3, py = site.H(px, pz), c = document.createElement('canvas'); c.width = 256; c.height = 160;
+  var g = c.getContext('2d'), r = SIM.rng(9), i; g.fillStyle = '#d8553a'; g.fillRect(0, 0, 256, 160);
+  for (i = 0; i < 40; i++) { g.fillStyle = r() < 0.5 ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.07)'; g.fillRect(0, r() * 160, 256, 2 + r() * 8); }
+  g.fillStyle = '#fff6e2'; g.beginPath(); for (i = 0; i < 10; i++) { var a = i / 10 * 6.283 - 1.571, rr = i % 2 ? 20 : 44; g.lineTo(128 + Math.cos(a) * rr, 80 + Math.sin(a) * rr); } g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(255,246,226,.85)'; g.lineWidth = 3; g.setLineDash([9, 6]); g.strokeRect(9, 9, 238, 142);
+  var ft = new THREE.CanvasTexture(c); ft.encoding = THREE.sRGBEncoding;
+  var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 1.8, 6), wd); pole.position.set(px, py + 0.9, pz); pole.castShadow = true; decor.add(pole);
+  var cg = new THREE.PlaneGeometry(0.75, 0.47, 10, 4); cg.translate(0.375, 0, 0);
+  flagCloth = new THREE.Mesh(cg, new THREE.MeshStandardMaterial({ map: ft, side: THREE.DoubleSide, roughness: 0.9 })); flagCloth.position.set(px + 0.02, py + 1.52, pz); flagCloth.castShadow = true; flagCloth.userData = { w: 0.75, base: Float32Array.from(cg.attributes.position.array) }; decor.add(flagCloth);
+  var mx = -12, mz = -12, my = site.H(mx, mz), cream = new THREE.MeshStandardMaterial({ color: 0xece0c8, roughness: 0.9, flatShading: true }), roof = new THREE.MeshStandardMaterial({ color: 0x8c4a32, roughness: 0.9, flatShading: true });
+  mill = new THREE.Group(); mill.position.set(mx, my, mz);
+  var body = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.85, 2.6, 8), cream); body.position.y = 1.3; body.castShadow = true; mill.add(body);
+  var cap = new THREE.Mesh(new THREE.ConeGeometry(0.75, 0.8, 8), roof); cap.position.y = 3.0; cap.castShadow = true; mill.add(cap);
+  var sails = new THREE.Group(); sails.position.set(0, 2.5, 0.75); mill.add(sails); mill.userData.sails = sails;
+  var hub = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), roof); sails.add(hub);
+  for (i = 0; i < 4; i++) { var arm = new THREE.Group(); arm.rotation.z = i * Math.PI / 2; var bl = new THREE.Mesh(new THREE.BoxGeometry(0.28, 1.5, 0.03), new THREE.MeshStandardMaterial({ color: 0xf4efe4, roughness: 0.9 })); bl.position.set(0.18, 0.95, 0); bl.castShadow = true; arm.add(bl); sails.add(arm); }
+  mill.rotation.y = 0.5; decor.add(mill);
+})();
+function waveCloth(o, t) {
+  var p = o.geometry.attributes.position, b = o.userData.base, w = o.userData.w, i, x, y, k;
+  for (i = 0; i < p.count; i++) { x = b[i * 3]; y = b[i * 3 + 1]; k = x / w; p.setZ(i, Math.sin(x * 11 - t * 5) * 0.03 * k * 1.6 + Math.sin(x * 5 + y * 8 - t * 3.1) * 0.012 * k); p.setY(i, y - k * k * 0.025 + Math.sin(x * 9 - t * 5 + 1) * 0.006 * k); }
+  p.needsUpdate = true; o.geometry.computeVertexNormals();
+}
+/* the look switch: sky, fog, light, sea, textures, bell shine, decor */
+var lookMats = [];
+function applyLook(on) {
+  pretty = on;
+  scene.background = on ? null : new THREE.Color(0xa9d3e4);
+  scene.fog = on ? new THREE.Fog(0xe9c2aa, 50, 170) : new THREE.Fog(0xa9d3e4, 45, 140);
+  skyMesh.visible = on; decor.visible = on;
+  hemi.color.set(on ? 0xe6e3ef : 0xdff0ff); hemi.groundColor.set(on ? 0x6a6256 : 0x8a7a5a); hemi.intensity = on ? 0.8 : 0.85;
+  sun.color.set(on ? 0xffcf9e : 0xfff0d0); sun.intensity = on ? 1.1 : 1.05; sun.position.set(on ? -16 : -14, on ? 16 : 22, on ? 2 : 10);
+  sea.material = on ? seaPretty : seaPlain;
+  Object.keys(IM || {}).forEach(function (k) {
+    var m = IM[k].material;
+    if (/^brick/.test(k)) m.map = on ? brickTex : null; else if (/^beam/.test(k)) m.map = on ? woodTex : null;
+    if (k === 'bell') { m.metalness = on ? 0.6 : 0; m.roughness = on ? 0.3 : 0.8; m.emissive.set(on ? 0x3a2a08 : 0x000000); }
+    m.needsUpdate = true;
+  });
+}
+
 
 /* ---------- instanced meshes, one per kind ---------- */
 var CAP = {}, IM = {}, free = {}, nextSlot = {};
@@ -343,6 +411,7 @@ $('tide').addEventListener('input', function () { autoTide = false; $('autoTide'
 $('autoTide').addEventListener('click', function () { autoTide = !autoTide; this.textContent = 'Auto tide: ' + (autoTide ? 'on (60 s cycle)' : 'off'); this.classList.toggle('on', autoTide); });
 $('shadows').addEventListener('click', function () { shadowsOn = !shadowsOn; renderer.shadowMap.enabled = shadowsOn; sun.castShadow = shadowsOn; this.textContent = 'Shadows: ' + (shadowsOn ? 'on' : 'off'); scene.traverse(function (o) { if (o.material) o.material.needsUpdate = true; }); });
 $('shadows').textContent = 'Shadows: ' + (shadowsOn ? 'on' : 'off');
+$('look').addEventListener('click', function () { applyLook(!pretty); this.textContent = 'Look: ' + (pretty ? 'Pretty' : 'Plain'); this.classList.toggle('on', pretty); });
 
 /* ---------- slow-motion replay (deliberate only) ---------- */
 var replaySpeed = 0.25, ff = false;
@@ -393,6 +462,7 @@ function frame(now) {
     sim = ses.sim;
     if (Math.abs(sim.tide - colTide) > 0.03 || groundMode !== colMode) recolor(sim.tide, groundMode);
     sea.position.y = sim.tide;
+    if (pretty) { var tt = now / 1000; seaPretty.uniforms.time.value = tt; skyMesh.position.copy(cam.position); waveCloth(flagCloth, tt); mill.userData.sails.rotation.z = -tt * 0.5; }
     armAnim = Math.max(0, armAnim - dt * 5); armPivot.rotation.x = aim.elev + 0.6 - armAnim * 0.9;
     drawBodies(sim, ses.replay ? acc / DT : Math.min(1, acc / DT)); placeCam();
     scoreT += dtms; if (scoreT > 250) { scoreT = 0; scoreUI(); }
@@ -430,6 +500,7 @@ function benchRun() {
     L.push('page: rubble/index.html   three r' + THREE.REVISION + '   rapier 0.21.0 compat (plain, no SIMD)');
     L.push('device: ' + navigator.userAgent); L.push('screen ' + innerWidth + 'x' + innerHeight + ' @' + (window.devicePixelRatio || 1) + '  cores ' + (navigator.hardwareConcurrency || '?') + '  tier ' + tier + '  shadows ' + (shadowsOn ? 'on' : 'off'));
     L.push('gpu: ' + gpuName());
+    L.push('look: ' + (pretty ? 'Pretty' : 'Plain') + '   (Pretty adds a sky shader, a water shader, brick and wood textures, a flag and a windmill; physics is identical)');
     L.push('ground: ' + siteNote + '; mode ' + (groundMode < 0 ? 'island map' : TR.GROUND[groundMode].id));
     L.push('replay code (250 loose pieces, fixed volley): ' + SIM.determinismCode(RAPIER, site) + '   fort code (250-piece castle, fixed volley): ' + SIM.fortCode(RAPIER, site) + '   (Node gives the same: see test_results.json and test_fort_results.json)');
     L.push('stop rule: frame over ' + KNEE_MS + ' ms for ' + KNEE_N + ' frames in a row');
@@ -481,12 +552,19 @@ $('benchCopy').addEventListener('click', function () {
 });
 
 /* ---------- start ---------- */
+/* the range, only from what was measured: Node results written by test_fort.js --bench (software, one cloud core: NOT iPad numbers) */
+fetch('test_fort_results.json').then(function (r) { return r.json(); }).then(function (d) {
+  var pf = (d.numbers && d.numbers.perf) || [], ok = pf.filter(function (r) { return r.settledOk && r.built === r.pieces; }), top = ok.length ? ok[ok.length - 1].pieces : 0, r4 = pf.filter(function (r) { return r.pieces === 4000; })[0];
+  $('tested').textContent = 'Tested up to: ' + (top ? top + ' pieces settle and sleep' : 'nothing yet') + ' in Node, software only, one cloud core' + (r4 ? ' (4000: ' + r4.msPerStepAsleep + ' ms/step asleep, ' + r4.msPerStepUnderFire + ' ms/step while awake after a hit)' : '') +
+    '. These are not iPad numbers. iPad preset: the owner ran 4,000 pieces fine (a report, not measured here). Radeon preset: not measured. Bench on your device writes the real number.';
+}).catch(function () { $('tested').textContent = 'Tested up to: no measured numbers found next to this page. Run Bench on your device.'; });
 var start = +(Q.get('pieces') || 0) || 400;
 setTideUI(+(Q.get('tide') || 0)); syncAmmo();
 $('pieces').value = sliderFromPieces(start); $('shape').value = shape; if (rubble) { $('rubbleSw').textContent = 'Rubble field: on'; $('rubbleSw').classList.add('on'); }
 await build(start); setPiecesLabel();
+applyLook(pretty); $('look').textContent = 'Look: ' + (pretty ? 'Pretty' : 'Plain'); $('look').classList.toggle('on', pretty);
 recolor(tideNow, groundMode); placeCam(); requestAnimationFrame(frame);
-window.__rubble = { orb: orb, cam: cam, get ses() { return ses; }, site: site, THREE: THREE, P: P, build: build, fire: function (k, n) { ammoKind = k; for (var i = 0; i < (n || 1); i++) fireNow(); }, aim: aim, aimUpdate: aimUpdate, setAmmo: function (k) { ammoKind = k; syncAmmo(); aimUpdate(); }, perfText: perfText, renderer: renderer, benchRun: benchRun, tier: function () { return tier; } };
+window.__rubble = { orb: orb, cam: cam, get ses() { return ses; }, site: site, THREE: THREE, P: P, build: build, fire: function (k, n) { ammoKind = k; for (var i = 0; i < (n || 1); i++) fireNow(); }, aim: aim, aimUpdate: aimUpdate, setAmmo: function (k) { ammoKind = k; syncAmmo(); aimUpdate(); }, perfText: perfText, renderer: renderer, applyLook: applyLook, look: function () { return pretty; }, benchRun: benchRun, tier: function () { return tier; } };
 })();
 </script>
 </body></html>

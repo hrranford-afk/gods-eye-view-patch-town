@@ -1,5 +1,5 @@
 {
- "when": "2026-11-26T08:06:24.546Z",
+ "when": "2026-11-26T08:45:56.413Z",
  "results": [
   {
    "name": "page loads the island ground (not the procedural stand-in)",
@@ -39,7 +39,7 @@
   {
    "name": "the bell comes down to big rods and the page says Bell down, with moved, standing and shots",
    "ok": true,
-   "detail": "Bell down! (fell 69 cm) | pieces moved 10   standing 240   shots 8"
+   "detail": "Bell down! (fell 67 cm) | pieces moved 11   standing 239   shots 8"
   },
   {
    "name": "Rebuild: the same fort is back, 250 pieces, bell up, score back to zero",
@@ -64,7 +64,22 @@
   {
    "name": "iPad preset builds exactly 4000 fort pieces",
    "ok": true,
-   "detail": "{\"n\":4000,\"calls\":7,\"tris\":61094,\"info\":\"castle: 4000 pieces exactly (asked 4000), half size bricks, 0.9 m tall. Settled in 140 steps, drift 2.3 cm.\"}"
+   "detail": "{\"n\":4000,\"calls\":10,\"tris\":61822,\"info\":\"castle: 4000 pieces exactly (asked 4000), half size bricks, 0.9 m tall. Settled in 140 steps, drift 2.3 cm.\"}"
+  },
+  {
+   "name": "the look defaults to Pretty, toggles to Plain and back, and the physics hash is unchanged by it",
+   "ok": true,
+   "detail": "{\"defaultPretty\":true,\"pretty\":{\"tris\":61822,\"calls\":10},\"plain\":{\"tris\":61094,\"calls\":7},\"hashSame\":true}"
+  },
+  {
+   "name": "iPad 4000 pieces stays within a sane budget in both looks (under 200,000 triangles and 40 draw calls)",
+   "ok": true,
+   "detail": "pretty 61822 tris / 10 calls; plain 61094 tris / 7 calls"
+  },
+  {
+   "name": "the page states the tested range from measured numbers and says they are not iPad numbers",
+   "ok": true,
+   "detail": "Tested up to: 20000 pieces settle and sleep in Node, software only, one cloud core (4000: 1.261 ms/step asleep, 51.79 ms/step while awake after a hit). These ar"
   },
   {
    "name": "replay started after pressing Replay slow (it may already be over on a slow machine)",
@@ -77,9 +92,9 @@
    "detail": "1b438ab7 before, 1b438ab7 after, at step 42"
   },
   {
-   "name": "bench ran every level and wrote a report with a knee line",
+   "name": "bench ran every level and wrote a report with a knee line and the highest level reached",
    "ok": true,
-   "detail": "knee (30 fps or better: avg 33 ms or less, p95 50 ms or less) up to: none of the levels | ran every level | WARNING: this is SOFTWARE graphics: the frame times say nothing about a real GPU."
+   "detail": "knee (30 fps or better: avg 33 ms or less, p95 50 ms or less) up to: 52 pieces | ran every level | WARNING: this is SOFTWARE graphics: the frame times say nothing about a real GPU."
   },
   {
    "name": "the knee finder stops by itself when frames are slow (software GL trips the 100 ms rule)",

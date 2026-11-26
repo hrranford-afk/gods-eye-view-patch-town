@@ -1,18 +1,19 @@
-RUBBLE bench report  2026-11-26T08:06:02.047Z
+RUBBLE bench report  2026-11-26T08:45:35.260Z
 page: rubble/index.html   three r128   rapier 0.21.0 compat (plain, no SIMD)
 device: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36
 screen 1180x760 @1  cores 4  tier radeon  shadows on
 gpu: ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)
+look: Pretty   (Pretty adds a sky shader, a water shader, brick and wood textures, a flag and a windmill; physics is identical)
 ground: island seed 9001, lee beach: real heights and ground classes + a stand-in sculpt (gully, hollow, berm, rocks, pad); mode island map
 replay code (250 loose pieces, fixed volley): 8ab9af4f   fort code (250-piece castle, fixed volley): 1c1238b8   (Node gives the same: see test_results.json and test_fort_results.json)
 stop rule: frame over 100000 ms for 5 frames in a row
 
 pieces  built_ms  frame_avg  frame_p95  frame_max  fps  phys_ms/frame  steps/frame  awake_peak  tris  calls  rescued
-    53        16      263.9     2966.6     2966.6    4           0.95          1.3          13  15794     13        0
-   131         8      140.3      233.4      233.4    7           0.72          3.0          11  16366     13        0
+    52         9       16.7       16.8       16.8   60           0.32          1.0          12  16354     16        0
+   131         5      148.6      283.3      283.3    7           0.92          3.0          29  17094     16        0
 
-smooth (about 60 fps: avg 18 ms or less, p95 24 ms or less) up to: none of the levels
-knee (30 fps or better: avg 33 ms or less, p95 50 ms or less) up to: none of the levels
+smooth (about 60 fps: avg 18 ms or less, p95 24 ms or less) up to: 52 pieces
+knee (30 fps or better: avg 33 ms or less, p95 50 ms or less) up to: 52 pieces
 highest level reached: 120 pieces (frame rule not tripped); the top level of the list ran
 ran every level
 note: the pieces are one fort (castle, bricks, beams and a bell, counted exactly); the scripted volley fires rods, coconuts, marbles and acorns at it.

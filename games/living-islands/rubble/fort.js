@@ -141,7 +141,8 @@
     ex = extents(B.p); need = n - 1 - B.p.length;
     if (need > 0) { footing(B, need, ex.x / SXZ, ex.z / SXZ); }
     var ex2 = extents(B.p);
-    return { B: B, p: p, top: top, trimmed: trimmed, ex: ex2, fits: ex2.x <= REACHX && ex2.z <= REACHZ, sc: sc };
+    var fc = 0; for (i = 0; i < B.p.length; i++) if (B.p[i].g === 2 && B.p[i].c > fc) fc = B.p[i].c;
+    return { B: B, p: p, top: top, trimmed: trimmed, ex: ex2, fits: ex2.x <= REACHX && ex2.z <= REACHZ && fc <= 2, sc: sc, footLayers: fc + 1 };
   }
 
   /* the whole design. site gives the ground. Returns {pieces, count, params, baseY, spread, bell, ...}. The first brick scale whose footing stays on the pad is used. */
@@ -160,7 +161,7 @@
     bell = { k: 'bell', x: cx, y: baseY + BH * SY * A.top + BELL_HH + 0.0008, z: cz, a: 0, g: 0 };
     pieces.push(bell);
     return { pieces: pieces, count: pieces.length, shape: shape, scale: A.sc, params: A.p, baseY: baseY, spread: gmax - gmin, bell: bell, courses: A.top, trimmed: A.trimmed, half: A.ex, cx: cx, cz: cz,
-      height: BH * SY * A.top + 0.2, onPad: A.fits, tight: !!tight };
+      height: BH * SY * A.top + 0.2, onPad: A.fits, footLayers: A.footLayers, tight: !!tight };
   }
 
   var API = { design: design, BELL_HH: BELL_HH, SHAPES: ['wall', 'tower', 'castle'] };

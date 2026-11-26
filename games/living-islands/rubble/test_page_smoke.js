@@ -75,6 +75,17 @@ async function main() {
   await page.click('#buildFort'); await page.waitForFunction('window.__rubble.ses.sim.bodies.length === 4000 && !window.__rubble.ses.settling', null, { timeout: 240000 }); await settle(2500);
   var big = await page.evaluate(function () { return { n: window.__rubble.ses.sim.bodies.length, calls: window.__rubble.renderer.info.render.calls, tris: window.__rubble.renderer.info.render.triangles, info: document.getElementById('fortInfo').textContent }; });
   check('iPad preset builds exactly 4000 fort pieces', big.n === 4000, JSON.stringify(big)); await page.screenshot({ path: path.join(shots, 'rubble-5-ipad-4000.png') });
+  /* the look: Pretty (default) against Plain at 4000 pieces: triangles and draw calls, and the physics does not change */
+  var lk = await page.evaluate(async function () {
+    var r = window.__rubble, h0 = r.ses.sim.hash(), out = {}, wait = function (ms) { return new Promise(function (x) { setTimeout(x, ms); }); };
+    out.defaultPretty = r.look(); await wait(900); out.pretty = { tris: r.renderer.info.render.triangles, calls: r.renderer.info.render.calls };
+    r.applyLook(false); await wait(900); out.plain = { tris: r.renderer.info.render.triangles, calls: r.renderer.info.render.calls };
+    r.applyLook(true); await wait(600); out.hashSame = r.ses.sim.hash() === h0; return out;
+  });
+  check('the look defaults to Pretty, toggles to Plain and back, and the physics hash is unchanged by it', lk.defaultPretty && lk.hashSame, JSON.stringify(lk));
+  check('iPad 4000 pieces stays within a sane budget in both looks (under 200,000 triangles and 40 draw calls)', lk.pretty.tris < 200000 && lk.pretty.calls < 40 && lk.plain.tris < 200000, 'pretty ' + lk.pretty.tris + ' tris / ' + lk.pretty.calls + ' calls; plain ' + lk.plain.tris + ' tris / ' + lk.plain.calls + ' calls');
+  var tn = await page.evaluate(function () { return document.getElementById('tested').textContent; });
+  check('the page states the tested range from measured numbers and says they are not iPad numbers', /Tested up to: \d+ pieces/.test(tn) && /not iPad numbers/.test(tn), tn.slice(0, 160));
   /* 6. replay */
   await page.evaluate(function () { var p = document.getElementById('pieces'); p.value = 0; p.dispatchEvent(new Event('input')); }); await page.click('#buildFort'); await page.waitForFunction('window.__rubble.ses.sim.bodies.length === 40 && !window.__rubble.ses.settling', null, { timeout: 240000 }); await settle(1500);
   await page.evaluate(function () { var r = window.__rubble; r.fire('rod', 2); r.fire('coconut', 2); }); await settle(3500);
@@ -89,7 +100,7 @@ async function main() {
   await page.click('#bench'); await page.click('#benchStart');
   await page.waitForFunction('window.__benchReport', null, { timeout: 240000 });
   var rep = await page.evaluate(function () { return window.__benchReport; });
-  check('bench ran every level and wrote a report with a knee line', /knee \(30 fps/.test(rep) && /ran every level/.test(rep) && /SOFTWARE/.test(rep), rep.split('\n').filter(function (l) { return /knee|ran every|SOFTWARE/.test(l); }).join(' | '));
+  check('bench ran every level and wrote a report with a knee line and the highest level reached', /knee \(30 fps/.test(rep) && /ran every level/.test(rep) && /SOFTWARE/.test(rep) && /highest level reached: \d+ pieces/.test(rep), rep.split('\n').filter(function (l) { return /knee|ran every|SOFTWARE/.test(l); }).join(' | '));
   await page.screenshot({ path: path.join(shots, 'rubble-9-bench-report.png') });
   fs.writeFileSync(path.join(__dirname, 'shots', 'bench_report_software_gl.txt'), rep);
   /* 8. the knee finder stops by itself: default rule (100 ms for 5 frames) on software GL must trip at the first levels */
