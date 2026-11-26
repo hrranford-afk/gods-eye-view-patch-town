@@ -486,7 +486,7 @@ setTideUI(+(Q.get('tide') || 0)); syncAmmo();
 $('pieces').value = sliderFromPieces(start); $('shape').value = shape; if (rubble) { $('rubbleSw').textContent = 'Rubble field: on'; $('rubbleSw').classList.add('on'); }
 await build(start); setPiecesLabel();
 recolor(tideNow, groundMode); placeCam(); requestAnimationFrame(frame);
-window.__rubble = { get ses() { return ses; }, site: site, THREE: THREE, P: P, build: build, fire: function (k, n) { ammoKind = k; for (var i = 0; i < (n || 1); i++) fireNow(); }, aim: aim, aimUpdate: aimUpdate, setAmmo: function (k) { ammoKind = k; syncAmmo(); aimUpdate(); }, perfText: perfText, renderer: renderer, benchRun: benchRun, tier: function () { return tier; } };
+window.__rubble = { orb: orb, cam: cam, get ses() { return ses; }, site: site, THREE: THREE, P: P, build: build, fire: function (k, n) { ammoKind = k; for (var i = 0; i < (n || 1); i++) fireNow(); }, aim: aim, aimUpdate: aimUpdate, setAmmo: function (k) { ammoKind = k; syncAmmo(); aimUpdate(); }, perfText: perfText, renderer: renderer, benchRun: benchRun, tier: function () { return tier; } };
 })();
 </script>
 </body></html>

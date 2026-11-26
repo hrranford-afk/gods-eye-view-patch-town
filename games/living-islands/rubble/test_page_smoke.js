@@ -23,12 +23,35 @@ async function main() {
   async function settle(ms) { await page.waitForTimeout(ms); }
   /* 1. load with the island ground */
   await page.goto(base + '?tier=radeon&pieces=250', { waitUntil: 'load' }); await ready();
-  var info = await page.evaluate(function () { var r = window.__rubble; return { pieces: r.ses.sim.bodies.length, note: document.getElementById('siteNote').textContent, proc: !!r.site.procedural, code: window.RSim.determinismCode(window.__rubble.ses.R, r.site), calls: r.renderer.info.render.calls }; });
+  var info = await page.evaluate(function () { var r = window.__rubble; return { pieces: r.ses.sim.bodies.length, note: document.getElementById('siteNote').textContent, proc: !!r.site.procedural, code: window.RSim.determinismCode(window.__rubble.ses.R, r.site), fcode: window.RSim.fortCode(window.__rubble.ses.R, r.site), fort: r.ses.sim.fort ? r.ses.sim.fort.count : 0, calls: r.renderer.info.render.calls }; });
   check('page loads the island ground (not the procedural stand-in)', !info.proc && /seed 9001/.test(info.note), info.note);
-  check('page builds about 250 pieces', info.pieces > 220 && info.pieces < 260, info.pieces + ' bodies');
+  check('page builds exactly 250 pieces (one castle, bricks, beams, one bell)', info.pieces === 250 && info.fort === 250, info.pieces + ' bodies, fort ' + info.fort);
   var nodeCode = JSON.parse(fs.readFileSync(path.join(__dirname, 'test_results.json'), 'utf8')).numbers.determinismCode;
   check('the page in Chromium gives the same replay code as Node', info.code === nodeCode, 'page ' + info.code + ', node ' + nodeCode);
+  var fortCode = JSON.parse(fs.readFileSync(path.join(__dirname, 'test_fort_results.json'), 'utf8')).numbers.fortCode;
+  check('the page in Chromium gives the same FORT replay code as Node', info.fcode === fortCode, 'page ' + info.fcode + ', node ' + fortCode);
   await settle(1500); await page.screenshot({ path: path.join(shots, 'rubble-1-start.png') });
+  /* 1b. the camera frames the fort by default; Big rod and Burst work with no menu; the bell rule; Rebuild */
+  var fr = await page.evaluate(function () { var r = window.__rubble, f = r.ses.sim.fort, d = f.design, v = new r.THREE.Vector3(d.cx, d.baseY + d.height * 0.5, d.cz).project(r.cam); return { x: v.x, y: v.y, z: v.z, dist: r.orb.dist }; });
+  check('the camera frames the fort by default (fort centre near the middle of the screen, in front of the camera)', Math.abs(fr.x) < 0.25 && Math.abs(fr.y) < 0.45 && fr.z < 1, JSON.stringify(fr));
+  var ev0 = await page.evaluate(function () { return window.__rubble.ses.events.length; });
+  await page.click('#bigrod'); await settle(300);
+  var br = await page.evaluate(function () { var e = window.__rubble.ses.events; return { n: e.length, k: e[e.length - 1] && e[e.length - 1].k }; });
+  check('Big rod: one tap fires a rod with no menu', br.n === ev0 + 1 && br.k === 'rod', JSON.stringify(br));
+  await page.evaluate(function () { window.__rubble.setAmmo('marble'); }); var ev1 = br.n;
+  await page.click('#burst'); await settle(2500);
+  var bu = await page.evaluate(function () { return window.__rubble.ses.events.length; });
+  check('Burst: one tap fires a quick run of the chosen ammo (at least 4 marbles)', bu >= ev1 + 4, (bu - ev1) + ' shots');
+  var hashFresh = null;
+  for (var q = 0; q < 14; q++) { var down = await page.evaluate(function () { return window.__rubble.ses.bellDown; }); if (down) break; await page.click('#bigrod'); await settle(1800); }
+  await settle(1000);
+  var sc = await page.evaluate(function () { var s = window.__rubble.ses.score(); return { sc: s, text: document.getElementById('score').innerText }; });
+  check('the bell comes down to big rods and the page says Bell down, with moved, standing and shots', sc.sc.bellDown && /Bell down/.test(sc.text) && /moved/.test(sc.text) && /standing/.test(sc.text) && sc.sc.shots >= 3, sc.text.replace(/\n/g, ' | '));
+  await page.screenshot({ path: path.join(shots, 'rubble-1b-bell-down.png') });
+  await page.click('#rebuild'); await page.waitForFunction('/Ready/.test(document.getElementById("status").textContent)', null, { timeout: 120000 }); await settle(2500);
+  var rb = await page.evaluate(function () { var s = window.__rubble.ses.score(); return { sc: s, h: window.__rubble.ses.sim.hash(), n: window.__rubble.ses.sim.bodies.length }; });
+  check('Rebuild: the same fort is back, 250 pieces, bell up, score back to zero', rb.n === 250 && rb.sc.moved === 0 && !rb.sc.bellDown && rb.sc.shots === 0, JSON.stringify(rb.sc));
+  await page.evaluate(function () { window.__rubble.setAmmo('marble'); });
   /* 2. every ammo, three shots each, then look */
   var kinds = ['acorn', 'marble', 'coconut', 'lid', 'float', 'bottle', 'rod'];
   for (var i = 0; i < kinds.length; i++) { await page.evaluate(function (k) { window.__rubble.setAmmo(k); window.__rubble.fire(k, k === 'acorn' ? 8 : 1); }, kinds[i]); await settle(500); }
@@ -46,18 +69,14 @@ async function main() {
   check('ground override and tide reach the physics (all rock, tide +0.80)', g.mode === 4 && Math.abs(g.tide - 0.8) < 0.01 && g.g === 4, JSON.stringify(g));
   await page.screenshot({ path: path.join(shots, 'rubble-4-rock-hightide.png') });
   await page.selectOption('#ground', '-1');
-  /* 5. pieces slider on the iPad tier cap */
+  /* 5. the iPad preset is not a cap any more: 4,000 pieces build on it */
   await page.selectOption('#tier', 'ipad'); await settle(1500);
-  var tcap = await page.evaluate(function () { var s = document.getElementById('piecesV').textContent; return s; }); check('iPad tier shows a cap of 250', /250/.test(tcap), tcap);
-  await page.evaluate(function () { var p = document.getElementById('pieces'); p.value = 100; p.dispatchEvent(new Event('change')); }); await settle(4000);
-  var np = await page.evaluate(function () { return window.__rubble.ses.sim.bodies.length; }); check('iPad tier at full slider builds about 250 pieces (no more)', np > 200 && np <= 260, np + ' bodies');
-  await page.screenshot({ path: path.join(shots, 'rubble-5-ipad-tier.png') });
-  await page.selectOption('#tier', 'radeon'); await settle(1000);
-  await page.evaluate(function () { var p = document.getElementById('pieces'); p.value = 100; p.dispatchEvent(new Event('change')); }); await page.waitForFunction('window.__rubble.ses.sim.bodies.length > 3000', null, { timeout: 180000 }); await settle(2500);
-  var big = await page.evaluate(function () { return { n: window.__rubble.ses.sim.bodies.length, calls: window.__rubble.renderer.info.render.calls, tris: window.__rubble.renderer.info.render.triangles }; });
-  check('Radeon tier at full slider builds about 4000 pieces', big.n > 3500, JSON.stringify(big)); await page.screenshot({ path: path.join(shots, 'rubble-6-radeon-4000.png') });
+  var tcap = await page.evaluate(function () { var p = document.getElementById('pieces'); p.value = 11; p.dispatchEvent(new Event('input')); return document.getElementById('piecesV').textContent; }); check('the slider offers 4000 on the iPad preset', /^4000/.test(tcap), tcap);
+  await page.click('#buildFort'); await page.waitForFunction('window.__rubble.ses.sim.bodies.length === 4000 && !window.__rubble.ses.settling', null, { timeout: 240000 }); await settle(2500);
+  var big = await page.evaluate(function () { return { n: window.__rubble.ses.sim.bodies.length, calls: window.__rubble.renderer.info.render.calls, tris: window.__rubble.renderer.info.render.triangles, info: document.getElementById('fortInfo').textContent }; });
+  check('iPad preset builds exactly 4000 fort pieces', big.n === 4000, JSON.stringify(big)); await page.screenshot({ path: path.join(shots, 'rubble-5-ipad-4000.png') });
   /* 6. replay */
-  await page.evaluate(function () { var p = document.getElementById('pieces'); p.value = 40; p.dispatchEvent(new Event('change')); }); await settle(3000);
+  await page.evaluate(function () { var p = document.getElementById('pieces'); p.value = 0; p.dispatchEvent(new Event('input')); }); await page.click('#buildFort'); await page.waitForFunction('window.__rubble.ses.sim.bodies.length === 40 && !window.__rubble.ses.settling', null, { timeout: 240000 }); await settle(1500);
   await page.evaluate(function () { var r = window.__rubble; r.fire('rod', 2); r.fire('coconut', 2); }); await settle(3500);
   await page.click('#replay'); await settle(1200); await page.screenshot({ path: path.join(shots, 'rubble-7-replay.png') });
   var inRep = await page.evaluate(function () { var s = window.__rubble.ses; return !!s.replay || !!s.lastReplay; }); check('replay started after pressing Replay slow (it may already be over on a slow machine)', inRep, '');
