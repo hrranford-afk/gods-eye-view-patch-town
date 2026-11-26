@@ -9,7 +9,7 @@ Eight frames for the 90 second opening, a camera plan, a colour list and a sea a
 - Frame 08: the player's gloved hands fit the battery. OK.
 
 ## Things in the pictures our game does not do yet (decisions needed)
-1. A PERMANENT WHIRLPOOL in open water between the four islands, in every frame including the calm ones (02, 03, 06, 07, 08). Today the swirl exists only in storms. ChatGPT left its origin 'an open story question'. OWNER DECISION NEEDED: permanent current, or storm-only.
+1. A WHIRLPOOL in open water between the four islands in every frame. OWNER DECIDED (26 Nov): NOT permanent. It belongs to the legendary Great Storm only. Frames 01, 02, 03 and 08 need a re-render without it; 06 and 07 keep a weak dying swirl; 04 and 05 keep it.
 2. The hulk is already grounded at the camp island in frames 06 and 07 (after the storm), as in our plan.
 3. Detail level: rope-bound raft forming, rain, lightning, spray, wet reflections, light shafts: all far beyond the iPad tier. Use as mood and layout, not as a pixel target.
 4. Four stock bays (planks, rope, glass, metal) in frame 03 match what we built.
