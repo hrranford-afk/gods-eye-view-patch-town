@@ -1,0 +1,52 @@
+{
+ "when": "2026-11-26T14:28:07.857Z",
+ "node": "v22.22.0",
+ "checks": [
+  {
+   "name": "the big rod is now a Bolt: label Bolt (heavy, flies point first), thrown along its velocity with a spin about its own axis (6 rad/s), drag and a weathervane",
+   "ok": true,
+   "detail": "{\"drag\":0.002,\"stab\":24,\"adamp\":12}"
+  },
+  {
+   "name": "B1: over 200 scripted launches (distances 6 to 15 m, 4 powers, several angles) the bolt's axis stays within 10 degrees of its velocity until first contact (worst 6.95 deg, 200 touched something)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "for comparison: without the weathervane the same launches tumble (worst angle 165 deg), so the test can tell the two apart",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "B1: 4 bolts, each at a fresh 3000-piece Grand fort, aimed at the gate bell: the last point before first contact is within 0.35 m of the aim point sideways and up/down (worst 0.24 m; the aim allows for the drag, the random spread is 0.01 rad) and each one moved bricks",
+   "ok": true,
+   "detail": "[0.24,0.24,0.24,0.24]"
+  },
+  {
+   "name": "B1: the bolt flight is deterministic (the same six launches give the same hash twice: 1bdb097b)",
+   "ok": true,
+   "detail": "1bdb097b / 1bdb097b"
+  }
+ ],
+ "numbers": {
+  "bolt200": {
+   "launches": 200,
+   "worstAngleDeg": 6.95,
+   "touched": 200,
+   "meanFlightSteps": 63
+  },
+  "oldRodWorstDeg": 164.6,
+  "gate": {
+   "launches": 4,
+   "worstMissM": 0.24,
+   "missesM": [
+    0.24,
+    0.24,
+    0.24,
+    0.24
+   ],
+   "hitsThatMovedBricks": 4,
+   "ms": 32471
+  }
+ }
+}

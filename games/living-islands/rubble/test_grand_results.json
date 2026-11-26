@@ -1,5 +1,5 @@
 {
- "when": "2026-11-26T10:00:20.081Z",
+ "when": "2026-11-26T14:39:58.745Z",
  "node": "v22.22.0",
  "checks": [
   {
@@ -83,14 +83,14 @@
    "detail": "{\"moved\":0,\"bells\":6,\"down\":0}"
   },
   {
-   "name": "grand 2000: a big rod aimed at the gate drops the gatehouse bell (after 3 rods; Bells down: 1 of 6)",
+   "name": "grand 2000: a big rod aimed at the gate drops the gatehouse bell (after 1 rod; Bells down: 1 of 6)",
    "ok": true,
-   "detail": "{\"flags\":[false,true,false,false,false,false],\"moved\":7,\"rods\":3}"
+   "detail": "{\"flags\":[false,true,false,false,false,false],\"moved\":4,\"rods\":1}"
   },
   {
    "name": "grand 2000: the replay code works on this fort (same shots again, same hash at the same step)",
    "ok": true,
-   "detail": "{\"ok\":true,\"expected\":\"80af3589\",\"got\":\"80af3589\",\"steps\":510}"
+   "detail": "{\"ok\":true,\"expected\":\"75c7d078\",\"got\":\"75c7d078\",\"steps\":330}"
   },
   {
    "name": "grand 5000: 5000 bodies built (exact) and 5000 in the world",
@@ -108,14 +108,14 @@
    "detail": "{\"moved\":0,\"bells\":6,\"down\":0}"
   },
   {
-   "name": "grand 5000: a big rod aimed at the gate drops the gatehouse bell (after 3 rods; Bells down: 1 of 6)",
+   "name": "grand 5000: a big rod aimed at the gate drops the gatehouse bell (after 1 rod; Bells down: 1 of 6)",
    "ok": true,
-   "detail": "{\"flags\":[false,true,false,false,false,false],\"moved\":16,\"rods\":3}"
+   "detail": "{\"flags\":[false,true,false,false,false,false],\"moved\":1,\"rods\":1}"
   },
   {
    "name": "grand 5000: the replay code works on this fort (same shots again, same hash at the same step)",
    "ok": true,
-   "detail": "{\"ok\":true,\"expected\":\"7c480db5\",\"got\":\"7c480db5\",\"steps\":510}"
+   "detail": "{\"ok\":true,\"expected\":\"63cb64d4\",\"got\":\"63cb64d4\",\"steps\":330}"
   },
   {
    "name": "grand 10000: 10000 bodies built (exact) and 10000 in the world",
@@ -133,14 +133,14 @@
    "detail": "{\"moved\":0,\"bells\":6,\"down\":0}"
   },
   {
-   "name": "grand 10000: a big rod aimed at the gate drops the gatehouse bell (after 3 rods; Bells down: 1 of 6)",
+   "name": "grand 10000: a big rod aimed at the gate drops the gatehouse bell (after 1 rod; Bells down: 1 of 6)",
    "ok": true,
-   "detail": "{\"flags\":[false,true,false,false,false,false],\"moved\":9,\"rods\":3}"
+   "detail": "{\"flags\":[false,true,false,false,false,false],\"moved\":3,\"rods\":1}"
   },
   {
    "name": "grand 10000: the replay code works on this fort (same shots again, same hash at the same step)",
    "ok": true,
-   "detail": "{\"ok\":true,\"expected\":\"003db97f\",\"got\":\"003db97f\",\"steps\":510}"
+   "detail": "{\"ok\":true,\"expected\":\"5c157d1d\",\"got\":\"5c157d1d\",\"steps\":330}"
   },
   {
    "name": "grand 20000: 20000 bodies built (exact) and 20000 in the world",
@@ -158,14 +158,14 @@
    "detail": "{\"moved\":0,\"bells\":6,\"down\":0}"
   },
   {
-   "name": "grand 20000: a big rod aimed at the gate drops the gatehouse bell (after 3 rods; Bells down: 1 of 6)",
+   "name": "grand 20000: a big rod aimed at the gate drops the gatehouse bell (after 1 rod; Bells down: 1 of 6)",
    "ok": true,
-   "detail": "{\"flags\":[false,true,false,false,false,false],\"moved\":4,\"rods\":3}"
+   "detail": "{\"flags\":[false,true,false,false,false,false],\"moved\":2,\"rods\":1}"
   },
   {
    "name": "grand 20000: the replay code works on this fort (same shots again, same hash at the same step)",
    "ok": true,
-   "detail": "{\"ok\":true,\"expected\":\"b8abf1c9\",\"got\":\"b8abf1c9\",\"steps\":510}"
+   "detail": "{\"ok\":true,\"expected\":\"0f337b1b\",\"got\":\"0f337b1b\",\"steps\":330}"
   },
   {
    "name": "grand 1700 seed 2: exact, settled, asleep, nothing moved, all bells up",
@@ -183,17 +183,7 @@
    "detail": "drift 10.4 cm"
   },
   {
-   "name": "grand replay code (3000-piece fort, fixed volley at the gate) is repeatable: 33227fdb",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "name": "keep 3 modules at the foot stands at 15 courses (the Grand fort uses up to 24)",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "name": "keep 3 modules at the foot stands at 20 courses (the Grand fort uses up to 24)",
+   "name": "grand replay code (3000-piece fort, fixed volley at the gate) is repeatable: 1f2ad7b4",
    "ok": true,
    "detail": ""
   },
@@ -203,82 +193,12 @@
    "detail": ""
   },
   {
-   "name": "keep 3 modules at the foot stands at 25 courses (the Grand fort uses up to 24)",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "name": "keep 3 modules at the foot stands at 30 courses (the Grand fort uses up to 24)",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "name": "keep 3 modules at the foot stands at 35 courses (the Grand fort uses up to 24)",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "name": "keep 5 modules at the foot stands at 24 courses (the Grand fort uses up to 30)",
-   "ok": true,
-   "detail": ""
-  },
-  {
    "name": "keep 5 modules at the foot stands at 30 courses (the Grand fort uses up to 30)",
    "ok": true,
    "detail": ""
   },
   {
-   "name": "keep 5 modules at the foot stands at 33 courses (the Grand fort uses up to 30)",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "name": "keep 5 modules at the foot stands at 36 courses (the Grand fort uses up to 30)",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "name": "keep 5 modules at the foot stands at 40 courses (the Grand fort uses up to 30)",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "name": "keep 7 modules at the foot stands at 30 courses (the Grand fort uses up to 30)",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "name": "keep 7 modules at the foot stands at 33 courses (the Grand fort uses up to 30)",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "name": "keep 7 modules at the foot stands at 36 courses (the Grand fort uses up to 30)",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "name": "keep 7 modules at the foot stands at 40 courses (the Grand fort uses up to 30)",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "name": "keep 9 modules at the foot stands at 30 courses (the Grand fort uses up to 33)",
-   "ok": true,
-   "detail": ""
-  },
-  {
    "name": "keep 9 modules at the foot stands at 33 courses (the Grand fort uses up to 33)",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "name": "keep 9 modules at the foot stands at 36 courses (the Grand fort uses up to 33)",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "name": "keep 9 modules at the foot stands at 40 courses (the Grand fort uses up to 33)",
    "ok": true,
    "detail": ""
   }
@@ -530,14 +450,14 @@
     "settleSteps": 90,
     "driftCm": 9.8,
     "tilt": 0.0336,
-    "buildAndSettleMs": 5422,
+    "buildAndSettleMs": 6277,
     "bells": 6,
-    "msPerStepAsleep": 0.628,
-    "msPerStepAfterHit": 16.28,
-    "worstStepMs": 52.1,
-    "peakAwake": 1838,
-    "rodsToDropGateBell": 3,
-    "movedAfterHit": 7,
+    "msPerStepAsleep": 0.922,
+    "msPerStepAfterHit": 19.65,
+    "worstStepMs": 66.4,
+    "peakAwake": 1837,
+    "rodsToDropGateBell": 1,
+    "movedAfterHit": 4,
     "bellsDownAfterHit": 1,
     "rescued": 0
    },
@@ -549,14 +469,14 @@
     "settleSteps": 100,
     "driftCm": 10,
     "tilt": 0.0157,
-    "buildAndSettleMs": 19017,
+    "buildAndSettleMs": 22146,
     "bells": 6,
-    "msPerStepAsleep": 1.569,
-    "msPerStepAfterHit": 49.77,
-    "worstStepMs": 132.3,
-    "peakAwake": 4988,
-    "rodsToDropGateBell": 3,
-    "movedAfterHit": 16,
+    "msPerStepAsleep": 2.188,
+    "msPerStepAfterHit": 22.52,
+    "worstStepMs": 111,
+    "peakAwake": 3652,
+    "rodsToDropGateBell": 1,
+    "movedAfterHit": 1,
     "bellsDownAfterHit": 1,
     "rescued": 0
    },
@@ -568,14 +488,14 @@
     "settleSteps": 100,
     "driftCm": 9.9,
     "tilt": 0.0092,
-    "buildAndSettleMs": 59749,
+    "buildAndSettleMs": 67335,
     "bells": 6,
-    "msPerStepAsleep": 2.713,
-    "msPerStepAfterHit": 131.41,
-    "worstStepMs": 324.1,
-    "peakAwake": 9996,
-    "rodsToDropGateBell": 3,
-    "movedAfterHit": 9,
+    "msPerStepAsleep": 3.472,
+    "msPerStepAfterHit": 83.3,
+    "worstStepMs": 364.5,
+    "peakAwake": 9995,
+    "rodsToDropGateBell": 1,
+    "movedAfterHit": 3,
     "bellsDownAfterHit": 1,
     "rescued": 0
    },
@@ -587,14 +507,14 @@
     "settleSteps": 100,
     "driftCm": 8.9,
     "tilt": 0.0058,
-    "buildAndSettleMs": 171002,
+    "buildAndSettleMs": 193588,
     "bells": 6,
-    "msPerStepAsleep": 8.629,
-    "msPerStepAfterHit": 163.25,
-    "worstStepMs": 616.6,
-    "peakAwake": 11480,
-    "rodsToDropGateBell": 3,
-    "movedAfterHit": 4,
+    "msPerStepAsleep": 6.936,
+    "msPerStepAfterHit": 71.04,
+    "worstStepMs": 411.5,
+    "peakAwake": 10728,
+    "rodsToDropGateBell": 1,
+    "movedAfterHit": 2,
     "bellsDownAfterHit": 1,
     "rescued": 0
    }
@@ -602,46 +522,28 @@
   "perf": [
    {
     "pieces": 5000,
-    "msPerStepAsleep": 1.569,
-    "msPerStepAfterHit": 49.77,
-    "worstStepMs": 132.3,
-    "peakAwake": 4988
+    "msPerStepAsleep": 2.188,
+    "msPerStepAfterHit": 22.52,
+    "worstStepMs": 111,
+    "peakAwake": 3652
    },
    {
     "pieces": 10000,
-    "msPerStepAsleep": 2.713,
-    "msPerStepAfterHit": 131.41,
-    "worstStepMs": 324.1,
-    "peakAwake": 9996
+    "msPerStepAsleep": 3.472,
+    "msPerStepAfterHit": 83.3,
+    "worstStepMs": 364.5,
+    "peakAwake": 9995
    },
    {
     "pieces": 20000,
-    "msPerStepAsleep": 8.629,
-    "msPerStepAfterHit": 163.25,
-    "worstStepMs": 616.6,
-    "peakAwake": 11480
+    "msPerStepAsleep": 6.936,
+    "msPerStepAfterHit": 71.04,
+    "worstStepMs": 411.5,
+    "peakAwake": 10728
    }
   ],
-  "grandCode": "33227fdb",
+  "grandCode": "1f2ad7b4",
   "keeps": [
-   {
-    "baseModules": 3,
-    "courses": 15,
-    "heightM": 1.8,
-    "pieces": 813,
-    "stands": true,
-    "driftCm": 7.7,
-    "tilt": 0.0002
-   },
-   {
-    "baseModules": 3,
-    "courses": 20,
-    "heightM": 2.4,
-    "pieces": 1083,
-    "stands": true,
-    "driftCm": 5.4,
-    "tilt": 0.0003
-   },
    {
     "baseModules": 3,
     "courses": 24,
@@ -650,42 +552,6 @@
     "stands": true,
     "driftCm": 7.4,
     "tilt": 0.0004
-   },
-   {
-    "baseModules": 3,
-    "courses": 25,
-    "heightM": 3,
-    "pieces": 1353,
-    "stands": true,
-    "driftCm": 7.9,
-    "tilt": 0.0004
-   },
-   {
-    "baseModules": 3,
-    "courses": 30,
-    "heightM": 3.6,
-    "pieces": 1623,
-    "stands": false,
-    "driftCm": 13.4,
-    "tilt": 0.0007
-   },
-   {
-    "baseModules": 3,
-    "courses": 35,
-    "heightM": 4.2,
-    "pieces": 1893,
-    "stands": false,
-    "driftCm": 18,
-    "tilt": 0.0007
-   },
-   {
-    "baseModules": 5,
-    "courses": 24,
-    "heightM": 2.88,
-    "pieces": 1713,
-    "stands": true,
-    "driftCm": 6.7,
-    "tilt": 0.0001
    },
    {
     "baseModules": 5,
@@ -697,78 +563,6 @@
     "tilt": 0.0002
    },
    {
-    "baseModules": 5,
-    "courses": 33,
-    "heightM": 3.96,
-    "pieces": 2199,
-    "stands": false,
-    "driftCm": 12.2,
-    "tilt": 0.0003
-   },
-   {
-    "baseModules": 5,
-    "courses": 36,
-    "heightM": 4.32,
-    "pieces": 2361,
-    "stands": false,
-    "driftCm": 15.6,
-    "tilt": 0.0004
-   },
-   {
-    "baseModules": 5,
-    "courses": 40,
-    "heightM": 4.8,
-    "pieces": 2577,
-    "stands": false,
-    "driftCm": 18.4,
-    "tilt": 0.0005
-   },
-   {
-    "baseModules": 7,
-    "courses": 30,
-    "heightM": 3.6,
-    "pieces": 3243,
-    "stands": true,
-    "driftCm": 8.8,
-    "tilt": 0.0002
-   },
-   {
-    "baseModules": 7,
-    "courses": 33,
-    "heightM": 3.96,
-    "pieces": 3405,
-    "stands": true,
-    "driftCm": 10.7,
-    "tilt": 0.0003
-   },
-   {
-    "baseModules": 7,
-    "courses": 36,
-    "heightM": 4.32,
-    "pieces": 3567,
-    "stands": false,
-    "driftCm": 12.7,
-    "tilt": 0.0004
-   },
-   {
-    "baseModules": 7,
-    "courses": 40,
-    "heightM": 4.8,
-    "pieces": 3783,
-    "stands": false,
-    "driftCm": 15.7,
-    "tilt": 0.0006
-   },
-   {
-    "baseModules": 9,
-    "courses": 30,
-    "heightM": 3.6,
-    "pieces": 5529,
-    "stands": true,
-    "driftCm": 7.9,
-    "tilt": 0.0002
-   },
-   {
     "baseModules": 9,
     "courses": 33,
     "heightM": 3.96,
@@ -776,24 +570,6 @@
     "stands": true,
     "driftCm": 9.4,
     "tilt": 0.0002
-   },
-   {
-    "baseModules": 9,
-    "courses": 36,
-    "heightM": 4.32,
-    "pieces": 5853,
-    "stands": true,
-    "driftCm": 11.1,
-    "tilt": 0.0003
-   },
-   {
-    "baseModules": 9,
-    "courses": 40,
-    "heightM": 4.8,
-    "pieces": 6069,
-    "stands": false,
-    "driftCm": 13.7,
-    "tilt": 0.0004
    }
   ],
   "note": "Node on a shared cloud CPU, one thread, software only, plain (no SIMD) Rapier. These are not iPad numbers and not any real device."

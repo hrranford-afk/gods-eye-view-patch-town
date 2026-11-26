@@ -74,6 +74,7 @@ body.keepmode #ammo .am .tag{display:block}
     <div class="row" style="margin-top:4px"><button class="btn" id="look">Look: Pretty</button></div></div>
   <div class="card"><div class="row"><button class="btn" id="replay">Replay slow</button><button class="btn" id="bench">Bench...</button></div>
     <div style="margin-top:6px;opacity:.85">Slow motion is only the replay: it rebuilds the same scene and plays your shots again at one quarter speed.</div></div>
+  <div class="card"><div class="row"><button class="btn" id="boltHead">Bolt head: pointed</button></div><div style="margin-top:4px;opacity:.85;font-size:12px">The Bolt flies point first. The head shape is only for looks.</div></div>
   <div class="card" id="aimbox"></div>
 </div>
 <div id="ammo"></div>
@@ -242,13 +243,20 @@ function applyLook(on) {
 var CAP = {}, IM = {}, free = {}, nextSlot = {};
 function lathe(pts, seg) { return new THREE.LatheGeometry(pts.map(function (p) { return new THREE.Vector2(p[0], p[1]); }), seg || 12); }
 function capsuleGeo(hh, r) { var pts = [], n = 5, i, a; pts.push([0.0001, -hh - r]); for (i = 1; i <= n; i++) { a = -Math.PI / 2 + i / n * Math.PI / 2; pts.push([Math.cos(a) * r, -hh + Math.sin(a) * r]); } for (i = 0; i < n; i++) { a = i / n * Math.PI / 2; pts.push([Math.cos(a) * r, hh + Math.sin(a) * r]); } pts.push([0.0001, hh + r]); return lathe(pts, 10); }
+var boltPointed = true;
+/* the Bolt, along its y axis (the long axis the physics steers): a flat tail, a plain shaft and a head, pointed (a cone) or blunt (a rounded cap). Looks only: the collider is the same capsule either way. */
+function boltGeo(K, pointed) {
+  var hh = K.hh + K.r, r = K.r, pts = [[0.0001, -hh], [r * 0.8, -hh], [r, -hh + 0.03], [r, hh - (pointed ? 0.22 : 0.08)]], i, a;
+  if (pointed) { pts.push([r * 0.5, hh - 0.07]); pts.push([0.0001, hh]); } else { for (i = 1; i <= 4; i++) { a = i / 4 * Math.PI / 2; pts.push([Math.cos(a) * r, hh - 0.08 + Math.sin(a) * 0.08]); } pts.push([0.0001, hh]); }
+  return lathe(pts, 10);
+}
 function geoFor(K) {
   switch (K.shape) {
     case 'ball': return new THREE.SphereGeometry(K.r, 12, 8);
     case 'box': return new THREE.BoxGeometry(K.hx * 2, K.hy * 2, K.hz * 2);
     case 'bell': return lathe([[0.0001, -0.1], [0.11, -0.1], [0.108, -0.085], [0.09, -0.04], [0.072, 0.02], [0.058, 0.07], [0.03, 0.098], [0.012, 0.1], [0.0001, 0.1]], 16);
     case 'cyl': return new THREE.CylinderGeometry(K.r, K.r, K.hh * 2, 18);
-    case 'capsule': return capsuleGeo(K.hh, K.r);
+    case 'capsule': return K.fly ? boltGeo(K, boltPointed) : capsuleGeo(K.hh, K.r);
     case 'bottle': return lathe([[0.0001, -0.1], [0.036, -0.098], [0.045, -0.085], [0.045, 0.06], [0.038, 0.1], [0.022, 0.13], [0.02, 0.2], [0.0001, 0.2]], 14);
   }
 }
@@ -401,7 +409,7 @@ function groundRay(o, d) {                              /* where a ray meets the
 function aimUpdate() {
   if (!ses) return;
   var K = KINDS[ammoKind], m = ses.muzzle(), sp = K.speed * (0.45 + 0.55 * power);
-  if (aim.target) { var a = SIM.aimAt(m, aim.target, sp); if (a) { aim.yaw = a.yaw; aim.elev = a.elev; aim.reach = true; } else { aim.yaw = Math.atan2(aim.target.x - m.x, -(aim.target.z - m.z)); aim.elev = 0.7; aim.reach = false; } }
+  if (aim.target) { var a = SIM.aimAt(m, aim.target, sp, K.fly && K.fly.drag); if (a) { aim.yaw = a.yaw; aim.elev = a.elev; aim.reach = true; } else { aim.yaw = Math.atan2(aim.target.x - m.x, -(aim.target.z - m.z)); aim.elev = 0.7; aim.reach = false; } }
   var pts = [], i, vx = Math.sin(aim.yaw) * Math.cos(aim.elev) * sp, vy = Math.sin(aim.elev) * sp, vz = -Math.cos(aim.yaw) * Math.cos(aim.elev) * sp, t, step = 0.045;
   for (i = 0; i < 40; i++) { t = i * step; pts.push(new THREE.Vector3(m.x + vx * t, m.y + vy * t - 0.5 * 9.81 * t * t, m.z + vz * t)); }
   arcLine.geometry.setFromPoints(pts);
@@ -432,7 +440,7 @@ var firing = false, fireCool = 0, burstLeft = 0, burstGap = 0;
     b.addEventListener('click', function () { ammoKind = k; syncAmmo(); aimUpdate(); }); box.appendChild(b);
   });
   var f = document.createElement('button'); f.className = 'btn big'; f.id = 'fire'; f.textContent = 'FIRE'; box.appendChild(f);
-  var br = document.createElement('button'); br.className = 'btn'; br.id = 'bigrod'; br.textContent = 'Big rod'; br.style.cssText = 'min-height:48px;font-size:16px'; box.appendChild(br);
+  var br = document.createElement('button'); br.className = 'btn'; br.id = 'bigrod'; br.textContent = 'Big bolt'; br.style.cssText = 'min-height:48px;font-size:16px'; box.appendChild(br);
   var bu = document.createElement('button'); bu.className = 'btn'; bu.id = 'burst'; bu.textContent = 'Burst'; bu.style.cssText = 'min-height:48px;font-size:16px'; box.appendChild(bu);
   var rb = document.createElement('button'); rb.className = 'btn'; rb.id = 'rebuild'; rb.textContent = 'Rebuild'; rb.style.cssText = 'min-height:48px;font-size:16px'; box.appendChild(rb);
   br.addEventListener('click', function () { ammoKind = 'rod'; syncAmmo(); aimUpdate(); fireNow(); });
@@ -503,6 +511,7 @@ $('shadows').addEventListener('click', function () { shadowsOn = !shadowsOn; ren
 $('shadows').textContent = 'Shadows: ' + (shadowsOn ? 'on' : 'off');
 $('qGate').addEventListener('click', function () { quickAim('gate'); }); $('qTower').addEventListener('click', function () { quickAim('tower'); }); $('qKeep').addEventListener('click', function () { quickAim('keep'); });
 $('fly').addEventListener('click', function () { flyRound = !flyRound; this.textContent = 'Fly round: ' + (flyRound ? 'on' : 'off'); this.classList.toggle('on', flyRound); });
+$('boltHead').addEventListener('click', function () { boltPointed = !boltPointed; this.textContent = 'Bolt head: ' + (boltPointed ? 'pointed' : 'blunt'); var old = IM.rod.geometry; IM.rod.geometry = boltGeo(KINDS.rod, boltPointed); old.dispose(); });
 $('look').addEventListener('click', function () { applyLook(!pretty); this.textContent = 'Look: ' + (pretty ? 'Pretty' : 'Plain'); this.classList.toggle('on', pretty); });
 
 /* ---------- slow-motion replay (deliberate only) ---------- */

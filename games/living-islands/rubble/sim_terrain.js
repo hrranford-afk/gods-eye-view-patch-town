@@ -26,7 +26,7 @@
     lid:     { name: 'Tin lid',        shape: 'cyl', lay: 0.02, hh: 0.02, r: 0.09, dens: 7800, fr: 0.30, rest: 0.30, roll: 1, rc: 0.09, rs: 0.02, ccd: true, role: 'ammo', speed: 22, rate: 2.5, spread: 0.02, spin: 30, flat: true, col: 0xb7bcc2, note: 'thrown flat and spinning; lands and rolls on its edge' },
     float:   { name: 'Glass float',    shape: 'ball', lay: 0.15, r: 0.15, dens: 350, fr: 0.35, rest: 0.45, roll: 1, rc: 0.15, rs: 0.15, ccd: true, role: 'ammo', speed: 15, rate: 0.8, spread: 0.01, col: 0x6fd1b0, note: 'big, light, very bouncy, floats' },
     bottle:  { name: 'Bottle',         shape: 'bottle', lay: 0.045, dens: 900, fr: 0.30, rest: 0.20, roll: 1, rc: 0.15, rs: 0.045, ccd: true, role: 'ammo', speed: 16, rate: 1.5, spread: 0.02, align: true, col: 0x5aa07a, note: 'rolls in an arc because of its neck' },
-    rod:     { name: 'Big rod (driftwood log)', shape: 'capsule', lay: 0.07, hh: 0.55, r: 0.07, dens: 650, fr: 0.60, rest: 0.10, roll: 1, rc: 0.62, rs: 0.07, ccd: true, role: 'ammo', speed: 14, rate: 0.7, spread: 0.01, align: true, col: 0x8a6a45, note: 'about 12 kg, 1.3 m, rolls straight and can wedge' },
+    rod:     { name: 'Bolt (heavy, flies point first)', shape: 'capsule', lay: 0.05, hh: 0.50, r: 0.05, dens: 1450, fr: 0.60, rest: 0.10, roll: 1, rc: 0.06, rs: 0.05, ccd: true, role: 'ammo', speed: 14, rate: 0.7, spread: 0.01, align: true, axspin: 6, fly: { drag: 0.002, stab: 24, adamp: 12 }, col: 0x8a6a45, note: 'about 12 kg, 1.1 m, thrown point first with a slow spin, it keeps its nose into the wind' },
     beam:    { name: 'Beam',           shape: 'box', lay: 0.06, hx: 0.60, hy: 0.06, hz: 0.10, dens: 350, fr: 0.70, rest: 0.05, role: 'target', col: 0x7c4a22 },
     bell:    { name: 'Bell',           shape: 'bell', lay: 0.10, hh: 0.10, r: 0.11, rt: 0.05, dens: 2000, fr: 0.60, rest: 0.10, role: 'target', col: 0xd9a441 },
     stick:   { name: 'Stick',          shape: 'capsule', lay: 0.035, hh: 0.30, r: 0.035, dens: 600, fr: 0.60, rest: 0.10, roll: 1, rc: 0.335, rs: 0.035, role: 'debris', col: 0x9a7b55 },
@@ -71,7 +71,7 @@
   /* small seeded random generator */
   function rng(seed) { var s = seed >>> 0 || 1; return function () { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
   function qFromTo(v) {                                   /* quaternion that turns the y axis into the unit vector v */
-    var x = -v[2], z = v[0], w = 1 + v[1], l;
+    var x = v[2], z = -v[0], w = 1 + v[1], l;
     if (w < 1e-6) return [1, 0, 0, 0];
     l = Math.sqrt(x * x + z * z + w * w); return [x / l, 0, z / l, w / l];
   }
@@ -169,6 +169,31 @@
     /* the part after Rapier's step: rolling resistance, water, and removing what left the window */
     var gmu = -GRAV, doomed = [], act = [], guard = opts.guard !== false;
     function collect(b) { if (b.__rec) act.push(b.__rec); }
+    /* Flight of the shots that are built to fly well (K.fly: drag, stab, adamp): each step in the air a little quadratic drag, and for long things a weathervane that turns the long axis (the body's y axis)
+       towards the velocity: angular velocity gets stab * speed * (axis x velocity direction) and the sideways part of the spin is damped, so the nose follows the flight; the spin about the axis is left alone.
+       The flight ends at the first knock (a change of velocity beyond what gravity and drag explain) or near the ground. Everything here is a function of the body state, so replays are the same. */
+    function flight(rec, b, K, t) {
+      var v = b.linvel(), F = K.fly, sp = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z), e, gh, w, q, ax, ay, az, dx, dy, dz, cx, cy, cz, dot, par, k;
+      if (rec.pv) {
+        var ex = v.x - rec.pv.x, ey = v.y - (rec.pv.y + GRAV * DT), ez = v.z - rec.pv.z;
+        if (ex * ex + ey * ey + ez * ez > 0.64) { rec.landed = true; return; }
+      }
+      gh = site.H(t.x, t.z); if (t.y - gh < (K.rc || 0.1) + 0.15 || sp < 1) { rec.landed = true; return; }
+      if (F.drag) { k = 1 - F.drag * sp * DT; v = { x: v.x * k, y: v.y * k, z: v.z * k }; b.setLinvel(v, false); sp *= k; }
+      if (F.stab) {
+        q = b.rotation(); w = b.angvel();
+        ax = 2 * (q.x * q.y - q.w * q.z); ay = 1 - 2 * (q.x * q.x + q.z * q.z); az = 2 * (q.y * q.z + q.w * q.x);
+        dx = v.x / sp; dy = v.y / sp; dz = v.z / sp; dot = ax * dx + ay * dy + az * dz;
+        if (dot > 0) {
+          cx = ay * dz - az * dy; cy = az * dx - ax * dz; cz = ax * dy - ay * dx; k = F.stab * sp * DT;
+          w = { x: w.x + cx * k, y: w.y + cy * k, z: w.z + cz * k };
+          par = w.x * ax + w.y * ay + w.z * az; k = Math.min(1, F.adamp * DT);
+          w = { x: w.x - (w.x - par * ax) * k, y: w.y - (w.y - par * ay) * k, z: w.z - (w.z - par * az) * k };
+          b.setAngvel(w, false);
+        }
+      }
+      rec.pv = { x: v.x, y: v.y, z: v.z };
+    }
     function post() {
       var n, i, rec, b, t, tide = sim.tide, K, gh, g, k, v, a, sp, s, f, vol, bodies;
       doomed.length = 0; act.length = 0;
@@ -179,6 +204,7 @@
         t = b.translation(); rec.age++;
         if (track) { rec.px = rec.cx; rec.py = rec.cy; rec.pz = rec.cz; rec.pq = rec.cq; rec.cx = t.x; rec.cy = t.y; rec.cz = t.z; a = b.rotation(); rec.cq = [a.x, a.y, a.z, a.w]; rec.actStep = sim.steps; rec.final = false; }
         if (t.y < sim.floor || t.x < site.x0 - 3 || t.x > -site.x0 + 3 || t.z < site.x0 - 3 || t.z > -site.x0 + 3) { doomed.push(rec); continue; }
+        if (rec.isAmmo && K.fly && !rec.landed) flight(rec, b, K, t);
         /* guard: a centre below the ground surface means the body tunnelled (thin things can, the heightfield has no thickness). Put it back on top and count it. */
         gh = site.H(t.x, t.z);
         if (guard && t.y < gh - 0.06 && t.x > site.x0 && t.x < -site.x0 && t.z > site.x0 && t.z < -site.x0) {
@@ -356,7 +382,7 @@
       var a = yaw + (rr() - 0.5) * 2 * K.spread, e = elev + (rr() - 0.5) * 2 * K.spread, ce = Math.cos(e);
       var dir = [Math.sin(a) * ce, Math.sin(e), -Math.cos(a) * ce], m = ses.muzzle();
       var q = K.align ? qFromTo(dir) : K.flat ? qYaw(rr() * 6) : qRandom(rr);
-      var wv = K.spin ? { x: 0, y: K.spin, z: 0 } : { x: (rr() - 0.5) * 6, y: (rr() - 0.5) * 6, z: (rr() - 0.5) * 6 };
+      var wv = K.axspin ? { x: dir[0] * K.axspin, y: dir[1] * K.axspin, z: dir[2] * K.axspin } : K.spin ? { x: 0, y: K.spin, z: 0 } : { x: (rr() - 0.5) * 6, y: (rr() - 0.5) * 6, z: (rr() - 0.5) * 6 };
       var ev = { s: ses.sim.steps, t: 'shot', k: kind, p: [m.x, m.y, m.z], v: [dir[0] * sp, dir[1] * sp, dir[2] * sp], q: q, w: [wv.x, wv.y, wv.z] };
       ses.events.push(ev); return applyEvent(ev);
     };
@@ -436,10 +462,25 @@
   }
 
   /* the elevation that lands a shot (no drag) on a point; low arc. Returns null if out of reach. */
-  function aimAt(from, to, speed) {
+  function aimAt(from, to, speed, drag) {
     var dx = to.x - from.x, dz = to.z - from.z, d = Math.sqrt(dx * dx + dz * dz), dy = to.y - from.y, g = -GRAV, v2 = speed * speed;
     var disc = v2 * v2 - g * (g * d * d + 2 * dy * v2); if (disc < 0 || d < 0.01) return null;
-    return { yaw: Math.atan2(dx, -dz), elev: Math.atan2(v2 - Math.sqrt(disc), g * d), dist: d };
+    var r = { yaw: Math.atan2(dx, -dz), elev: Math.atan2(v2 - Math.sqrt(disc), g * d), dist: d };
+    if (drag) {                                           /* with air drag (the ammo's fly.drag): two secant steps on the elevation, using the same stepping as the physics */
+      var e0 = r.elev, e1 = e0 + 0.01, f0 = trajY(speed, e0, drag, d) , f1 = trajY(speed, e1, drag, d), i;
+      for (i = 0; i < 6 && f0 !== null && f1 !== null; i++) { var e2 = e1 - (f1 - dy) * (e1 - e0) / ((f1 - f0) || 1e-9); e0 = e1; f0 = f1; e1 = e2; f1 = trajY(speed, e1, drag, d); if (f1 !== null && Math.abs(f1 - dy) < 0.002) break; }
+      if (f1 !== null) r.elev = e1;
+    }
+    return r;
+  }
+  /* height of a shot (from the muzzle, no wind) when it has gone dist metres along the ground: the physics' own order, gravity into the velocity, the position, then the drag */
+  function trajY(speed, elev, drag, dist) {
+    var vx = speed * Math.cos(elev), vy = speed * Math.sin(elev), x = 0, y = 0, i, px, py, k;
+    for (i = 0; i < 1200; i++) {
+      px = x; py = y; vy += GRAV * DT; x += vx * DT; y += vy * DT; k = 1 - drag * Math.sqrt(vx * vx + vy * vy) * DT; vx *= k; vy *= k;
+      if (x >= dist) return py + (y - py) * (dist - px) / (x - px);
+    }
+    return null;
   }
 
   /* a fixed scene and a fixed volley, to compare two machines: the hash must be equal on every device (same Rapier build) */
@@ -464,6 +505,6 @@
     for (k = 0; k < 200; k++) s.step();
     h = s.sim.hash(); s.sim.dispose(); return h;
   }
-  var API = { ammoStrength: ammoStrength, STRONG_J: STRONG_J, KEEP_RULES: KEEP_RULES, keepStars: keepStars, grandCode: grandCode, fortCode: fortCode, buildFort: buildFort, settleUnit: settleUnit, BELL_DROP: BELL_DROP, MOVED: MOVED, rubbleCount: rubbleCount, FORT: FORT, determinismCode: determinismCode, KINDS: KINDS, AMMO: AMMO, DT: DT, GRAV: GRAV, RHOW: RHOW, makeSim: makeSim, buildScene: buildScene, makeSession: makeSession, aimAt: aimAt, rng: rng, qFromTo: qFromTo, qRandom: qRandom, qYaw: qYaw, volOf: volOf, nowMs: nowMs };
+  var API = { ammoStrength: ammoStrength, STRONG_J: STRONG_J, KEEP_RULES: KEEP_RULES, keepStars: keepStars, grandCode: grandCode, fortCode: fortCode, buildFort: buildFort, settleUnit: settleUnit, BELL_DROP: BELL_DROP, MOVED: MOVED, rubbleCount: rubbleCount, FORT: FORT, determinismCode: determinismCode, KINDS: KINDS, AMMO: AMMO, DT: DT, GRAV: GRAV, RHOW: RHOW, makeSim: makeSim, buildScene: buildScene, makeSession: makeSession, aimAt: aimAt, trajY: trajY, rng: rng, qFromTo: qFromTo, qRandom: qRandom, qYaw: qYaw, volOf: volOf, nowMs: nowMs };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.RSim = API;
 })(typeof window !== 'undefined' ? window : globalThis);
