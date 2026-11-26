@@ -45,6 +45,12 @@ canvas{touch-action:none;cursor:grab}
   <div id="camrow2" style="display:flex;gap:6px;margin-top:6px"><button id="bBench" style="flex:1;padding:6px 4px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:12px">Bench (find this card's limit)</button></div>
   <div id="camrow3" style="display:flex;gap:6px;margin-top:6px"><button id="bIsl">Islands</button><button id="bDrift">Drift boat</button><button id="bBeach">To the beach</button><button id="bBack">Boat back</button></div>
   <div id="camrow"><button id="bReset">Reset camera</button><button id="bFollow">Follow boat</button><button id="bFree">Free fly</button></div>
+  <div id="salv" style="margin-top:6px">
+    <label for="sN">Salvage objects: <span id="sNv"></span> (real models; 0 to 2000)</label><input id="sN" type="range" min="0" max="2000" step="10" value="400">
+    <label for="sV">Variation (repetition control): <span id="sVv"></span> (0 = all the same)</label><input id="sV" type="range" min="0" max="1" step="0.01" value="1">
+    <label for="sK">Object size: <span id="sKv"></span></label><input id="sK" type="range" min="0.6" max="3" step="0.05" value="1.35">
+    <div style="display:flex;gap:6px;margin-top:6px"><a href="kit_board.html" style="flex:1;text-align:center;padding:5px;border-radius:8px;border:1px solid var(--line);color:var(--ink);font-size:12px;text-decoration:none">Kit board</a><button id="bSalv" style="flex:1;padding:5px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:12px">Salvage on</button></div>
+  </div>
   <div id="help">Drag: orbit. Wheel or pinch: zoom. Right-drag or two fingers: pan. W A S D or arrows: fly. Q down, E up. Shift: faster.</div>
   <div id="stats"></div>
   <div id="note">Numbers are frame time in whatever this browser uses to draw. On a software renderer they say nothing about a real device.</div>
@@ -52,6 +58,8 @@ canvas{touch-action:none;cursor:grab}
 <div id="benchBox"></div>
 <script src="../rubble/vendor/three/three.min.js"></script>
 <script src="island_9001.js"></script>
+<script src="salvage.js"></script>
+<script src="salvage_world.js"></script>
 <script>
 (function(){
 'use strict';
@@ -405,6 +413,7 @@ function build(){
   const dd={VORT_RMIN:'6.0',FLOATSZ:T.flotsam?'38.0':'40.0'};if(T.flotsam)dd.FLOTSAM=1;debPts=new THREE.Points(dg,mat(DEB_VS,DEB_FS,dd));debPts.frustumCulled=false;scene.add(debPts);
   islMesh=null;if(state.islandsOn){islMesh=islandMesh(T,isl);scene.add(islMesh);}
   U.uPxScale.value=renderer.getPixelRatio()*canvas.clientHeight/700;
+  salvBuild();
 }
 /* the island terrain: one grid per island, 1.5 m cells (iPad 3 m), heights from the same bicubic data the CPU uses (meshH), vertex colours from the ground class, normals from the grid.
    Coloured sand, shingle, turf, rock; the w channel says how much a wet band darkens it (sand most, turf least). */
@@ -642,7 +651,7 @@ function frame(now){
   const yaw=P.wind*Math.PI/180+.5;driftBodies(dt/1000,P);const bb=bodies[0];placeBody(boat,state.W,bb.x,bb.z,bb.grounded?bb.yaw:yaw,4.4,1.6,t,P,.38,1,.30);
   crates.forEach((c,i)=>{const b=bodies[i+1];placeBody(c,state.W,b.x,b.z,b.yaw,.9,.9,t,P,.5,1,.18);});
   hulk.visible=P.vort>.05;if(hulk.visible){const hy=placeBody(hulk,state.W,VORT[0]+VORT[2]*1.15,VORT[1]+VORT[2]*.4,.9,16,5.4,t,P,.3,1);hulk.position.y=hy+.4;hulk.rotation.x+=.18*P.vort;hulk.scale.setScalar(1);}
-  updateCamera(dt/1000,t,P);
+  updateCamera(dt/1000,t,P);salvFrame(dt/1000,t,P);
   U.uCam.value.copy(camera.position);{const T=state.T;if(T&&T.follow)U.uMesh.value.set(Math.round(camera.position.x*2)/2,Math.round(camera.position.z*2)/2);else U.uMesh.value.set(0,0);}
   skyMesh.position.copy(camera.position);
   gpuBegin();renderer.render(scene,camera);gpuEnd(frames);gpuPoll();
@@ -662,6 +671,7 @@ function updateStats(){const T=state.T||effTier(),P=state.P;
   const lines=[T.name+'  |  '+TYPES[state.type].label,'waves '+state.W.length+' (swell '+T.nSw+', wind sea '+T.nWs+', chop '+T.nCh+' + '+T.rip+' pixel ripples)',
    'mesh '+T.rings+' x '+T.segs+'  spray '+T.spray+'  debris '+(P.vort>.05?T.debris:0)+' (points)',
    'triangles '+state.tris.toLocaleString()+'   draw calls '+state.calls,
+   salvLine(),
    'frame '+state.ms.toFixed(1)+' ms  ('+(1000/Math.max(state.ms,.01)).toFixed(0)+' fps)'+(soft?'  (SOFTWARE GL, not a real GPU)':''),
    'GPU '+(GPU.n?GPU.ms.toFixed(2)+' ms':'not available')+'  ['+gpuSrcLabel()+(GPU.disjoint?', '+GPU.disjoint+' discarded':'')+']',
    busyLine(state.ms),
@@ -675,8 +685,32 @@ function ui(){const sel=document.getElementById('type');for(const k in TYPES){co
   function setTier(t){state.tier=t;state.K=null;bI.classList.toggle('on',t==='ipad');bR.classList.toggle('on',t==='radeon');bM.classList.toggle('on',t==='max');build();resize();}
   window.__setTier=setTier;bI.onclick=()=>setTier('ipad');bR.onclick=()=>setTier('radeon');bM.onclick=()=>setTier('max');setTier(state.tier);
   if(Q.get('ui')==='0')document.getElementById('ui').style.display='none';}
-ui();buildBoat();camEvents();resize();requestAnimationFrame(frame);
-window.__sea={bodies,groundAt,tideAt,WF,WG,bench,benchStart,benchWarn,effTier,state,GPU,gpuMean,busyLine,updateStats,glName:()=>glName,TYPES,TIERS,cam,camPose,camKeys,camFloor:(x,z)=>camFloor(x,z,state.t),camera,seaHeight:(x,z,t)=>seaHeight(state.W,x,z,t===undefined?state.t:t,state.P),ready:true};
+/* ------------------------------------------------------------ salvage: the real instanced models (salvage.js, salvage_world.js; research/VARIETY_AND_SALVAGE_PLAN.md) ------------------------------------------------------------
+   They replace the debris and flotsam points (those come back only while the bench runs, so the bench numbers stay comparable). URL: &salv=0..2000 &rep=0..1 (variation) &size=0.6..3 &points=1 (old debris points). Spray stays as points. */
+const SALV={w:null,on:Q.get('salv')!=='0'&&!!(window.LI_SALVAGE&&window.LI_SALVAGE.makeWorld),n:Q.get('salv')!==null?parseInt(Q.get('salv'),10):null,rep:Q.get('rep')!==null?parseFloat(Q.get('rep')):1,size:Q.get('size')!==null?parseFloat(Q.get('size')):1.35,kit:null,mats:null,key:'',settled:false};
+const SALV_N={ipad:400,radeon:800,max:1200};
+function salvEnv(){return {seaH:(x,z,t)=>seaHeight(state.W,x,z,t,state.P),ground:groundAt,gclass:(x,z)=>(state.islandsOn&&WF.ready)?groundClass(x,z):0,tide:tideAt,shadow:(x,z)=>(state.islandsOn&&WF.ready)?wfShadow(x,z):0,wind:()=>state.P.wind*Math.PI/180,storm:()=>sm((state.P.wsKA-.03)/.12),
+  vort:()=>state.P.vort>.05?{x:VORT[0],z:VORT[1],R:VORT[2],k:state.P.vort}:null,islands:()=>state.islandsOn&&WF.ready,isl:ISLS,time:()=>state.tFix!==null?state.tFix:(state.t||0)};}
+function salvBuild(){if(!SALV.on)return;const S=window.LI_SALVAGE;if(!SALV.kit){SALV.kit=S.makeKit(THREE);SALV.mats=S.makeMaterials(THREE);}
+  if(SALV.w){SALV.w.dispose();SALV.w=null;}if(bench.running||!state.P)return;
+  SALV.w=S.makeWorld({THREE,scene,kit:SALV.kit,mats:SALV.mats,env:salvEnv(),variation:SALV.rep,size:SALV.size,lodK:(state.T&&state.T.refract===0)?.6:1});
+  if(SALV.n===null)SALV.n=SALV_N[state.tier]||400;
+  SALV.w.setCount(SALV.n);salvSync();}
+/* the boat and crates are unlit basic materials: keep them out of the new fog */
+let salvFogFix=false;function salvFogOff(){if(salvFogFix||!boat)return;salvFogFix=true;[boat,hulk].concat(crates).forEach(g=>{if(g)g.traverse(o=>{if(o.material)o.material.fog=false;});});}
+function salvSync(){const g=id=>document.getElementById(id);if(!g('sN'))return;g('sN').value=SALV.n;g('sNv').textContent=SALV.n;g('sV').value=SALV.rep;g('sVv').textContent=SALV.rep.toFixed(2);g('sK').value=SALV.size;g('sKv').textContent=SALV.size.toFixed(2);
+  g('bSalv').textContent=SALV.on?'Salvage on':'Salvage off';}
+function salvFrame(dt,t,P){salvFogOff();if(SALV.on&&!SALV.w&&!bench.running)salvBuild();const w=SALV.w;if(debPts)debPts.visible=!!(bench.running||Q.get('points')==='1'||!SALV.on||!w);
+  if(!w)return;const show=SALV.on&&!bench.running;w.setVisible(show);if(!show)return;
+  w.updateLights(P,U.uSunDir.value);if(!state.freeze)w.step(dt,t);w.render(t,camera);}
+function salvLine(){const w=SALV.w;if(!SALV.on||!w)return 'salvage models: off (debris points)';const s=w.stats();return 'salvage models: '+s.tot+' ('+s.drawn+' drawn, '+s.rafts+' rafts, '+s.beach+' on the beach, '+s.aground+' aground), '+s.calls+' calls, '+Math.round(s.tris/1000)+'k tris, repetition '+(s.repetition*100).toFixed(0)+' percent';}
+function salvUi(){const g=id=>document.getElementById(id);
+  g('sN').oninput=()=>{SALV.n=parseInt(g('sN').value,10);g('sNv').textContent=SALV.n;if(SALV.w)SALV.w.setCount(SALV.n);};
+  g('sV').oninput=()=>{SALV.rep=parseFloat(g('sV').value);g('sVv').textContent=SALV.rep.toFixed(2);if(SALV.w)SALV.w.setVariation(SALV.rep);};
+  g('sK').oninput=()=>{SALV.size=parseFloat(g('sK').value);g('sKv').textContent=SALV.size.toFixed(2);if(SALV.w)SALV.w.setSize(SALV.size);};
+  g('bSalv').onclick=()=>{SALV.on=!SALV.on&&!!(window.LI_SALVAGE&&window.LI_SALVAGE.makeWorld);if(SALV.on&&!SALV.w)salvBuild();salvSync();};}
+ui();salvUi();salvSync();buildBoat();camEvents();resize();requestAnimationFrame(frame);
+window.__sea={salvage:()=>SALV.w,salv:SALV,bodies,groundAt,tideAt,WF,WG,bench,benchStart,benchWarn,effTier,state,GPU,gpuMean,busyLine,updateStats,glName:()=>glName,TYPES,TIERS,cam,camPose,camKeys,camFloor:(x,z)=>camFloor(x,z,state.t),camera,seaHeight:(x,z,t)=>seaHeight(state.W,x,z,t===undefined?state.t:t,state.P),ready:true};
 })();
 </script>
 </body>
