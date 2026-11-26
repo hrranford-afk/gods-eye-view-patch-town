@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Sea prototype: iPad sea and Radeon sea</title>
+<link rel="icon" href="data:,">
 <!-- Living Islands sea prototype (see research/SEA_AND_STORM_PLAN.md). STANDALONE: no game code. three.js r128 from the repo's own vendor copy (rubble/vendor/three), WebGL2.
      One Gerstner sum (waves with sets and groups) in the vertex shader, a CPU port of the same sum for the boat and crates, Jacobian foam, spray points, sky with rainbow / rays / lightning, fog.
      Two tiers: iPad sea (8 waves, small polar mesh) and Radeon sea (24 waves, dense mesh, 12000 spray points, 20000 debris points). All numbers are TUNING, none measured on a device.
@@ -21,6 +22,10 @@ canvas{display:block;width:100%;height:100%}
 #row button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 #stats{font:12px/1.4 ui-monospace,monospace;margin-top:8px;white-space:pre-wrap}
 #note{font-size:11px;opacity:.7;margin-top:4px}
+#camrow{display:flex;gap:6px;margin-top:8px}#camrow button{flex:1;padding:6px 4px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:12px}
+#camrow button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+#help{font-size:11px;opacity:.7;margin-top:4px}
+canvas{touch-action:none;cursor:grab}
 </style>
 </head>
 <body>
@@ -32,6 +37,8 @@ canvas{display:block;width:100%;height:100%}
   <select id="type"></select>
   <label for="s">How far it has risen: <span id="sv"></span></label>
   <input id="s" type="range" min="0" max="1" step="0.01" value="0.8">
+  <div id="camrow"><button id="bReset">Reset camera</button><button id="bFollow">Follow boat</button><button id="bFree">Free fly</button></div>
+  <div id="help">Drag: orbit. Wheel or pinch: zoom. Right-drag or two fingers: pan. W A S D or arrows: fly. Q down, E up. Shift: faster.</div>
   <div id="stats"></div>
   <div id="note">Numbers are frame time in whatever this browser uses to draw. On a software renderer they say nothing about a real device.</div>
 </div>
@@ -189,7 +196,7 @@ const renderer=new THREE.WebGLRenderer({canvas,antialias:false,powerPreference:'
 const isGL2=renderer.capabilities.isWebGL2;
 const scene=new THREE.Scene();const camera=new THREE.PerspectiveCamera(58,1,0.2,4000);
 const state={tier:Q.get('tier')==='radeon'?'radeon':'ipad',type:TYPES[Q.get('type')]?Q.get('type'):'calm',s:parseFloat(Q.get('s')||'0.8'),t0:performance.now()/1000,
-  freeze:Q.get('freeze')==='1',tFix:Q.get('t')!==null?parseFloat(Q.get('t')):null,cam:Q.get('cam')!==null?parseFloat(Q.get('cam')):.7,W:[],P:null,ms:0,tris:0,calls:0};
+  freeze:Q.get('freeze')==='1',tFix:Q.get('t')!==null?parseFloat(Q.get('t')):null,cam:Q.get('cam')!==null?parseFloat(Q.get('cam')):.7,user:false,follow:false,free:false,W:[],P:null,ms:0,tris:0,calls:0};
 let seaMesh=null,skyMesh=null,sprayPts=null,debPts=null,boat=null,crates=[],hulk=null,bolt=null;
 const U={uT:{value:0},uT2:{value:0},uN:{value:0},uW:{value:Array.from({length:MAXW},()=>new THREE.Vector4())},uW2:{value:Array.from({length:MAXW},()=>new THREE.Vector3())},
   uVort:{value:new THREE.Vector4(...VORT)},uVK:{value:0},uLevel:{value:0},uCam:{value:new THREE.Vector3()},
@@ -254,6 +261,60 @@ function resize(){const pr=Math.min(window.devicePixelRatio||1,TIERS[state.tier]
   camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();U.uPix.value=2*Math.tan(camera.fov*Math.PI/360)/Math.max(1,renderer.domElement.height);U.uPxScale.value=pr*window.innerHeight/700;}
 window.addEventListener('resize',resize);
 
+/* ------------------------------------------------------------ camera: orbit / pan / zoom / fly, never under the sea ------------------------------------------------------------
+   cam = { tx,ty,tz = look-at point, yaw, pitch, dist } in orbit mode; in free mode the same fields describe the pose (position = look-at point minus dist along the view, dist kept for the switch back).
+   Until the first touch of the controls the old automatic framing runs (it also frames the whirlpool); Reset camera goes back to it. */
+const cam={tx:0,ty:1.5,tz:0,yaw:state.cam,pitch:Math.atan2(6,22),dist:Math.hypot(22,6),px:0,py:0,pz:0};
+const camKeys={};let camHit=0;
+function camPose(){const cp=Math.cos(cam.pitch),sp=Math.sin(cam.pitch),cy=Math.cos(cam.yaw),sy=Math.sin(cam.yaw);
+  if(state.free){return {x:cam.px,y:cam.py,z:cam.pz,fx:-cp*cy,fy:-sp,fz:-cp*sy};}
+  return {x:cam.tx+cam.dist*cp*cy,y:cam.ty+cam.dist*sp,z:cam.tz+cam.dist*cp*sy,fx:-cp*cy,fy:-sp,fz:-cp*sy};}
+function camFloor(x,z,t){return seaHeight(state.W,x,z,t,state.P)+0.5;}   /* the surface the camera may never go under: the CPU wave height plus half a metre */
+function camReset(){state.user=false;state.free=false;state.follow=false;cam.yaw=state.cam;cam.pitch=Math.atan2(6,22);cam.dist=Math.hypot(22,6);syncCamButtons();}
+function camSetFree(on){if(on===state.free)return;state.user=true;
+  if(on){const p=camPose();cam.px=p.x;cam.py=p.y;cam.pz=p.z;state.free=true;state.follow=false;}
+  else{const cp=Math.cos(cam.pitch),sp=Math.sin(cam.pitch);cam.tx=cam.px+cam.dist*cp*Math.cos(cam.yaw)*-1;cam.ty=cam.py+cam.dist*sp*-1;cam.tz=cam.pz+cam.dist*cp*Math.sin(cam.yaw)*-1;state.free=false;}
+  syncCamButtons();}
+function camRotate(dx,dy){state.user=true;cam.yaw-=dx*0.0052;cam.pitch=clamp(cam.pitch+dy*0.0052,-0.35,1.5);}
+function camZoom(f){state.user=true;if(state.free){const p=camPose();const m=(f-1)*-cam.dist*0.6;cam.px+=p.fx*m;cam.py+=p.fy*m;cam.pz+=p.fz*m;}else cam.dist=clamp(cam.dist*f,1.5,1500);}
+function camPan(dx,dy){state.user=true;const p=camPose();const rx=-Math.sin(cam.yaw),rz=Math.cos(cam.yaw);   /* screen right on the ground; up = world up */
+  const sc=(state.free?Math.max(6,cam.py):cam.dist)*0.0016;const mx=-dx*sc,my=dy*sc;
+  if(state.free){cam.px+=rx*mx;cam.pz+=rz*mx;cam.py+=my;}else{cam.tx+=rx*mx;cam.tz+=rz*mx;cam.ty=clamp(cam.ty+my,-2,300);state.follow=false;syncCamButtons();}}
+function camFly(dt,t){let f=0,r=0,u=0;
+  if(camKeys.w||camKeys.arrowup)f+=1;if(camKeys.s||camKeys.arrowdown)f-=1;if(camKeys.d||camKeys.arrowright)r+=1;if(camKeys.a||camKeys.arrowleft)r-=1;if(camKeys.e)u+=1;if(camKeys.q)u-=1;
+  if(!f&&!r&&!u)return;state.user=true;const p=camPose();const h=Math.max(p.y,1);const sp=(4+1.4*h)*(camKeys.shift?4:1)*dt;   /* speed scales with height */
+  const fl=Math.hypot(p.fx,p.fz)||1,fx=p.fx/fl,fz=p.fz/fl,rx=-fz,rz=fx;
+  const mx=(fx*f+rx*r)*sp,mz=(fz*f+rz*r)*sp,my=u*sp;
+  if(state.free){cam.px+=mx;cam.pz+=mz;cam.py+=my;}else{cam.tx+=mx;cam.tz+=mz;cam.ty=clamp(cam.ty+my,-2,300);state.follow=false;syncCamButtons();}}
+function updateCamera(dt,t,P){
+  if(!state.user){const ang=P.vort>.3?Math.atan2(0-VORT[1],0-VORT[0]):cam.yaw,rad=P.vort>.3?30:22,hgt=P.vort>.3?10:7.5;
+    const ty=lerp(1.5,3,P.vort);cam.tx=lerp(0,VORT[0]*.55,P.vort*.9);cam.tz=lerp(0,VORT[1]*.55,P.vort*.9);cam.ty=ty;
+    cam.yaw=ang;cam.dist=Math.hypot(rad,hgt-ty);cam.pitch=Math.atan2(hgt-ty,rad);}
+  else{camFly(Math.min(dt,.1),t);if(state.follow&&boat&&!state.free){cam.tx=lerp(cam.tx,boat.position.x,.2);cam.ty=lerp(cam.ty,boat.position.y+1.2,.2);cam.tz=lerp(cam.tz,boat.position.z,.2);}}
+  const p=camPose();let y=p.y;const fl=camFloor(p.x,p.z,t);camHit=0;if(y<fl){y=fl;camHit=1;}
+  if(state.free){cam.py=Math.max(cam.py,fl);}
+  camera.position.set(p.x,y,p.z);
+  if(state.free)camera.lookAt(p.x+p.fx,y+p.fy,p.z+p.fz);else camera.lookAt(cam.tx,cam.ty,cam.tz);}
+function syncCamButtons(){const f=document.getElementById('bFollow'),r=document.getElementById('bFree');if(f)f.classList.toggle('on',state.follow);if(r)r.classList.toggle('on',state.free);}
+function camEvents(){const el=canvas,ptr=new Map();let lastPinch=0,lastMid=null;
+  el.addEventListener('contextmenu',e=>e.preventDefault());
+  el.addEventListener('pointerdown',e=>{try{el.setPointerCapture(e.pointerId);}catch(_){}ptr.set(e.pointerId,{x:e.clientX,y:e.clientY,b:e.button,sh:e.shiftKey});el.style.cursor='grabbing';
+    if(ptr.size===2){const a=[...ptr.values()];lastPinch=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);lastMid={x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2};}});
+  el.addEventListener('pointermove',e=>{const p=ptr.get(e.pointerId);if(!p)return;const dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;
+    if(ptr.size===1){if(p.b===2||p.b===1||p.sh||e.shiftKey)camPan(dx,dy);else camRotate(dx,dy);}
+    else if(ptr.size===2){const a=[...ptr.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),mid={x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2};
+      if(lastPinch>0&&d>0)camZoom(lastPinch/d);if(lastMid)camPan(mid.x-lastMid.x,mid.y-lastMid.y);lastPinch=d;lastMid=mid;}});
+  const up=e=>{ptr.delete(e.pointerId);lastPinch=0;lastMid=null;if(!ptr.size)el.style.cursor='grab';};
+  el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
+  el.addEventListener('wheel',e=>{e.preventDefault();camZoom(Math.exp(clamp(e.deltaY,-300,300)*0.0016));},{passive:false});
+  window.addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test((e.target&&e.target.tagName)||''))return;const k=e.key.toLowerCase();
+    if(k==='shift'){camKeys.shift=true;return;}if('wasdqe'.includes(k)&&k.length===1||k.startsWith('arrow')){camKeys[k]=true;e.preventDefault();}});
+  window.addEventListener('keyup',e=>{const k=e.key.toLowerCase();if(k==='shift')camKeys.shift=false;else delete camKeys[k];});
+  window.addEventListener('blur',()=>{for(const k in camKeys)delete camKeys[k];});
+  document.getElementById('bReset').onclick=camReset;
+  document.getElementById('bFollow').onclick=()=>{if(state.free)camSetFree(false);state.user=true;state.follow=!state.follow;syncCamButtons();};
+  document.getElementById('bFree').onclick=()=>camSetFree(!state.free);}
+
 /* ------------------------------------------------------------ frame ------------------------------------------------------------ */
 let last=performance.now(),ema=0,frames=0;
 function frame(now){
@@ -264,11 +325,7 @@ function frame(now){
   const yaw=P.wind*Math.PI/180+.5;placeBody(boat,state.W,0,0,yaw,4.4,1.6,t,P,.38,1);
   crates.forEach((c,i)=>{const a=i*2.1+.5;placeBody(c,state.W,Math.cos(a)*(9+i*2),Math.sin(a)*(9+i*2),a,.9,.9,t,P,.5,1);});
   hulk.visible=P.vort>.05;if(hulk.visible){const hy=placeBody(hulk,state.W,VORT[0]+VORT[2]*1.15,VORT[1]+VORT[2]*.4,.9,16,5.4,t,P,.3,1);hulk.position.y=hy+.4;hulk.rotation.x+=.18*P.vort;hulk.scale.setScalar(1);}
-  /* camera: orbit the boat; with a whirlpool, stand behind the boat so the funnel and the hulk are in front */
-  const bx=0,bz=0;let ang=state.cam;if(P.vort>.3){ang=Math.atan2(bz-VORT[1],bx-VORT[0]);}
-  const rad=P.vort>.3?30:22,hgt=P.vort>.3?10:7.5;
-  const ty=lerp(1.5,3,P.vort);const tx=lerp(0,VORT[0]*.55,P.vort*.9),tz=lerp(0,VORT[1]*.55,P.vort*.9);
-  camera.position.set(bx+Math.cos(ang)*rad,hgt+.45*Math.sin(t*.5)*0+seaHeight(state.W,bx+Math.cos(ang)*rad,bz+Math.sin(ang)*rad,t,P)*.3,bz+Math.sin(ang)*rad);camera.lookAt(tx,ty,tz);
+  updateCamera(dt/1000,t,P);
   U.uCam.value.copy(camera.position);
   skyMesh.position.copy(camera.position);
   renderer.render(scene,camera);
@@ -291,8 +348,8 @@ function ui(){const sel=document.getElementById('type');for(const k in TYPES){co
   function setTier(t){state.tier=t;bI.classList.toggle('on',t==='ipad');bR.classList.toggle('on',t==='radeon');build();resize();}
   bI.onclick=()=>setTier('ipad');bR.onclick=()=>setTier('radeon');setTier(state.tier);
   if(Q.get('ui')==='0')document.getElementById('ui').style.display='none';}
-ui();buildBoat();resize();requestAnimationFrame(frame);
-window.__sea={state,TYPES,TIERS,seaHeight:(x,z,t)=>seaHeight(state.W,x,z,t===undefined?state.t:t,state.P),ready:true};
+ui();buildBoat();camEvents();resize();requestAnimationFrame(frame);
+window.__sea={state,TYPES,TIERS,cam,camPose,camKeys,camFloor:(x,z)=>camFloor(x,z,state.t),camera,seaHeight:(x,z,t)=>seaHeight(state.W,x,z,t===undefined?state.t:t,state.P),ready:true};
 })();
 </script>
 </body>
