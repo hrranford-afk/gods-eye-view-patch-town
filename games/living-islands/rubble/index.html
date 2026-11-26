@@ -428,7 +428,7 @@ var firing = false, fireCool = 0, burstLeft = 0, burstGap = 0;
 (function () {
   var box = $('ammo');
   SIM.AMMO.forEach(function (k) {
-    var K = KINDS[k], b = document.createElement('button'); b.className = 'btn am'; b.dataset.k = k; b.innerHTML = '<i style="background:#' + ('000000' + K.col.toString(16)).slice(-6) + '"></i>' + K.name.replace(/ \(.*\)/, '') + '<br><span style="opacity:.75">' + K.rate + '/s</span>';
+    var K = KINDS[k], b = document.createElement('button'); b.className = 'btn am'; b.dataset.k = k; b.innerHTML = '<i style="background:#' + ('000000' + K.col.toString(16)).slice(-6) + '"></i>' + K.name.replace(/ \(.*\)/, '') + '<br><span style="opacity:.75">' + K.rate + '/s</span><span class="tag">' + SIM.ammoStrength(k).label + '</span>';
     b.addEventListener('click', function () { ammoKind = k; syncAmmo(); aimUpdate(); }); box.appendChild(b);
   });
   var f = document.createElement('button'); f.className = 'btn big'; f.id = 'fire'; f.textContent = 'FIRE'; box.appendChild(f);
@@ -445,7 +445,9 @@ var firing = false, fireCool = 0, burstLeft = 0, burstGap = 0;
   addEventListener('keydown', function (e) { if (e.code === 'Space') { firing = true; e.preventDefault(); } if (e.code === 'ArrowLeft') nudge(-0.01, 0); if (e.code === 'ArrowRight') nudge(0.01, 0); if (e.code === 'ArrowUp') nudge(0, 0.01); if (e.code === 'ArrowDown') nudge(0, -0.01); });
   addEventListener('keyup', function (e) { if (e.code === 'Space') firing = false; });
 })();
-function syncAmmo() { document.querySelectorAll('#ammo .am').forEach(function (b) { b.classList.toggle('on', b.dataset.k === ammoKind); }); }
+var AMMO_NOTE = { strong: 'Strong: this one breaks walls. Keep it away from the perch, a hit there can shake the bell down.', gentle: 'Gentle: this one nudges bricks and is kind to the perch. Good for picking at the walls near the bell.' };
+function ammoNoteUI() { var n = $('ammoNote'); if (!keepMode) { n.style.display = 'none'; return; } var s = SIM.ammoStrength(ammoKind); n.style.display = 'block'; n.innerHTML = '<b>' + KINDS[ammoKind].name.replace(/ \(.*\)/, '') + ' (' + s.label + ')</b><br>' + AMMO_NOTE[s.label]; }
+function syncAmmo() { ammoNoteUI(); document.querySelectorAll('#ammo .am').forEach(function (b) { b.classList.toggle('on', b.dataset.k === ammoKind); }); }
 var armAnim = 0;
 function shotsFired() { var c = 0, i; for (i = 0; i < ses.events.length; i++) if (ses.events[i].t === 'shot') c++; return c; }
 function fireNow() {
@@ -483,7 +485,7 @@ function setMode(k) {
   if (loading || (ses && ses.replay)) return; keepMode = k; document.body.classList.toggle('keepmode', k);
   $('modeTopple').classList.toggle('on', !k); $('modeKeep').classList.toggle('on', k); $('keepBox').style.display = k ? 'block' : 'none';
   $('qKeep').style.display = k ? 'none' : ''; $('qGate').textContent = k ? 'Wall' : 'Gate'; $('qTower').style.display = k ? 'none' : '';
-  setPiecesLabel(); build(piecesFromSlider(+$('pieces').value));
+  setPiecesLabel(); ammoNoteUI(); build(piecesFromSlider(+$('pieces').value));
 }
 $('modeTopple').addEventListener('click', function () { if (keepMode) setMode(false); }); $('modeKeep').addEventListener('click', function () { if (!keepMode) setMode(true); });
 function setShotsLabel() { shotsMax = +$('shots').value; $('shotsV').textContent = shotsMax; }

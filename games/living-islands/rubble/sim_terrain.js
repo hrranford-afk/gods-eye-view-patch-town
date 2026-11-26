@@ -37,6 +37,9 @@
   /* Keep the bell: the round rules. Shots: 12 by default, 6 to 40. Stars, only for a round that ends with the bell standing: 1 star, 2 stars from 50 percent knocked out, 3 stars over 80 percent.
      After the last shot (or Done) the round waits for the bricks to rest: at least 2 s, at most 10 s of simulated time. */
   var KEEP_RULES = { shotsDef: 12, shotsMin: 6, shotsMax: 40, two: 50, three: 80, waitMin: 120, waitMax: 600 };
+  /* how hard an ammo hits at full power: its kinetic energy (0.5 m v squared, joules). From 1,000 J it is 'strong' (it breaks walls, and can shake the perch), below it is 'gentle'. Found against the scripted volleys in test_keep.js. */
+  var STRONG_J = 1000;
+  function ammoStrength(k) { var K = KINDS[k], m = K.dens * volOf(K), e = 0.5 * m * K.speed * K.speed; return { energy: e, mass: m, label: e >= STRONG_J ? 'strong' : 'gentle' }; }
   function keepStars(pct, bellUp) { return !bellUp ? 0 : pct > KEEP_RULES.three ? 3 : pct >= KEEP_RULES.two ? 2 : 1; }
   var BOTTLE = { hh: 0.10, r: 0.045, nh: 0.05, nr: 0.02 };
 
@@ -461,6 +464,6 @@
     for (k = 0; k < 200; k++) s.step();
     h = s.sim.hash(); s.sim.dispose(); return h;
   }
-  var API = { KEEP_RULES: KEEP_RULES, keepStars: keepStars, grandCode: grandCode, fortCode: fortCode, buildFort: buildFort, settleUnit: settleUnit, BELL_DROP: BELL_DROP, MOVED: MOVED, rubbleCount: rubbleCount, FORT: FORT, determinismCode: determinismCode, KINDS: KINDS, AMMO: AMMO, DT: DT, GRAV: GRAV, RHOW: RHOW, makeSim: makeSim, buildScene: buildScene, makeSession: makeSession, aimAt: aimAt, rng: rng, qFromTo: qFromTo, qRandom: qRandom, qYaw: qYaw, volOf: volOf, nowMs: nowMs };
+  var API = { ammoStrength: ammoStrength, STRONG_J: STRONG_J, KEEP_RULES: KEEP_RULES, keepStars: keepStars, grandCode: grandCode, fortCode: fortCode, buildFort: buildFort, settleUnit: settleUnit, BELL_DROP: BELL_DROP, MOVED: MOVED, rubbleCount: rubbleCount, FORT: FORT, determinismCode: determinismCode, KINDS: KINDS, AMMO: AMMO, DT: DT, GRAV: GRAV, RHOW: RHOW, makeSim: makeSim, buildScene: buildScene, makeSession: makeSession, aimAt: aimAt, rng: rng, qFromTo: qFromTo, qRandom: qRandom, qYaw: qYaw, volOf: volOf, nowMs: nowMs };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.RSim = API;
 })(typeof window !== 'undefined' ? window : globalThis);

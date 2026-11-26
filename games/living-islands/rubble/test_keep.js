@@ -75,6 +75,33 @@ async function main() {
     var h1 = h(), h2 = h(); check('the same Keep volley gives the same hash and the same knocked-out count in two fresh sessions', h1 === h2, h1 + ' / ' + h2);
   })();
 
+  /* ---------- 4. ammo: strong and gentle, and a volley at the outer wall that leaves the perch and the bell alone ---------- */
+  results.numbers.strategies = [];
+  (function () {
+    var lab = {}; SIM.AMMO.forEach(function (k) { lab[k] = SIM.ammoStrength(k).label; });
+    check('every ammo kind has a strong or gentle label (strong from ' + SIM.STRONG_J + ' J): ' + JSON.stringify(lab), SIM.AMMO.every(function (k) { return lab[k] === 'strong' || lab[k] === 'gentle'; }) && lab.rod === 'strong' && lab.lid === 'strong' && lab.acorn === 'gentle' && lab.marble === 'gentle', '');
+    function volley(name, kind, shots, yM) {
+      var ses = SIM.makeSession(R, lee, { pieces: 2000, seed: 1, fort: 'castle', keep: true, ammoCap: 60 }), f = ses.sim.fort, d = f.design, K = SIM.KINDS[kind], i, k, a, x, perchMoved = 0, front = 0, frontMoved = 0, t, dx, dy, dz;
+      for (i = 0; i < shots; i++) {
+        x = d.cx + (((i * 7) % 11) / 10 - 0.5) * 1.6 * d.half.x * 0.9; a = SIM.aimAt(ses.muzzle(), { x: x, y: d.baseY + yM, z: d.cz + d.half.z * 0.9 }, K.speed);
+        ses.fire(kind, a.yaw, a.elev, 1); for (k = 0; k < 70; k++) ses.step();
+      }
+      for (k = 0; k < 600; k++) ses.step();
+      var sc = ses.score(), st = ses.keepState(shots, true);
+      d.pieces.forEach(function (p, j) {
+        var dead = f.recs[j].dead, moved = dead; if (!dead) { t = f.recs[j].body.translation(); dx = t.x - f.home[j * 3]; dy = t.y - f.home[j * 3 + 1]; dz = t.z - f.home[j * 3 + 2]; moved = dx * dx + dy * dy + dz * dz > SIM.MOVED * SIM.MOVED; }
+        if (p.g === 3 && moved) perchMoved++;
+        if (p.g !== 3 && p.k !== 'bell' && p.z > d.cz + d.half.z * 0.6) { front++; if (moved) frontMoved++; }
+      });
+      var r = { strategy: name, ammo: kind, shots: shots, percent: +sc.keep.percent.toFixed(1), frontWallPercent: +(100 * frontMoved / front).toFixed(1), bellStanding: !sc.bellDown, perchPiecesMoved: perchMoved, stars: st.stars };
+      results.numbers.strategies.push(r); console.log('INFO  ' + JSON.stringify(r)); ses.sim.dispose(); return r;
+    }
+    var A = volley('12 marbles along the front wall', 'marble', 12, 0.5), B = volley('12 tin lids along the front wall', 'lid', 12, 0.5), C = volley('12 big rods along the front wall', 'rod', 12, 0.6);
+    check('a gentle volley (12 marbles) at the outer wall leaves the bell and the whole perch alone and knocks out some of the base (' + A.percent + ' percent)', A.bellStanding && A.perchPiecesMoved === 0 && A.percent > 0, '');
+    check('a strong volley (12 tin lids) clears a good part of the outer wall (' + B.frontWallPercent + ' percent of the front wall, ' + B.percent + ' percent of the base) and the bell and perch stand (at most 7 of the 692 perch pieces nudged more than 20 cm: ' + B.perchPiecesMoved + ')', B.bellStanding && B.perchPiecesMoved <= 7 && B.frontWallPercent >= 15 && B.percent > A.percent, '');
+    check('12 big rods at the outer wall leave the bell standing (' + C.percent + ' percent, ' + C.frontWallPercent + ' of the front wall), the perch untouched', C.bellStanding && C.perchPiecesMoved === 0 && C.percent > A.percent, '');
+  })();
+
   fs.writeFileSync(path.join(__dirname, 'test_keep_results.json'), JSON.stringify(results, null, 1));
   console.log('\n' + (fails ? fails + ' FAILED' : 'ALL PASSED') + ' (' + results.checks.length + ' checks)'); process.exit(fails ? 1 : 0);
 }
