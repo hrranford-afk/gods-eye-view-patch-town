@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sea prototype: iPad sea and Radeon sea</title>
+<!-- Living Islands sea prototype (see research/SEA_AND_STORM_PLAN.md). STANDALONE: no game code. three.js r128 from the repo's own vendor copy (rubble/vendor/three), WebGL2.
+     One Gerstner sum (waves with sets and groups) in the vertex shader, a CPU port of the same sum for the boat and crates, Jacobian foam, spray points, sky with rainbow / rays / lightning, fog.
+     Two tiers: iPad sea (8 waves, small polar mesh) and Radeon sea (24 waves, dense mesh, 12000 spray points, 20000 debris points). All numbers are TUNING, none measured on a device.
+     URL: ?tier=ipad|radeon &type=calm|squall|after|gale|fog|swell|thunder|winter|wash &s=0..1 (how far the weather has risen) &t=seconds &freeze=1 &cam=radians -->
+<style>
+:root{--bg:#f4efe6;--ink:#2a2620;--panel:rgba(250,246,238,.92);--line:#cfc5b2;--accent:#2f6f7f}
+@media (prefers-color-scheme:dark){:root{--bg:#171a1c;--ink:#ece6da;--panel:rgba(28,32,34,.9);--line:#454b4d;--accent:#7fc4cf}}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:14px/1.35 system-ui,sans-serif;overflow:hidden}
+canvas{display:block;width:100%;height:100%}
+#ui{position:fixed;left:12px;top:12px;right:12px;max-width:360px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;backdrop-filter:blur(6px)}
+#ui h1{font-size:15px;margin:0 0 6px}
+#ui label{display:block;margin:6px 0 2px;font-size:12px;opacity:.8}
+#ui select,#ui input[type=range]{width:100%;font:inherit}
+#row{display:flex;gap:6px}#row button{flex:1;padding:8px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit}
+#row button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+#stats{font:12px/1.4 ui-monospace,monospace;margin-top:8px;white-space:pre-wrap}
+#note{font-size:11px;opacity:.7;margin-top:4px}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <h1>Sea prototype</h1>
+  <div id="row"><button id="bI">iPad sea</button><button id="bR">Radeon sea</button></div>
+  <label for="type">Storm type</label>
+  <select id="type"></select>
+  <label for="s">How far it has risen: <span id="sv"></span></label>
+  <input id="s" type="range" min="0" max="1" step="0.01" value="0.8">
+  <div id="stats"></div>
+  <div id="note">Numbers are frame time in whatever this browser uses to draw. On a software renderer they say nothing about a real device.</div>
+</div>
+<script src="../rubble/vendor/three/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+const Q=new URLSearchParams(location.search);
+const clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t, sm=t=>{t=clamp(t,0,1);return t*t*(3-2*t);};
+const G=9.81, TAU=Math.PI*2, MAXW=24;
+function hash(i,s){let h=Math.imul(i|0,374761393)+Math.imul(s|0,668265263)|0;h=Math.imul(h^(h>>>13),1274126177);h^=h>>>16;return(h>>>0)/4294967296;}
+
+/* ------------------------------------------------------------ storm types: the inputs of the wave sum and the look (all TUNING) ------------------------------------------------------------
+   kA = wave steepness (k times amplitude) of a band; L = wavelength in metres; sp = direction spread in degrees; q = Gerstner pinch scale (about 1 folds the crests);
+   foamT = Jacobian level where foam starts; fog = exp2 density per metre. */
+const CALM={wind:35,swOff:25,swKA:.030,swL:75,swSp:6,wsKA:.020,wsL:20,wsSp:35,chKA:.016,q:.85,foamT:.50,foam:.35,streak:0,
+  hor:[.62,.74,.84],zen:[.16,.34,.62],sunEl:34,sunAz:215,sunI:1,cover:.25,cloud:[.95,.95,.97],fog:.0011,fogC:[.66,.77,.86],
+  rainbow:0,rays:0,flash:0,smoke:0,deep:[.012,.085,.13],shal:[.05,.28,.30],vort:0,surge:0,exp:1.0,dark:0};
+const TYPES={
+ calm:{label:'Calm day'},
+ squall:{label:'Summer squall',wind:60,swOff:15,swKA:.05,swL:60,wsKA:.15,wsL:15,chKA:.10,q:1.15,foamT:.85,foam:.8,streak:.5,hor:[.34,.38,.43],zen:[.10,.15,.24],sunEl:20,sunAz:250,sunI:.55,cover:.95,cloud:[.30,.33,.38],fog:.0042,fogC:[.42,.46,.50],rays:.0,deep:[.01,.06,.09],dark:.5,exp:1.05},
+ after:{label:'Squall just gone (rainbow)',wind:60,swOff:15,swKA:.05,swL:60,wsKA:.07,wsL:16,chKA:.05,q:.95,foamT:.7,foam:.5,streak:.15,hor:[.80,.74,.62],zen:[.17,.32,.58],sunEl:20,sunAz:250,sunI:1.5,cover:.55,cloud:[.9,.82,.74],fog:.0016,fogC:[.78,.74,.68],rainbow:1,rays:1,deep:[.012,.08,.12]},
+ gale:{label:'Autumn gale',wind:75,swOff:20,swKA:.10,swL:120,wsKA:.19,wsL:34,wsSp:25,chKA:.10,q:1.3,foamT:.95,foam:1,streak:1,hor:[.45,.48,.50],zen:[.15,.19,.24],sunEl:14,sunAz:230,sunI:.45,cover:1,cloud:[.36,.39,.42],fog:.0055,fogC:[.50,.54,.56],deep:[.012,.06,.075],dark:.35,exp:1.0},
+ fog:{label:'Fog bank',wind:30,swOff:30,swKA:.020,swL:90,wsKA:.008,wsL:14,chKA:.004,q:.7,foamT:.4,foam:.1,hor:[.74,.77,.78],zen:[.66,.70,.72],sunEl:18,sunAz:200,sunI:.25,cover:.3,cloud:[.8,.82,.83],fog:.030,fogC:[.72,.75,.76],deep:[.02,.08,.10],exp:1.05},
+ swell:{label:'Ground swell (clear)',wind:100,swOff:-60,swKA:.085,swL:150,swSp:3,wsKA:.004,wsL:22,chKA:.002,q:1.0,foamT:.45,foam:.25,hor:[.66,.78,.88],zen:[.10,.28,.60],sunEl:38,sunAz:200,sunI:1.2,cover:.12,fog:.0010,fogC:[.68,.79,.88],deep:[.008,.08,.14],shal:[.05,.30,.34]},
+ thunder:{label:'Thunderstorm',wind:80,swOff:20,swKA:.07,swL:90,wsKA:.17,wsL:26,chKA:.11,q:1.25,foamT:.95,foam:.9,streak:.8,hor:[.26,.28,.31],zen:[.06,.07,.11],sunEl:10,sunAz:230,sunI:.25,cover:1,cloud:[.18,.19,.23],fog:.0050,fogC:[.28,.30,.33],flash:1,deep:[.008,.04,.055],dark:.6},
+ winter:{label:'Winter storm (sea smoke)',wind:70,swOff:20,swKA:.09,swL:130,wsKA:.17,wsL:30,chKA:.09,q:1.25,foamT:.95,foam:.9,streak:1,hor:[.58,.64,.72],zen:[.12,.18,.30],sunEl:5,sunAz:190,sunI:.7,cover:.8,cloud:[.55,.60,.68],fog:.0060,fogC:[.62,.68,.74],smoke:1,deep:[.014,.07,.10],dark:.2},
+ wash:{label:'The Great Wash',wind:55,swOff:25,swKA:.13,swL:140,swSp:5,wsKA:.17,wsL:32,chKA:.08,q:1.25,foamT:.95,foam:1,streak:.8,hor:[.60,.46,.32],zen:[.13,.15,.20],sunEl:6,sunAz:215,sunI:1.0,cover:.9,cloud:[.30,.30,.34],fog:.0030,fogC:[.50,.42,.34],rays:.8,vort:1,surge:1.2,deep:[.012,.055,.08],dark:.4}
+};
+TYPES.calm=Object.assign({},TYPES.calm);
+function paramsFor(type,s){const T=TYPES[type]||TYPES.calm,P={};
+  for(const k in CALM){const a=CALM[k],b=T[k]!==undefined?T[k]:a;
+    if(Array.isArray(a))P[k]=a.map((v,i)=>lerp(v,b[i],s)); else P[k]=lerp(a,b,s);}
+  return P;}
+
+/* ------------------------------------------------------------ tiers (cost knobs) ------------------------------------------------------------ */
+const TIERS={
+ ipad:{name:'iPad sea',rings:72,segs:160,nSw:3,nWs:5,nCh:0,rip:4,clouds:0,spray:600,debris:400,prCap:2,flashBolt:0},
+ radeon:{name:'Radeon sea',rings:220,segs:480,nSw:5,nWs:9,nCh:10,rip:10,clouds:1,spray:12000,debris:20000,prCap:2,flashBolt:1}
+};
+const VORT=[-45,-80,28,9]; /* x, z, radius, depth in metres of the funnel at full strength */
+
+/* ------------------------------------------------------------ wave table: sets (swell trains), groups (close neighbours beat), wind sea, chop ------------------------------------------------------------ */
+function buildWaves(P,tier){
+  const W=[];const wr=P.wind*Math.PI/180;
+  function band(n,kA,Lmin,Lmax,dirC,spreadDeg,salt,gm){
+    for(let i=0;i<n;i++){const u=n>1?i/(n-1):.5;const L=Lmin*Math.pow(Lmax/Lmin,u)*(.94+.12*hash(i,salt));
+      const dir=dirC+(hash(i,salt+7)-.5)*2*spreadDeg*Math.PI/180;
+      const k=TAU/L, A=kA/Math.sqrt(n)/k*(gm||1);
+      W.push({dx:Math.cos(dir),dz:Math.sin(dir),k,A,w:Math.sqrt(G*k),phi:hash(i,salt+13)*TAU,L});}}
+  band(tier.nSw,P.swKA,P.swL*.78,P.swL*1.3,wr+P.swOff*Math.PI/180,P.swSp,100);     /* swell set: close wavelengths and directions, so groups form */
+  band(tier.nWs,P.wsKA,P.wsL*.45,P.wsL*1.5,wr,P.wsSp,200);                          /* wind sea */
+  if(tier.nCh)band(tier.nCh,P.chKA,6.2,Math.min(P.wsL*.4,12),wr,50,300);           /* chop (Radeon only: the iPad does these as fragment ripples) */
+  const n=W.length;
+  for(const w of W){w.Q=clamp(P.q/(n*w.k*w.A),0,1);}                                   /* sum of Q k A = q: about 1 begins to fold the crests */
+  return W;
+}
+/* the CPU port: SAME formulas as seaAt() in the shader, without the camera distance fade, and only waves of 6 m and longer (a 4.4 m boat does not follow shorter ones) */
+function cpuDisp(W,p0x,p0z,t,P){let dx=0,dz=0,dy=0;
+  for(const w of W){if(w.L<6)continue;const th=w.k*(w.dx*p0x+w.dz*p0z)-w.w*t+w.phi,s=Math.sin(th),c=Math.cos(th);
+    dx-=w.Q*w.A*w.dx*s;dz-=w.Q*w.A*w.dz*s;dy+=w.A*c;}
+  const rx=p0x-VORT[0],rz=p0z-VORT[1],e=Math.exp(-(rx*rx+rz*rz)/(VORT[2]*VORT[2]));dy-=P.vort*VORT[3]*e;
+  return [dx,dy+P.surge,dz];}
+function seaHeight(W,x,z,t,P){let px=x,pz=z,d;for(let i=0;i<4;i++){d=cpuDisp(W,px,pz,t,P);px=x-d[0];pz=z-d[2];}return d[1];}   /* invert the horizontal pinch by fixed-point iteration */
+
+/* ------------------------------------------------------------ shaders ------------------------------------------------------------ */
+const GLSL_COMMON=`
+uniform float uT;uniform int uN;uniform vec4 uW[24];uniform vec3 uW2[24];uniform vec4 uVort;uniform float uVK;uniform float uLevel;uniform vec3 uCam;
+/* the wave sum: x = x0 - Q A d sin(th), y = A cos(th), th = k d.p0 - w t + phi. Returns displacement, a slope-based normal and the Jacobian determinant (small = crests folding = foam).
+   A wave fades out with distance from the camera once it is much shorter than the distance (the mesh could not draw it). */
+void seaAt(vec2 p0,float dist,out vec3 d,out vec3 n,out float J){
+  float dx=0.,dz=0.,dy=0.,jxx=0.,jzz=0.,jxz=0.,hx=0.,hz=0.;
+  for(int i=0;i<24;i++){if(i>=uN)break;vec4 w=uW[i];vec3 w2=uW2[i];
+    float L=6.2831853/w.z;float A=w.w*(1.0-smoothstep(L*6.0,L*14.0,dist));
+    float th=w.z*dot(w.xy,p0)-w2.y*uT+w2.z;float s=sin(th),c=cos(th);float qa=w2.x*A,kA=w.z*A;
+    dx-=qa*w.x*s;dz-=qa*w.y*s;dy+=A*c;
+    jxx+=w2.x*kA*w.x*w.x*c;jzz+=w2.x*kA*w.y*w.y*c;jxz+=w2.x*kA*w.x*w.y*c;
+    hx-=w.x*kA*s;hz-=w.y*kA*s;}
+  vec2 rv=p0-uVort.xy;float R=uVort.z;float e=exp(-dot(rv,rv)/(R*R));
+  dy-=uVK*uVort.w*e;hx+=uVK*uVort.w*e*2.0*rv.x/(R*R);hz+=uVK*uVort.w*e*2.0*rv.y/(R*R);
+  J=(1.0-jxx)*(1.0-jzz)-jxz*jxz;
+  d=vec3(dx,dy+uLevel,dz);n=normalize(vec3(-hx,max(J,0.25),-hz));}
+`;
+const GLSL_SKY=`
+uniform vec3 uHor,uZen,uSunDir,uSunCol,uCloudC;uniform float uSunI,uCover,uRainbow,uRays,uFlash,uDark;uniform float uT2;
+float h21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y);}
+float fbm(vec2 p){float a=.5,s=0.;for(int i=0;i<4;i++){s+=a*vn(p);p=p*2.03+7.1;a*=.5;}return s;}
+vec3 spectrum(float t){return clamp(vec3(1.5-abs(t*4.0-3.0)*.7,1.5-abs(t*4.0-2.0)*.7,1.5-abs(t*4.0-1.0)*.7)-.25,0.,1.)*vec3(1.0,.95,1.0);}
+vec3 skyCol(vec3 d,float clouds){
+  float y=max(d.y,0.0);vec3 c=mix(uHor,uZen,pow(y,0.5));float sd=max(dot(d,uSunDir),0.0);
+  c+=uSunCol*(pow(sd,1200.0)*6.0+pow(sd,10.0)*0.12*uSunI+pow(sd,3.0)*0.04*uSunI);
+  if(clouds>.5){vec2 q=d.xz/(max(d.y,0.0)+0.18)*0.55+vec2(uT2*0.004,0.);float n=fbm(q*1.7);
+    float m=smoothstep(1.0-uCover,1.0-uCover+0.32,n)*smoothstep(0.0,0.18,d.y);
+    vec3 cc=uCloudC*(0.55+0.7*pow(sd,2.0)*uSunI);c=mix(c,cc,m*(0.55+0.45*uCover));}
+  else c=mix(c,uCloudC*mix(.85,.45,uDark),uCover*0.35*smoothstep(0.0,0.35,d.y)*0.0+uCover*0.30*(1.0-y));
+  if(uRays>0.0){float ang=atan(d.x-uSunDir.x,d.z-uSunDir.z);float rr=vn(vec2(ang*7.0,uT2*0.03));c+=uSunCol*uRays*pow(sd,2.0)*smoothstep(0.35,0.9,rr)*0.22*smoothstep(-0.05,0.25,d.y+0.05);}
+  if(uRainbow>0.0){float a=acos(clamp(dot(d,-uSunDir),-1.0,1.0));float t=(a-0.6632)/(0.7330-0.6632);
+    float band=smoothstep(0.0,0.08,t)*(1.0-smoothstep(0.92,1.0,t));c+=spectrum(1.0-t)*band*uRainbow*0.45*smoothstep(0.0,0.06,d.y)*(0.6+0.4*uSunI);}
+  c+=uFlash*vec3(0.55,0.62,0.9)*(0.35+0.6*(1.0-y));
+  return c;}
+vec3 tone(vec3 c,float e){c*=e;c=(c*(2.51*c+0.03))/(c*(2.43*c+0.59)+0.14);return pow(clamp(c,0.,1.),vec3(1.0/2.2));}
+`;
+const SEA_VS=GLSL_COMMON+`varying vec3 vP;varying vec3 vN;varying float vJ;varying float vDist;
+void main(){vec2 p0=position.xz;float dist=length(vec3(p0.x-uCam.x,uCam.y,p0.y-uCam.z));vec3 d;vec3 n;float J;seaAt(p0,dist,d,n,J);
+  vec3 P=vec3(p0.x+d.x,d.y,p0.y+d.z);vP=P;vN=n;vJ=J;vDist=dist;gl_Position=projectionMatrix*viewMatrix*vec4(P,1.0);}`;
+const SEA_FS=`precision highp float;`+GLSL_SKY+`
+uniform float uT;uniform vec3 uDeep,uShal,uFogC;uniform float uFog,uFoamT,uFoam,uStreak,uSmoke,uExp,uChopKA,uPix,uHs,uWindA;uniform vec4 uVort;uniform float uVK;
+varying vec3 vP;varying vec3 vN;varying float vJ;varying float vDist;
+void main(){
+  vec3 V=normalize(cameraPosition-vP);vec3 N=normalize(vN);vec2 W=vec2(cos(uWindA),sin(uWindA)),Wp=vec2(-W.y,W.x);
+  /* fine ripples in the pixel shader: sharp crests, fade as they near the pixel footprint (the same idea as li_sea.js rip()) */
+  vec2 g=vec2(0.0);float fp=vDist*uPix;
+  for(int i=0;i<RIP;i++){float fi=float(i);float wl=2.2*pow(0.72,fi);float fd=1.0-smoothstep(0.3*wl,0.95*wl,fp);if(fd<0.004)continue;
+    float a=atan(W.y,W.x)+sin(fi*2.4+vn(vP.xz*0.1)*3.0)*1.1;vec2 dd=vec2(cos(a),sin(a));float k=6.2832/wl;float ph=dot(dd,vP.xz)*k-uT*sqrt(wl)*0.9*k*0.6+fi*1.7+vn(vP.xz*0.35+fi)*7.0;
+    g+=dd*(uChopKA*2.0*fd*0.55*exp(1.4*(sin(ph)-1.0))*cos(ph));}
+  N=normalize(N+vec3(-g.x,0.0,-g.y));
+  float ndv=max(dot(N,V),0.0);float fres=0.02+0.98*pow(1.0-ndv,5.0);
+  vec3 R=reflect(-V,N);R.y=abs(R.y);vec3 sk=skyCol(R,float(CLOUDS));
+  float lift=clamp(0.5+0.5*(vP.y-uVK*0.0)/max(uHs,0.05)*0.55,0.0,1.0);
+  vec3 body=mix(uDeep,uShal,pow(lift,2.5)*0.8+0.05)*(0.35+0.9*uSunI*max(uSunDir.y,0.1)+0.25*max(dot(N,uSunDir),0.0));
+  body+=uShal*0.5*pow(max(dot(V,-uSunDir),0.0),3.0)*pow(lift,3.0)*uSunI*0.5;   /* light through a thin crest */
+  vec3 col=mix(body,sk,fres);
+  float sd=max(dot(reflect(-V,N),uSunDir),0.0);col+=uSunCol*(pow(sd,350.0)*18.0+pow(sd,60.0)*0.6)*uSunI*(1.0-uDark*0.5)*smoothstep(0.0,0.15,uSunDir.y+0.05);
+  /* foam from the Jacobian (crests that fold) with noise, plus wind streaks, plus the whirlpool's spiral arms */
+  float fj=smoothstep(uFoamT+0.14,uFoamT-0.12,vJ);
+  float nz=vn(vP.xz*0.8+uT*0.07)*0.6+vn(vP.xz*3.3-uT*0.1)*0.4;
+  float crest=smoothstep(0.78,1.0,lift)*smoothstep(0.35,0.9,uFoamT);float foam=max(fj*smoothstep(0.2,0.7,nz+fj*0.45),crest*smoothstep(0.5,0.8,nz)*0.45)*uFoam;
+  if(uStreak>0.0){vec2 q=vec2(dot(vP.xz,W),dot(vP.xz,Wp));float st=vn(vec2(q.x*0.05-uT*0.05,q.y*0.7));foam=max(foam,smoothstep(0.62,0.9,st+0.25*fj)*uStreak*0.55*smoothstep(1.1,0.55,vJ+0.2)); }
+  if(uVK>0.0){vec2 rv=vP.xz-uVort.xy;float r=length(rv);float th=atan(rv.y,rv.x);float arms=sin(3.0*th+6.5*log(r+1.0)-uT*0.9);
+    foam=max(foam,uVK*smoothstep(0.35,0.9,arms)*exp(-r/(uVort.z*1.4))*0.85*(0.6+0.4*nz));}
+  vec3 foamC=vec3(0.90,0.94,0.95)*(0.55+0.5*uSunI*max(uSunDir.y,0.12))*(1.0-0.35*uDark);
+  col=mix(col,foamC,clamp(foam,0.0,1.0));
+  if(uSmoke>0.0){float sm1=fbm(vP.xz*0.035+vec2(uT*0.03,0.0));col=mix(col,uFogC,uSmoke*smoothstep(0.35,0.8,sm1)*0.55*exp(-vDist*0.004));}
+  float fg=1.0-exp(-pow(vDist*uFog,2.0));col=mix(col,uFogC*1.0,fg);
+  gl_FragColor=vec4(tone(col,uExp),1.0);}`;
+const SKY_VS=`varying vec3 vD;void main(){vD=position;gl_Position=projectionMatrix*viewMatrix*vec4(position+cameraPosition,1.0);gl_Position.z=gl_Position.w*0.9999;}`;
+const SKY_FS=`precision highp float;`+GLSL_SKY+`uniform vec3 uFogC;uniform float uExp;varying vec3 vD;
+void main(){vec3 d=normalize(vD);vec3 c=skyCol(d,float(CLOUDS));c=mix(c,uFogC,smoothstep(0.35,0.0,d.y)*0.5);gl_FragColor=vec4(tone(c,uExp),1.0);}`;
+const SPRAY_VS=GLSL_COMMON+`attribute vec4 aS;uniform float uAmt;uniform vec2 uWind;uniform float uPxScale;uniform float uFoamT;varying float vA;
+void main(){float life=fract(aS.x+uT*(0.25+0.5*aS.w));float r=22.0+aS.y*70.0*aS.y;float a=aS.z*6.2832;vec2 p0=uCam.xz+vec2(cos(a),sin(a))*r;
+  vec3 d;vec3 n;float J;seaAt(p0,r,d,n,J);float on=smoothstep(uFoamT+0.05,uFoamT-0.15,J)*uAmt;
+  vec3 P=vec3(p0.x+d.x,d.y,p0.y+d.z);P.xz+=uWind*life*3.0;P.y+=life*(1.0-life)*(1.0+3.0*aS.w)*1.6;
+  vA=on*(1.0-life)*smoothstep(0.0,0.1,life);gl_Position=projectionMatrix*viewMatrix*vec4(P,1.0);gl_PointSize=uPxScale*(0.25+0.5*aS.w)*(0.5+life)/max(gl_Position.w,1.0)*60.0;if(on<=0.02)gl_Position=vec4(3.0,3.0,3.0,1.0);}`;
+const SPRAY_FS=`precision highp float;uniform vec3 uCol;varying float vA;void main(){float d=length(gl_PointCoord-0.5);if(d>0.5)discard;gl_FragColor=vec4(uCol,vA*(1.0-d*2.0)*0.75);}`;
+const DEB_VS=GLSL_COMMON+`attribute vec4 aS;attribute vec3 aC;uniform float uPxScale;varying vec3 vC;varying float vA;
+void main(){float r=VORT_RMIN+aS.x*(uVort.z*2.6);float w=(1.4/sqrt(r+6.0))*(0.6+0.8*aS.y);float a=aS.z*6.2832+uT*w*uVK*1.1;float rr=r*(1.0-0.02*sin(uT*0.1+aS.w*6.0));
+  vec2 p0=uVort.xy+vec2(cos(a),sin(a))*rr;vec3 d;vec3 n;float J;seaAt(p0,rr+30.0,d,n,J);vec3 P=vec3(p0.x+d.x,d.y+0.12,p0.y+d.z);
+  vC=aC;vA=uVK;gl_Position=projectionMatrix*viewMatrix*vec4(P,1.0);gl_PointSize=uPxScale*(0.35+aS.w*0.9)/max(gl_Position.w,1.0)*40.0;if(uVK<=0.01)gl_Position=vec4(3.0,3.0,3.0,1.0);}`;
+const DEB_FS=`precision highp float;varying vec3 vC;varying float vA;void main(){gl_FragColor=vec4(vC,1.0);}`;
+
+/* ------------------------------------------------------------ scene ------------------------------------------------------------ */
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:false,powerPreference:'high-performance',preserveDrawingBuffer:true});
+const isGL2=renderer.capabilities.isWebGL2;
+const scene=new THREE.Scene();const camera=new THREE.PerspectiveCamera(58,1,0.2,4000);
+const state={tier:Q.get('tier')==='radeon'?'radeon':'ipad',type:TYPES[Q.get('type')]?Q.get('type'):'calm',s:parseFloat(Q.get('s')||'0.8'),t0:performance.now()/1000,
+  freeze:Q.get('freeze')==='1',tFix:Q.get('t')!==null?parseFloat(Q.get('t')):null,cam:Q.get('cam')!==null?parseFloat(Q.get('cam')):.7,W:[],P:null,ms:0,tris:0,calls:0};
+let seaMesh=null,skyMesh=null,sprayPts=null,debPts=null,boat=null,crates=[],hulk=null,bolt=null;
+const U={uT:{value:0},uT2:{value:0},uN:{value:0},uW:{value:Array.from({length:MAXW},()=>new THREE.Vector4())},uW2:{value:Array.from({length:MAXW},()=>new THREE.Vector3())},
+  uVort:{value:new THREE.Vector4(...VORT)},uVK:{value:0},uLevel:{value:0},uCam:{value:new THREE.Vector3()},
+  uHor:{value:new THREE.Vector3()},uZen:{value:new THREE.Vector3()},uSunDir:{value:new THREE.Vector3()},uSunCol:{value:new THREE.Vector3(3,2.2,1.5)},uCloudC:{value:new THREE.Vector3()},
+  uSunI:{value:1},uCover:{value:.3},uRainbow:{value:0},uRays:{value:0},uFlash:{value:0},uDark:{value:0},
+  uDeep:{value:new THREE.Vector3()},uShal:{value:new THREE.Vector3()},uFogC:{value:new THREE.Vector3()},uFog:{value:.001},uFoamT:{value:.3},uFoam:{value:.4},uStreak:{value:0},uSmoke:{value:0},uExp:{value:1},
+  uChopKA:{value:.01},uPix:{value:.001},uHs:{value:1},uWindA:{value:0},uWind:{value:new THREE.Vector2()},uAmt:{value:1},uPxScale:{value:1},uCol:{value:new THREE.Vector3(.92,.95,.96)}};
+function mat(vs,fs,defs,extra,trans){const m=new THREE.ShaderMaterial({vertexShader:vs,fragmentShader:fs,uniforms:Object.assign({},U,extra||{}),transparent:!!trans,depthWrite:!trans});
+  m.defines=defs||{};return m;}
+function polarGrid(rings,segs,R){const pos=[],idx=[];
+  for(let i=0;i<=rings;i++){const u=i/rings;const r=R*(0.12*u+0.88*u*u*u);for(let j=0;j<segs;j++){const a=j/segs*TAU;pos.push(Math.cos(a)*r,0,Math.sin(a)*r);}}
+  for(let i=0;i<rings;i++)for(let j=0;j<segs;j++){const a=i*segs+j,b=i*segs+(j+1)%segs,c=(i+1)*segs+j,d=(i+1)*segs+(j+1)%segs;idx.push(a,c,b,b,c,d);}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);return g;}
+function seeded(n,seed){const a=new Float32Array(n*4);for(let i=0;i<n;i++){for(let k=0;k<4;k++)a[i*4+k]=hash(i*4+k,seed);}return a;}
+function build(){
+  const T=TIERS[state.tier];
+  [seaMesh,skyMesh,sprayPts,debPts].forEach(o=>{if(o){scene.remove(o);o.geometry.dispose();o.material.dispose();}});
+  seaMesh=new THREE.Mesh(polarGrid(T.rings,T.segs,900),mat(SEA_VS,SEA_FS,{RIP:T.rip,CLOUDS:T.clouds}));seaMesh.material.side=THREE.DoubleSide;seaMesh.frustumCulled=false;scene.add(seaMesh);
+  skyMesh=new THREE.Mesh(new THREE.SphereGeometry(1000,32,16),mat(SKY_VS,SKY_FS,{CLOUDS:T.clouds}));skyMesh.material.side=THREE.BackSide;skyMesh.frustumCulled=false;skyMesh.renderOrder=-1;scene.add(skyMesh);
+  const sg=new THREE.BufferGeometry();sg.setAttribute('position',new THREE.Float32BufferAttribute(new Float32Array(T.spray*3),3));sg.setAttribute('aS',new THREE.BufferAttribute(seeded(T.spray,5),4));
+  sprayPts=new THREE.Points(sg,mat(SPRAY_VS,SPRAY_FS,{},null,true));sprayPts.frustumCulled=false;sprayPts.material.blending=THREE.NormalBlending;scene.add(sprayPts);
+  const dg=new THREE.BufferGeometry();dg.setAttribute('position',new THREE.Float32BufferAttribute(new Float32Array(T.debris*3),3));dg.setAttribute('aS',new THREE.BufferAttribute(seeded(T.debris,9),4));
+  const col=new Float32Array(T.debris*3);const pal=[[.36,.26,.17],[.45,.33,.2],[.62,.58,.5],[.25,.2,.16],[.7,.68,.62],[.5,.18,.12]];
+  for(let i=0;i<T.debris;i++){const c=pal[Math.floor(hash(i,31)*pal.length)];col.set(c,i*3);}dg.setAttribute('aC',new THREE.BufferAttribute(col,3));
+  debPts=new THREE.Points(dg,mat(DEB_VS,DEB_FS,{VORT_RMIN:'6.0'}));debPts.frustumCulled=false;scene.add(debPts);
+  U.uPxScale.value=renderer.getPixelRatio()*canvas.clientHeight/700;
+}
+function buildBoat(){
+  boat=new THREE.Group();const hull=new THREE.Mesh(new THREE.BoxGeometry(4.4,.8,1.6),new THREE.MeshBasicMaterial({color:0x3d5f73}));hull.position.y=.1;boat.add(hull);
+  const trim=new THREE.Mesh(new THREE.BoxGeometry(4.5,.12,1.7),new THREE.MeshBasicMaterial({color:0xe8dcc0}));trim.position.y=.52;boat.add(trim);
+  const cab=new THREE.Mesh(new THREE.BoxGeometry(1.2,.8,1.1),new THREE.MeshBasicMaterial({color:0xd9a441}));cab.position.set(-.5,1.0,0);boat.add(cab);scene.add(boat);
+  for(let i=0;i<3;i++){const c=new THREE.Mesh(new THREE.BoxGeometry(.9,.6,.9),new THREE.MeshBasicMaterial({color:[0x8a5a2b,0x9c6b3a,0x6e4a2a][i]}));scene.add(c);crates.push(c);}
+  hulk=new THREE.Group();const hb=new THREE.Mesh(new THREE.BoxGeometry(16,3.2,5.4),new THREE.MeshBasicMaterial({color:0x4a3328}));hulk.add(hb);
+  for(let i=-3;i<=3;i++){const rb=new THREE.Mesh(new THREE.BoxGeometry(.35,3.6,5.8),new THREE.MeshBasicMaterial({color:0x2e211a}));rb.position.set(i*2.1,.3,0);hulk.add(rb);}
+  const mast=new THREE.Mesh(new THREE.BoxGeometry(.3,6,.3),new THREE.MeshBasicMaterial({color:0x2e211a}));mast.position.set(3,4,0);mast.rotation.z=.35;hulk.add(mast);
+  scene.add(hulk);
+  const bg=new THREE.BufferGeometry();bg.setAttribute('position',new THREE.Float32BufferAttribute(new Float32Array(3*24),3));bolt=new THREE.Line(bg,new THREE.LineBasicMaterial({color:0xdde6ff,transparent:true,opacity:0}));bolt.frustumCulled=false;scene.add(bolt);
+}
+/* the boat and crates ride the CPU height query: five points under the hull, like boat_motion.floatMotion but with looser caps so a storm is felt */
+function placeBody(m,W,x,z,yaw,L,B,t,P,capA,capH){
+  const c=Math.cos(yaw),s=Math.sin(yaw),h=(px,pz)=>seaHeight(W,px,pz,t,P);
+  const hc=h(x,z),hb=h(x+c*L/2,z+s*L/2),hs=h(x-c*L/2,z-s*L/2),hp=h(x-s*B/2,z+c*B/2),hq=h(x+s*B/2,z-c*B/2);
+  const pitch=capA*Math.tanh(Math.atan((hb-hs)/L)/capA),roll=capA*Math.tanh(Math.atan((hp-hq)/B)/capA);
+  m.position.set(x,hc+.05,z);m.rotation.set(0,0,0);m.rotation.order='YZX';m.rotation.y=-yaw;m.rotation.z=pitch;m.rotation.x=roll;return hc;}
+
+function applyParams(t){
+  const P=state.P=paramsFor(state.type,state.s),T=TIERS[state.tier];
+  const W=state.W=buildWaves(P,T);U.uN.value=W.length;
+  W.forEach((w,i)=>{U.uW.value[i].set(w.dx,w.dz,w.k,w.A);U.uW2.value[i].set(w.Q,w.w,w.phi);});
+  let e=0;for(const w of W)e+=w.A*w.A/2;U.uHs.value=4*Math.sqrt(e);
+  U.uHor.value.set(...P.hor);U.uZen.value.set(...P.zen);U.uCloudC.value.set(...P.cloud);U.uFogC.value.set(...P.fogC);U.uDeep.value.set(...P.deep);U.uShal.value.set(...P.shal);
+  const el=P.sunEl*Math.PI/180,az=P.sunAz*Math.PI/180;U.uSunDir.value.set(Math.sin(az)*Math.cos(el),Math.sin(el),-Math.cos(az)*Math.cos(el)).normalize();
+  U.uSunI.value=P.sunI;U.uCover.value=P.cover;U.uRainbow.value=P.rainbow;U.uRays.value=P.rays;U.uDark.value=P.dark;U.uFog.value=P.fog;U.uFoamT.value=P.foamT;U.uFoam.value=P.foam;
+  U.uStreak.value=P.streak;U.uSmoke.value=P.smoke;U.uExp.value=P.exp;U.uChopKA.value=P.chKA;U.uWindA.value=P.wind*Math.PI/180;U.uWind.value.set(Math.cos(P.wind*Math.PI/180),Math.sin(P.wind*Math.PI/180));
+  U.uVK.value=P.vort;U.uLevel.value=P.surge;U.uAmt.value=clamp((P.foam+P.streak)*.8,0,1)*sm((P.wsKA-.03)/.12);
+  /* lightning: a flash every 7 s of game time (thunder type only), a deterministic function of time */
+  let fl=0;if(state.type==='thunder'){const ph=t%7;const e1=Math.exp(-ph*9)*(ph<.6?1:0),e2=ph>.25?Math.exp(-(ph-.25)*14)*.7:0;fl=(e1+e2)*state.s;}U.uFlash.value=fl;
+  if(bolt){bolt.material.opacity=fl>.05&&TIERS[state.tier].flashBolt?Math.min(1,fl*1.5):0;if(bolt.material.opacity>0){const k=Math.floor(t/7),a=hash(k,3)*TAU,p=bolt.geometry.attributes.position;let x=Math.cos(a)*600,z=Math.sin(a)*600,y=420;
+    for(let i=0;i<24;i++){p.setXYZ(i,x,y,z);x+=(hash(i+k*31,7)-.5)*50;z+=(hash(i+k*31,8)-.5)*50;y-=17+hash(i,9)*4;}p.needsUpdate=true;}}
+}
+function resize(){const pr=Math.min(window.devicePixelRatio||1,TIERS[state.tier].prCap);renderer.setPixelRatio(pr);renderer.setSize(window.innerWidth,window.innerHeight,false);
+  camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();U.uPix.value=2*Math.tan(camera.fov*Math.PI/360)/Math.max(1,renderer.domElement.height);U.uPxScale.value=pr*window.innerHeight/700;}
+window.addEventListener('resize',resize);
+
+/* ------------------------------------------------------------ frame ------------------------------------------------------------ */
+let last=performance.now(),ema=0,frames=0;
+function frame(now){
+  const dt=now-last;last=now;ema=ema?ema*.9+dt*.1:dt;frames++;
+  const t=state.tFix!==null?state.tFix+(state.freeze?0:(now/1000-state.t0)):(now/1000-state.t0);state.t=t;
+  U.uT.value=t;U.uT2.value=t;applyParams(t);const P=state.P;
+  /* the boat holds its place; crates drift in a small ring; the hulk lies at the whirlpool's edge, listing */
+  const yaw=P.wind*Math.PI/180+.5;placeBody(boat,state.W,0,0,yaw,4.4,1.6,t,P,.38,1);
+  crates.forEach((c,i)=>{const a=i*2.1+.5;placeBody(c,state.W,Math.cos(a)*(9+i*2),Math.sin(a)*(9+i*2),a,.9,.9,t,P,.5,1);});
+  hulk.visible=P.vort>.05;if(hulk.visible){const hy=placeBody(hulk,state.W,VORT[0]+VORT[2]*1.15,VORT[1]+VORT[2]*.4,.9,16,5.4,t,P,.3,1);hulk.position.y=hy+.4;hulk.rotation.x+=.18*P.vort;hulk.scale.setScalar(1);}
+  /* camera: orbit the boat; with a whirlpool, stand behind the boat so the funnel and the hulk are in front */
+  const bx=0,bz=0;let ang=state.cam;if(P.vort>.3){ang=Math.atan2(bz-VORT[1],bx-VORT[0]);}
+  const rad=P.vort>.3?30:22,hgt=P.vort>.3?10:7.5;
+  const ty=lerp(1.5,3,P.vort);const tx=lerp(0,VORT[0]*.55,P.vort*.9),tz=lerp(0,VORT[1]*.55,P.vort*.9);
+  camera.position.set(bx+Math.cos(ang)*rad,hgt+.45*Math.sin(t*.5)*0+seaHeight(state.W,bx+Math.cos(ang)*rad,bz+Math.sin(ang)*rad,t,P)*.3,bz+Math.sin(ang)*rad);camera.lookAt(tx,ty,tz);
+  U.uCam.value.copy(camera.position);
+  skyMesh.position.copy(camera.position);
+  renderer.render(scene,camera);
+  const inf=renderer.info.render;state.tris=inf.triangles;state.calls=inf.calls;state.ms=ema;
+  if(frames%10===0)updateStats();
+  requestAnimationFrame(frame);
+}
+let glName='';try{const e=renderer.getContext().getExtension('WEBGL_debug_renderer_info');if(e)glName=renderer.getContext().getParameter(e.UNMASKED_RENDERER_WEBGL);}catch(e){}
+const soft=/swiftshader|llvmpipe|software/i.test(glName);
+function updateStats(){const T=TIERS[state.tier],P=state.P;
+  const lines=[T.name+'  |  '+TYPES[state.type].label,'waves '+state.W.length+' (swell '+T.nSw+', wind sea '+T.nWs+', chop '+T.nCh+' + '+T.rip+' pixel ripples)',
+   'mesh '+T.rings+' x '+T.segs+'  spray '+T.spray+'  debris '+(P.vort>.05?T.debris:0)+' (points)',
+   'triangles '+state.tris.toLocaleString()+'   draw calls '+state.calls,'frame '+state.ms.toFixed(1)+' ms'+(soft?'  (SOFTWARE GL, not a real GPU)':''),
+   'renderer '+glName+(isGL2?'  WebGL2':'  WEBGL1!')];
+  document.getElementById('stats').textContent=lines.join('\n');document.getElementById('sv').textContent=state.s.toFixed(2);}
+function ui(){const sel=document.getElementById('type');for(const k in TYPES){const o=document.createElement('option');o.value=k;o.textContent=TYPES[k].label;sel.appendChild(o);}
+  sel.value=state.type;sel.onchange=()=>{state.type=sel.value;};
+  const sl=document.getElementById('s');sl.value=state.s;sl.oninput=()=>{state.s=parseFloat(sl.value);};
+  const bI=document.getElementById('bI'),bR=document.getElementById('bR');
+  function setTier(t){state.tier=t;bI.classList.toggle('on',t==='ipad');bR.classList.toggle('on',t==='radeon');build();resize();}
+  bI.onclick=()=>setTier('ipad');bR.onclick=()=>setTier('radeon');setTier(state.tier);
+  if(Q.get('ui')==='0')document.getElementById('ui').style.display='none';}
+ui();buildBoat();resize();requestAnimationFrame(frame);
+window.__sea={state,TYPES,TIERS,seaHeight:(x,z,t)=>seaHeight(state.W,x,z,t===undefined?state.t:t,state.P),ready:true};
+})();
+</script>
+</body>
+</html>
