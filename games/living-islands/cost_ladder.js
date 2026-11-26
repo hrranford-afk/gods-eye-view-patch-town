@@ -305,7 +305,7 @@
       const fb = () => { S.ta.focus(); S.ta.select(); try { doc.execCommand('copy'); done(); } catch (x) { } };
       try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, fb); else fb(); } catch (x) { fb(); }
     });
-    return { run, state: () => ({ running: S.running, progress: S.progress, rows: S.rows.slice(), report: S.report, data: S.data }), stop: () => { S.stop = true; }, report: () => S.report, timer: () => !!ext, limit: () => limit };
+    return { check: () => ({ layersVisible: [].concat(lay$('sea'), lay$('terrain'), lay$('props')).every(o => o.visible), shadowsOn: !!(R.shadowMap.enabled && R.shadowMap.autoUpdate), autoReset: R.info.autoReset }), run, state: () => ({ running: S.running, progress: S.progress, rows: S.rows.slice(), report: S.report, data: S.data }), stop: () => { S.stop = true; }, report: () => S.report, timer: () => !!ext, limit: () => limit };
   }
 
   return { FRAME_MS, OVER_MS, STOP_MS, MAX_K, RUNGS, median, findK, fitPixels, mpixAtFrame, rowOf, tableLines, formatReport, attach };
