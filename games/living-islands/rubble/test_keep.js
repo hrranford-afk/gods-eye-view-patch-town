@@ -51,6 +51,30 @@ async function main() {
     check('Topple mode is unchanged (no perch group, no keep flag, 400 pieces)', !old.keep && old.count === 400 && !old.pieces.some(function (p) { return p.g === 3; }), '');
   })();
 
+  /* ---------- 3. score and round ---------- */
+  (function () {
+    var RU = SIM.KEEP_RULES;
+    check('stars: bell down 0; bell standing 1; from ' + RU.two + ' percent 2; over ' + RU.three + ' percent 3 (exactly ' + RU.three + ' is 2)', SIM.keepStars(95, false) === 0 && SIM.keepStars(0, true) === 1 && SIM.keepStars(RU.two, true) === 2 && SIM.keepStars(RU.three, true) === 2 && SIM.keepStars(RU.three + 0.1, true) === 3 && RU.shotsDef === 12 && RU.shotsMin === 6 && RU.shotsMax === 40, JSON.stringify(RU));
+    var ses = SIM.makeSession(R, lee, { pieces: 1000, seed: 1, fort: 'castle', keep: true, ammoCap: 60 }), f = ses.sim.fort, d = f.design, k, i, st;
+    st = ses.keepState(12, false);
+    check('a fresh Keep round is playing: 0 percent, 12 shots left, bell standing, not over', st && st.over === null && st.left === 12 && st.percent === 0 && st.bellUp, JSON.stringify(st));
+    var tgt = { x: d.cx, y: d.baseY + 0.5, z: d.cz + d.half.z * 0.9 }, a = SIM.aimAt(ses.muzzle(), tgt, SIM.KINDS.marble.speed);
+    for (i = 0; i < 3; i++) { ses.fire('marble', a.yaw, a.elev, 1); for (k = 0; k < 60; k++) ses.step(); }
+    st = ses.keepState(12, false);
+    check('after 3 of 12 shots the round is still playing with 9 left, and the percent is of the base without the perch (' + st.outer + ' pieces, perch ' + d.perch.count + ')', st.over === null && st.left === 9 && st.outer === 1000 - d.perch.count && st.percent === 100 * st.knocked / st.outer, JSON.stringify(st));
+    st = ses.keepState(12, true); var early = st.over;
+    for (k = 0; k < 700; k++) ses.step(); st = ses.keepState(12, true);
+    check('Done ends the round once the bricks rest (not at once), with a result and 1 or more stars', early === null && st.over === 'result' && st.stars >= 1 && st.bellUp, JSON.stringify(st));
+    ses.sim.dispose();
+    var s2 = SIM.makeSession(R, lee, { pieces: 1000, seed: 1, fort: 'castle', keep: true, ammoCap: 60 }), f2 = s2.sim.fort, b = f2.design.bell, a2 = SIM.aimAt(s2.muzzle(), { x: b.x, y: f2.bellHome, z: b.z }, SIM.KINDS.rod.speed), n = 0;
+    for (i = 0; i < 30 && !s2.bellDown; i++) { s2.fire('rod', a2.yaw, a2.elev, 1); n++; for (k = 0; k < 150; k++) s2.step(); }
+    st = s2.keepState(40, false);
+    check('rods at the perch drop the bell (after ' + n + ' rods): the round is over with Bell down, no stars', st.over === 'bell' && st.stars === 0 && !st.bellUp, JSON.stringify(st));
+    results.numbers.perchRods = n; s2.sim.dispose();
+    var h = function () { var q = SIM.makeSession(R, lee, { pieces: 1000, seed: 1, fort: 'castle', keep: true, ammoCap: 60 }), j, t; for (j = 0; j < 3; j++) { q.fire('marble', a.yaw, a.elev, 1); for (t = 0; t < 60; t++) q.step(); } var r = q.sim.hash() + ':' + q.keepState(12, false).knocked; q.sim.dispose(); return r; };
+    var h1 = h(), h2 = h(); check('the same Keep volley gives the same hash and the same knocked-out count in two fresh sessions', h1 === h2, h1 + ' / ' + h2);
+  })();
+
   fs.writeFileSync(path.join(__dirname, 'test_keep_results.json'), JSON.stringify(results, null, 1));
   console.log('\n' + (fails ? fails + ' FAILED' : 'ALL PASSED') + ' (' + results.checks.length + ' checks)'); process.exit(fails ? 1 : 0);
 }

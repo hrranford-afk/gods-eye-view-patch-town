@@ -34,6 +34,10 @@
   };
   var AMMO = ['acorn', 'marble', 'coconut', 'lid', 'float', 'bottle', 'rod'];
   var BELL_DROP = 0.32, MOVED = 0.20;                    /* the bell counts as down after 0.32 m (Castle Sound's number; its bricks are the same 0.30 m ones, so its units are metres); a piece has moved after 0.20 m (a brick width) */
+  /* Keep the bell: the round rules. Shots: 12 by default, 6 to 40. Stars, only for a round that ends with the bell standing: 1 star, 2 stars from 50 percent knocked out, 3 stars over 80 percent.
+     After the last shot (or Done) the round waits for the bricks to rest: at least 2 s, at most 10 s of simulated time. */
+  var KEEP_RULES = { shotsDef: 12, shotsMin: 6, shotsMax: 40, two: 50, three: 80, waitMin: 120, waitMax: 600 };
+  function keepStars(pct, bellUp) { return !bellUp ? 0 : pct > KEEP_RULES.three ? 3 : pct >= KEEP_RULES.two ? 2 : 1; }
   var BOTTLE = { hh: 0.10, r: 0.045, nh: 0.05, nr: 0.02 };
 
   /* Rapier's own cylinder shape fell through heightfields in about a fifth of random drops (found in testing, see test_terrain_physics.js), a convex prism does not,
@@ -372,7 +376,7 @@
       var ms = ses.sim.step();
       var ff = ses.sim.fort;
       if (ff && !ses.bellDown && ses.sim.steps % 6 === 0 && ff.home) {            /* each bell counts as down once it has fallen 0.32 m; 'bellDown' means the primary bell for a one-bell fort and all of them for a Grand fort */
-        var bi, all = true; for (bi = 0; bi < ff.bells.length; bi++) { if (!ses.bellFlags[bi] && ff.bells[bi].body.translation().y < ff.bellHomes[bi] - BELL_DROP) ses.bellFlags[bi] = ses.sim.steps; if (!ses.bellFlags[bi]) all = false; }
+        var bi, all = true; for (bi = 0; bi < ff.bells.length; bi++) { if (!ses.bellFlags[bi] && (ff.bells[bi].dead || ff.bells[bi].body.translation().y < ff.bellHomes[bi] - BELL_DROP)) ses.bellFlags[bi] = ses.sim.steps; if (!ses.bellFlags[bi]) all = false; }
         if (all) { ses.bellDown = true; ses.bellDownAt = ses.sim.steps; }
       }
       if (rp && ses.sim.steps >= rp.endStep) { var hh = ses.sim.hash(); ses.lastReplay = { ok: hh === rp.hashAtEnd, expected: rp.hashAtEnd, got: hh, steps: ses.sim.steps }; ses.replay = null; ses.events = rp.events; }
@@ -393,10 +397,36 @@
     ses.score = function () {
       var f = ses.sim.fort; if (!f || !f.home) return null;
       var i, t, dx, dy, dz, moved = 0, n = f.recs.length;
-      for (i = 0; i < n; i++) { t = f.recs[i].body.translation(); dx = t.x - f.home[i * 3]; dy = t.y - f.home[i * 3 + 1]; dz = t.z - f.home[i * 3 + 2]; if (dx * dx + dy * dy + dz * dz > MOVED * MOVED) moved++; }
-      var by = f.bell.body.translation().y, shots = 0; for (i = 0; i < ses.events.length; i++) if (ses.events[i].t === 'shot') shots++;
+      for (i = 0; i < n; i++) { if (f.recs[i].dead) { moved++; continue; } t = f.recs[i].body.translation(); dx = t.x - f.home[i * 3]; dy = t.y - f.home[i * 3 + 1]; dz = t.z - f.home[i * 3 + 2]; if (dx * dx + dy * dy + dz * dz > MOVED * MOVED) moved++; }
+      var by = f.bell.dead ? f.bellHome - 5 : f.bell.body.translation().y, shots = 0; for (i = 0; i < ses.events.length; i++) if (ses.events[i].t === 'shot') shots++;
       var nb = f.bells.length, bd = 0, bj; for (bj = 0; bj < nb; bj++) if (ses.bellFlags[bj]) bd++;
-      return { count: n, moved: moved, standing: n - moved, shots: shots, bellDrop: f.bellHome - by, bellDown: ses.bellDown, bellDownAtStep: ses.bellDownAt, bells: nb, bellsDown: bd, bellFlags: f.bells.map(function (b, i) { return !!ses.bellFlags[i]; }) };
+      var kn = null;
+      if (f.design.keep) {                                /* Keep the bell: the perch's own pieces (group 3) are not counted; the percent is of everything else */
+        var pcs = f.design.pieces, outer = 0, kmoved = 0;
+        for (i = 0; i < n; i++) {
+          if (pcs[i].g === 3 || pcs[i].k === 'bell') continue;
+          outer++; if (f.recs[i].dead) { kmoved++; continue; } t = f.recs[i].body.translation(); dx = t.x - f.home[i * 3]; dy = t.y - f.home[i * 3 + 1]; dz = t.z - f.home[i * 3 + 2];
+          if (dx * dx + dy * dy + dz * dz > MOVED * MOVED) kmoved++;
+        }
+        kn = { outer: outer, knocked: kmoved, percent: outer ? 100 * kmoved / outer : 0 };
+      }
+      return { keep: kn, count: n, moved: moved, standing: n - moved, shots: shots, bellDrop: f.bellHome - by, bellDown: ses.bellDown, bellDownAtStep: ses.bellDownAt, bells: nb, bellsDown: bd, bellFlags: f.bells.map(function (b, i) { return !!ses.bellFlags[i]; }) };
+    };
+    /* the Keep round: the state of play for a shot allowance. 'playing' until the bell has fallen 0.32 m ('bell': Bell down, try again), the player is Done, or the shots are used and the bricks have
+       come to rest ('result'); a result carries the percent knocked out and the stars. A round that is over stays over (the caller keeps the first answer). */
+    ses.keepState = function (maxShots, done) {
+      var sc = ses.score(), f = ses.sim.fort; if (!sc || !sc.keep) return null;
+      var pct = sc.keep.percent, base = { shots: sc.shots, left: Math.max(0, maxShots - sc.shots), percent: pct, knocked: sc.keep.knocked, outer: sc.keep.outer, bellUp: !ses.bellDown, stars: 0, over: null };
+      if (ses.bellDown) { base.over = 'bell'; return base; }
+      var last = -1, i; for (i = ses.events.length - 1; i >= 0; i--) if (ses.events[i].t === 'shot') { last = ses.events[i].s; break; }
+      var quiet = false;
+      if (sc.shots >= maxShots || done) {
+        var since = ses.sim.steps - last;
+        if (last < 0 || since >= KEEP_RULES.waitMax) quiet = true;
+        else if (since >= KEEP_RULES.waitMin) { var awake = 0; for (i = 0; i < f.recs.length; i++) if (!f.recs[i].dead && !f.recs[i].body.isSleeping()) awake++; quiet = awake <= 3; }
+      }
+      if (quiet) { base.over = 'result'; base.stars = keepStars(pct, true); }
+      return base;
     };
     ses.finishReplay = function () { while (ses.replay) ses.step(); };
     return ses;
@@ -431,6 +461,6 @@
     for (k = 0; k < 200; k++) s.step();
     h = s.sim.hash(); s.sim.dispose(); return h;
   }
-  var API = { grandCode: grandCode, fortCode: fortCode, buildFort: buildFort, settleUnit: settleUnit, BELL_DROP: BELL_DROP, MOVED: MOVED, rubbleCount: rubbleCount, FORT: FORT, determinismCode: determinismCode, KINDS: KINDS, AMMO: AMMO, DT: DT, GRAV: GRAV, RHOW: RHOW, makeSim: makeSim, buildScene: buildScene, makeSession: makeSession, aimAt: aimAt, rng: rng, qFromTo: qFromTo, qRandom: qRandom, qYaw: qYaw, volOf: volOf, nowMs: nowMs };
+  var API = { KEEP_RULES: KEEP_RULES, keepStars: keepStars, grandCode: grandCode, fortCode: fortCode, buildFort: buildFort, settleUnit: settleUnit, BELL_DROP: BELL_DROP, MOVED: MOVED, rubbleCount: rubbleCount, FORT: FORT, determinismCode: determinismCode, KINDS: KINDS, AMMO: AMMO, DT: DT, GRAV: GRAV, RHOW: RHOW, makeSim: makeSim, buildScene: buildScene, makeSession: makeSession, aimAt: aimAt, rng: rng, qFromTo: qFromTo, qRandom: qRandom, qYaw: qYaw, volOf: volOf, nowMs: nowMs };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.RSim = API;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -18,9 +18,58 @@ async function main() {
   var shots = path.join(__dirname, 'shots'); fs.mkdirSync(shots, { recursive: true });
   var ctx = await browser.newContext({ viewport: { width: 1180, height: 760 }, deviceScaleFactor: 1 }), page = await ctx.newPage(), errs = [];
   page.on('console', function (m) { if (m.type() === 'error') errs.push('console: ' + m.text()); }); page.on('pageerror', function (e) { errs.push('pageerror: ' + e.message); });
+  page.on('crash', function () { console.log('PAGE CRASH'); }); page.on('close', function () { console.log('PAGE CLOSED'); });
   page.on('requestfailed', function (r) { errs.push('requestfailed: ' + r.url()); });
   async function ready() { await page.waitForFunction('window.__rubble && window.__rubble.ses && window.__rubble.ses.sim', null, { timeout: 120000 }); }
   async function settle(ms) { await page.waitForTimeout(ms); }
+  /* Keep the bell: mode switch, perch, HUD, shots, end of round, Rebuild, best score (with and without localStorage), replay. Run alone with --keep-only. */
+  async function keepSection() {
+    await page.setViewportSize({ width: 700, height: 460 });
+    await page.goto(base + '?tier=radeon&mode=keep&pieces=2000&shots=6', { waitUntil: 'load' }); await ready();
+    await page.waitForFunction('!window.__rubble.ses.settling && /Ready/.test(document.getElementById("status").textContent + "Ready")', null, { timeout: 240000 }); await settle(1500);
+    await page.evaluate(function () { try { localStorage.clear(); } catch (e) { } });
+    var k0 = await page.evaluate(function () { var r = window.__rubble, f = r.ses.sim.fort, d = f.design; return { n: r.ses.sim.bodies.length, keep: d.keep, perch: d.perch && d.perch.count, bells: f.bells.length, hud: document.getElementById('score').innerText.replace(/\n/g, ' | '), slider: [document.getElementById('shots').min, document.getElementById('shots').max, document.getElementById('shots').value], on: document.getElementById('modeKeep').classList.contains('on'), api: r.keep() }; });
+    check('Keep mode loads: exactly 2000 pieces, one bell on a perch, the switch shows Keep the bell, shots slider runs 6 to 40', k0.n === 2000 && k0.keep && k0.perch > 600 && k0.bells === 1 && k0.on && k0.slider[0] === '6' && k0.slider[1] === '40' && k0.api.shotsMax === 6, JSON.stringify(k0));
+    check('the Keep HUD shows Knocked out: x percent, Bell: standing and Shots left', /Knocked out: \d+ percent/.test(k0.hud) && /Bell: standing/.test(k0.hud) && /Shots left: 6 of 6/.test(k0.hud), k0.hud);
+    await page.screenshot({ path: path.join(shots, 'rubble-20-keep-start.png') });
+    var ev0 = await page.evaluate(function () { return window.__rubble.ses.events.length; });
+    await page.evaluate(function () { window.__rubble.setAmmo('coconut'); for (var i = 0; i < 9; i++) window.__rubble.fire('coconut', 1); });
+    var shotsMade = await page.evaluate(function (e) { return window.__rubble.ses.events.length - e; }, ev0);
+    check('the shot allowance holds: nine taps with 6 shots allowed fire exactly 6', shotsMade === 6, shotsMade + ' fired');
+    await page.waitForFunction('document.getElementById("keepEnd").style.display === "block"', null, { timeout: 600000 });
+    var e1 = await page.evaluate(function () { var r = window.__rubble; return { txt: document.getElementById('keepEnd').innerText.replace(/\n/g, ' | '), over: r.keep().over && r.keep().over.over, best: r.keep().best, score: r.ses.score().keep }; });
+    check('after the last shot and the bricks resting the page shows the result with stars and says what was knocked out (' + e1.txt.slice(0, 110) + ')', e1.over && /Knocked out \d+ percent/.test(e1.txt) && /[★☆]/.test(e1.txt) && (/standing/.test(e1.txt) || /Bell down, try again/.test(e1.txt)), JSON.stringify(e1.score));
+    check('the best score is remembered for this shape and count (localStorage)', e1.over.over === 'bell' || (e1.best && e1.best.pct >= 0 && e1.best.stars >= 1), JSON.stringify(e1.best));
+    await page.screenshot({ path: path.join(shots, 'rubble-21-keep-result.png') });
+    await page.click('#keepLook'); await page.click('#replay'); await page.waitForFunction('!window.__rubble.ses.replay', null, { timeout: 240000 });
+    var lr = await page.evaluate(function () { return window.__rubble.ses.lastReplay; }); check('Keep replay: the same perch fort and the same shots give the same hash at the same step', lr && lr.ok, lr ? lr.expected + ' / ' + lr.got : 'none');
+    await page.click('#rebuild'); await page.waitForFunction('/Ready/.test(document.getElementById("status").textContent)', null, { timeout: 120000 }); await settle(1500);
+    var rb = await page.evaluate(function () { var r = window.__rubble; return { end: document.getElementById('keepEnd').style.display, hud: document.getElementById('score').innerText.replace(/\n/g, ' | '), n: r.ses.sim.bodies.length, ev: r.ses.events.length }; });
+    check('Rebuild starts a fresh round: result hidden, shots back to 6 of 6, 2000 pieces', rb.end === 'none' && /Shots left: 6 of 6/.test(rb.hud) && rb.n === 2000 && rb.ev === 0, JSON.stringify(rb));
+    /* a rod straight at the perch drops the bell: the round ends with Bell down, try again */
+    await page.evaluate(function () { var s = document.getElementById('shots'); s.value = 40; s.dispatchEvent(new Event('input')); var r = window.__rubble, f = r.ses.sim.fort; r.aim.target = { x: f.design.bell.x, y: f.bellHome, z: f.design.bell.z }; r.aimUpdate(); r.setAmmo('rod'); });
+    for (var q = 0; q < 30; q++) { var dn = await page.evaluate(function () { return window.__rubble.ses.bellDown; }); if (dn) break; await page.evaluate(function () { window.__rubble.fire('rod', 1); }); await settle(1500); }
+    await page.waitForFunction('document.getElementById("keepEnd").style.display === "block"', null, { timeout: 60000 });
+    var e2 = await page.evaluate(function () { return { txt: document.getElementById('keepEnd').innerText.replace(/\n/g, ' | '), hud: document.getElementById('score').innerText.replace(/\n/g, ' | '), n: window.__rubble.ses.events.length }; });
+    check('rods at the perch bring the bell down and the page says Bell down, try again, with Rebuild', /Bell down, try again/.test(e2.txt) && /Rebuild/.test(e2.txt) && /Bell down/.test(e2.hud), e2.txt.slice(0, 100) + ' after ' + e2.n + ' rods');
+    var ev2 = e2.n; await page.evaluate(function () { window.__rubble.fire('rod', 1); }); var ev3 = await page.evaluate(function () { return window.__rubble.ses.events.length; });
+    check('no more shots after the round is over', ev3 === ev2, '');
+    await page.screenshot({ path: path.join(shots, 'rubble-22-keep-bell-down.png') });
+    /* switching back to Topple the bell gives the old game */
+    await page.click('#modeTopple'); await page.waitForFunction('/Ready/.test(document.getElementById("status").textContent) && !window.__rubble.ses.settling', null, { timeout: 120000 }); await settle(1200);
+    var tp = await page.evaluate(function () { var r = window.__rubble; return { keep: r.keep().on, hud: document.getElementById('score').innerText.replace(/\n/g, ' | '), pieces: r.ses.sim.bodies.length, bells: r.ses.sim.fort.bells.length }; });
+    check('Topple the bell is still there and is the default mode (old HUD, one bell, no perch)', !tp.keep && /pieces moved/.test(tp.hud) && tp.bells === 1, JSON.stringify(tp));
+    /* the page must work with localStorage blocked */
+    var ctx2 = await browser.newContext({ viewport: { width: 1000, height: 700 } }); await ctx2.addInitScript(function () { Object.defineProperty(window, 'localStorage', { get: function () { throw new Error('blocked'); } }); });
+    var p2 = await ctx2.newPage(), errs2 = []; p2.on('console', function (m) { if (m.type() === 'error') errs2.push(m.text()); }); p2.on('pageerror', function (e) { errs2.push('pageerror: ' + e.message); });
+    await p2.goto(base + '?tier=radeon&mode=keep&pieces=1000&shots=6', { waitUntil: 'load' });
+    await p2.waitForFunction('window.__rubble && window.__rubble.ses && window.__rubble.ses.sim && !window.__rubble.ses.settling', null, { timeout: 240000 }); await p2.waitForTimeout(1500);
+    await p2.click('#keepDone'); await p2.waitForFunction('document.getElementById("keepEnd").style.display === "block"', null, { timeout: 60000 });
+    var e3 = await p2.evaluate(function () { return document.getElementById('keepEnd').innerText.replace(/\n/g, ' | '); });
+    check('with localStorage blocked the page still plays Keep the bell and shows a result (Done with no shots), no errors', /still standing/.test(e3) && errs2.length === 0, e3.slice(0, 90) + (errs2.length ? ' ERR ' + errs2[0] : ''));
+    await ctx2.close();
+  }
+  if (process.argv.indexOf('--keep-only') > 0) { await keepSection(); check('zero console errors and zero page errors (Keep section)', errs.length === 0, errs.slice(0, 5).join(' | ')); await browser.close(); server.close(); console.log('\n' + (fails ? fails + ' FAILED' : 'ALL PASSED') + ' (' + results.length + ' checks)'); process.exit(fails ? 1 : 0); }
   /* 1. load with the island ground */
   await page.goto(base + '?tier=radeon&pieces=250', { waitUntil: 'load' }); await ready();
   var info = await page.evaluate(function () { var r = window.__rubble; return { pieces: r.ses.sim.bodies.length, note: document.getElementById('siteNote').textContent, proc: !!r.site.procedural, code: window.RSim.determinismCode(window.__rubble.ses.R, r.site), fcode: window.RSim.fortCode(window.__rubble.ses.R, r.site), fort: r.ses.sim.fort ? r.ses.sim.fort.count : 0, calls: r.renderer.info.render.calls }; });
@@ -128,6 +177,7 @@ async function main() {
   check('the page in Chromium gives the same GRAND fort replay code as Node (3000-piece fort, fixed volley at the gate)', gcode === nodeG, 'page ' + gcode + ', node ' + nodeG);
   results.push({ name: 'INFO grand 10000 Pretty render cost (software GL, counts only)', ok: true, detail: JSON.stringify({ pretty: g10.pretty, plain: g10.plain, kinds: g10.kinds }) });
   await page.screenshot({ path: path.join(shots, 'rubble-13-grand-10000.png') });
+  await keepSection();
   /* 6. replay */
   await page.evaluate(function () { var p = document.getElementById('pieces'); p.value = 0; p.dispatchEvent(new Event('input')); }); await page.click('#buildFort'); await page.waitForFunction('window.__rubble.ses.sim.bodies.length === 40 && !window.__rubble.ses.settling', null, { timeout: 240000 }); await settle(1500);
   await page.evaluate(function () { var r = window.__rubble; r.fire('rod', 2); r.fire('coconut', 2); }); await settle(3500);
