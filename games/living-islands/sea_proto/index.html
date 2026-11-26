@@ -7,8 +7,9 @@
 <link rel="icon" href="data:,">
 <!-- Living Islands sea prototype (see research/SEA_AND_STORM_PLAN.md). STANDALONE: no game code. three.js r128 from the repo's own vendor copy (rubble/vendor/three), WebGL2.
      One Gerstner sum (waves with sets and groups) in the vertex shader, a CPU port of the same sum for the boat and crates, Jacobian foam, spray points, sky with rainbow / rays / lightning, fog.
-     Two tiers: iPad sea (8 waves, small polar mesh) and Radeon sea (24 waves, dense mesh, 12000 spray points, 20000 debris points). All numbers are TUNING, none measured on a device.
-     URL: ?tier=ipad|radeon &type=calm|squall|after|gale|fog|swell|thunder|winter|wash &s=0..1 (how far the weather has risen) &t=seconds &freeze=1 &cam=radians -->
+     Three tiers: iPad sea (8 waves, small polar mesh), Radeon sea (24 waves, dense mesh, 12000 spray points) and Radeon MAX (48 waves, 500k-triangle mesh that follows the camera, 100k spray, flotsam cloud). All numbers are TUNING, none measured on a device.
+     Also: camera controls, GPU readout, a Bench ladder (see the Bench button), and two islands of the real seed 9001 height data with shoaling, refraction, breaking, swash and wet sand (island_9001.js).
+     URL: ?tier=ipad|radeon|max &islands=0 &drift=1 &view=beach &look=x,y,z,dist,pitch,yaw &boat=x,z &type=calm|squall|after|gale|fog|swell|thunder|winter|wash &s=0..1 (how far the weather has risen) &t=seconds &freeze=1 &cam=radians -->
 <style>
 :root{--bg:#f4efe6;--ink:#2a2620;--panel:rgba(250,246,238,.92);--line:#cfc5b2;--accent:#2f6f7f}
 @media (prefers-color-scheme:dark){:root{--bg:#171a1c;--ink:#ece6da;--panel:rgba(28,32,34,.9);--line:#454b4d;--accent:#7fc4cf}}
@@ -22,8 +23,8 @@ canvas{display:block;width:100%;height:100%}
 #row button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 #stats{font:12px/1.4 ui-monospace,monospace;margin-top:8px;white-space:pre-wrap}
 #note{font-size:11px;opacity:.7;margin-top:4px}
-#camrow{display:flex;gap:6px;margin-top:8px}#camrow button{flex:1;padding:6px 4px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:12px}
-#camrow button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+#camrow3 button,#camrow{display:flex;gap:6px;margin-top:8px}#camrow3 button,#camrow button{flex:1;padding:6px 4px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:12px}
+#camrow3 button.on,#camrow button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 #benchBox{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;backdrop-filter:blur(8px);display:none;z-index:5}
 #benchBox h2{font-size:16px;margin:0 0 6px}#benchBox p{margin:6px 0}#benchBox pre{font:11.5px/1.35 ui-monospace,monospace;white-space:pre-wrap;margin:8px 0;max-height:46vh;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px}
 #benchBox .bt{display:flex;gap:8px;flex-wrap:wrap}#benchBox button{padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit}
@@ -42,6 +43,7 @@ canvas{touch-action:none;cursor:grab}
   <label for="s">How far it has risen: <span id="sv"></span></label>
   <input id="s" type="range" min="0" max="1" step="0.01" value="0.8">
   <div id="camrow2" style="display:flex;gap:6px;margin-top:6px"><button id="bBench" style="flex:1;padding:6px 4px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:12px">Bench (find this card's limit)</button></div>
+  <div id="camrow3" style="display:flex;gap:6px;margin-top:6px"><button id="bIsl">Islands</button><button id="bDrift">Drift boat</button><button id="bBeach">To the beach</button><button id="bBack">Boat back</button></div>
   <div id="camrow"><button id="bReset">Reset camera</button><button id="bFollow">Follow boat</button><button id="bFree">Free fly</button></div>
   <div id="help">Drag: orbit. Wheel or pinch: zoom. Right-drag or two fingers: pan. W A S D or arrows: fly. Q down, E up. Shift: faster.</div>
   <div id="stats"></div>
@@ -49,6 +51,7 @@ canvas{touch-action:none;cursor:grab}
 </div>
 <div id="benchBox"></div>
 <script src="../rubble/vendor/three/three.min.js"></script>
+<script src="island_9001.js"></script>
 <script>
 (function(){
 'use strict';
@@ -82,11 +85,11 @@ function paramsFor(type,s){const T=TYPES[type]||TYPES.calm,P={};
 
 /* ------------------------------------------------------------ tiers (cost knobs) ------------------------------------------------------------ */
 const TIERS={
- ipad:{name:'iPad sea',rings:72,segs:160,nSw:3,nWs:5,nCh:0,rip:4,clouds:0,spray:600,debris:400,prCap:2,flashBolt:0},
- radeon:{name:'Radeon sea',rings:220,segs:480,nSw:5,nWs:9,nCh:10,rip:10,clouds:1,spray:12000,debris:20000,prCap:2,flashBolt:1},
+ ipad:{name:'iPad sea',refract:0,rings:72,segs:160,nSw:3,nWs:5,nCh:0,rip:4,clouds:0,spray:600,debris:400,prCap:2,flashBolt:0},
+ radeon:{name:'Radeon sea',refract:1,rings:220,segs:480,nSw:5,nWs:9,nCh:10,rip:10,clouds:1,spray:12000,debris:20000,prCap:2,flashBolt:1},
  /* Radeon MAX: picked from the bench knee (or by hand). A denser mesh that FOLLOWS THE CAMERA (the polar rings are tightest at the middle, so the middle is where the camera is), 48 waves,
     more spray, and a debris cloud of flotsam drifting with the wind round the viewer. Numbers are TUNING until the owner's bench report says where the knee is. */
- max:{name:'Radeon MAX',tris:500000,waves:48,rip:12,clouds:1,spray:100000,debris:20000,prCap:2,flashBolt:1,follow:1,flotsam:1}
+ max:{name:'Radeon MAX',refract:1,tris:500000,waves:48,rip:12,clouds:1,spray:100000,debris:20000,prCap:2,flashBolt:1,follow:1,flotsam:1}
 };
 /* the effective tier: a tier plus the bench / hand knobs state.K = {tris,waves,spray,debris,scale}. tris -> a polar grid (segs about 2.2 x rings); waves -> sets/wind sea/chop in about 5:9:10 */
 function effTier(){const B=TIERS[state.tier],K=state.K,T=Object.assign({},B);
@@ -96,7 +99,7 @@ function effTier(){const B=TIERS[state.tier],K=state.K,T=Object.assign({},B);
     if(K.waves!==undefined){const w=K.waves;T.nSw=w<=12?Math.round(w*3/8):Math.round(w*5/24);T.nWs=w<=12?w-T.nSw:Math.round(w*9/24);T.nCh=w<=12?0:w-T.nSw-T.nWs;}
     if(K.spray!==undefined)T.spray=K.spray;if(K.debris!==undefined){T.debris=K.debris;T.flotsam=K.flotsam!==undefined?K.flotsam:T.flotsam;}
     if(K.scale!==undefined)T.scale=K.scale;if(K.follow!==undefined)T.follow=K.follow;}
-  T.nTot=T.nSw+T.nWs+T.nCh;T.triCount=2*T.rings*T.segs;return T;}
+  T.islands=(K&&K.islands!==undefined)?K.islands:(state.islands?1:0);T.islStep=T.islStep||(B.refract===0?3:1.5);T.nTot=T.nSw+T.nWs+T.nCh;T.triCount=2*T.rings*T.segs;return T;}
 const VORT=[-45,-80,28,9]; /* x, z, radius, depth in metres of the funnel at full strength */
 
 /* ------------------------------------------------------------ wave table: sets (swell trains), groups (close neighbours beat), wind sea, chop ------------------------------------------------------------ */
@@ -114,30 +117,134 @@ function buildWaves(P,tier){
   for(const w of W){w.Q=clamp(P.q/(n*w.k*w.A),0,1);}                                   /* sum of Q k A = q: about 1 begins to fold the crests */
   return W;
 }
+/* ------------------------------------------------------------ ISLANDS: the real seed 9001 island, put in the sea twice ------------------------------------------------------------
+   Heights come from island_9001.js (the landform world seed 9001 arrays, 129 x 129 cells of 2 m, as rubble/terrain.js reads them). Island A is turned half a turn so its lee beach faces the open sea the waves come from, island B is
+   the same island turned a quarter. Outside the island windows the sea floor falls to -40 m (open sea). A world grid (2 m nodes) of depth, a wave-shadow and a ground class feeds the shader; a 4 m grid holds the extra phase path
+   of a swell wave and a wind-sea wave (PHI), made by walking each node back along the wind through the depths. The same arrays answer the CPU height query, so the boat, crates and camera agree with the picture. */
+const ISLS=[{cx:10,cz:70,rot:Math.PI,id:'A'},{cx:-170,cz:200,rot:Math.PI/2,id:'B'}];
+const WG={x0:-348,z0:-188,n:289,cell:2,nb:145,cellB:4};
+const TIDE_AMP=0.6,TIDE_PERIOD=240,SWASHK=.40;   /* TUNING: the tide of the world (1.1 m) is cut to 0.6 m and run on a 4 minute period so it can be watched */
+let ISLD=null;
+function b64bytes(b){const a=atob(b),u=new Uint8Array(a.length);for(let i=0;i<a.length;i++)u[i]=a.charCodeAt(i);return u;}
+function islandData(){if(ISLD)return ISLD;const D=window.SEA_ISLAND;if(!D)return null;
+  const hb=b64bytes(D.h),h16=new Int16Array(hb.buffer,0,D.nx*D.nx),hF=new Float32Array(D.nx*D.nx);for(let i=0;i<hF.length;i++)hF[i]=h16[i]/256;
+  ISLD={nx:D.nx,dx:D.dx,half:(D.nx-1)*D.dx/2,hF,g:b64bytes(D.g)};return ISLD;}
+function crW(t,o){const t2=t*t,t3=t2*t;o[0]=-.5*t3+t2-.5*t;o[1]=1.5*t3-2.5*t2+1;o[2]=-1.5*t3+2*t2+.5*t;o[3]=.5*t3-.5*t2;}
+const _wx=[0,0,0,0],_wz=[0,0,0,0];
+function islLocalH(D,x,z){const fx=(x+D.half)/D.dx,fz=(z+D.half)/D.dx,i=Math.floor(fx),j=Math.floor(fz);crW(fx-i,_wx);crW(fz-j,_wz);let s=0;const nx=D.nx;   /* bicubic, as rubble/terrain.js */
+  for(let b=0;b<4;b++){const jj=clamp(j-1+b,0,nx-1)*nx;let r=0;for(let a=0;a<4;a++)r+=_wx[a]*D.hF[jj+clamp(i-1+a,0,nx-1)];s+=_wz[b]*r;}return s;}
+function worldToLocal(I,x,z){const dx=x-I.cx,dz=z-I.cz,c=Math.cos(I.rot),s=Math.sin(I.rot);return [dx*c+dz*s,-dx*s+dz*c];}
+function meshH(x,z){const D=islandData();if(!D)return -40;let best=-40;
+  for(const I of ISLS){const l=worldToLocal(I,x,z),m=Math.max(Math.abs(l[0]),Math.abs(l[1]));if(m>=D.half)continue;
+    const h=islLocalH(D,l[0],l[1]),f=sm((m-100)/28),v=lerp(h,-40,f);if(v>best)best=v;}return best;}
+function groundClass(x,z){const D=islandData();if(!D)return 0;let c=0,bm=1e9;
+  for(const I of ISLS){const l=worldToLocal(I,x,z),m=Math.max(Math.abs(l[0]),Math.abs(l[1]));if(m>=D.half||m>=bm)continue;bm=m;
+    const k=clamp(Math.round((l[1]+D.half)/D.dx),0,D.nx-1)*D.nx+clamp(Math.round((l[0]+D.half)/D.dx),0,D.nx-1);c=D.g[k];}return c;}
+const WF={H:null,gc:null,shd:null,PH1:null,PH2:null,windKey:-999,texA:null,texB:null,ready:false};
+function wfH(x,z){const q=WF.H;const fx=(x-WG.x0)/WG.cell,fz=(z-WG.z0)/WG.cell;if(fx<0||fz<0||fx>=WG.n-1||fz>=WG.n-1)return -40;
+  const i=Math.floor(fx),j=Math.floor(fz),ax=fx-i,az=fz-j,n=WG.n,a=q[j*n+i],b=q[j*n+i+1],c=q[(j+1)*n+i],d=q[(j+1)*n+i+1];return (a+(b-a)*ax)*(1-az)+(c+(d-c)*ax)*az;}
+function wfB(arr,x,z){const fx=(x-WG.x0)/WG.cellB,fz=(z-WG.z0)/WG.cellB,n=WG.nb;if(fx<0||fz<0||fx>=n-1||fz>=n-1)return 0;
+  const i=Math.floor(fx),j=Math.floor(fz),ax=fx-i,az=fz-j,a=arr[j*n+i],b=arr[j*n+i+1],c=arr[(j+1)*n+i],d=arr[(j+1)*n+i+1];return (a+(b-a)*ax)*(1-az)+(c+(d-c)*ax)*az;}
+function wfShadow(x,z){const n=WG.n;const fx=(x-WG.x0)/WG.cell,fz=(z-WG.z0)/WG.cell;if(fx<0||fz<0||fx>=n-1||fz>=n-1)return 0;
+  const i=Math.floor(fx),j=Math.floor(fz),ax=fx-i,az=fz-j,q=WF.shd,a=q[j*n+i],b=q[j*n+i+1],c=q[(j+1)*n+i],d=q[(j+1)*n+i+1];return (a+(b-a)*ax)*(1-az)+(c+(d-c)*ax)*az;}
+function nIndex(D,k0){let k=k0/Math.sqrt(Math.max(Math.tanh(Math.min(k0*D,6)),0.02));for(let it=0;it<14;it++){const t=Math.max(Math.tanh(Math.min(k*D,6)),0.02);k=.5*(k+k0/t);}return k/k0;}   /* refractive index n = k(d)/k0 from w^2 = g k tanh(k d), by a damped fixed-point step */
+function buildWorld(){if(WF.ready)return true;const D=islandData();if(!D)return false;const n=WG.n,nb=WG.nb;
+  WF.H=new Float32Array(n*n);WF.gc=new Uint8Array(n*n);WF.shd=new Float32Array(n*n);WF.PH1=new Float32Array(nb*nb);WF.PH2=new Float32Array(nb*nb);
+  for(let j=0;j<n;j++)for(let i=0;i<n;i++){const x=WG.x0+i*WG.cell,z=WG.z0+j*WG.cell;WF.H[j*n+i]=meshH(x,z);WF.gc[j*n+i]=groundClass(x,z);}
+  WF.texA=new THREE.DataTexture(new Uint8Array(n*n*4),n,n,THREE.RGBAFormat,THREE.UnsignedByteType);WF.texB=new THREE.DataTexture(new Uint8Array(nb*nb*4),nb,nb,THREE.RGBAFormat,THREE.UnsignedByteType);
+  for(const t of [WF.texA,WF.texB]){t.magFilter=THREE.NearestFilter;t.minFilter=THREE.NearestFilter;t.generateMipmaps=false;t.wrapS=t.wrapT=THREE.ClampToEdgeWrapping;t.flipY=false;}
+  const A=WF.texA.image.data;for(let k=0;k<n*n;k++){const u=Math.round(clamp((-WF.H[k]+12)/52,0,1)*65535);A[k*4]=u>>8;A[k*4+1]=u&255;A[k*4+3]=Math.round(WF.gc[k]*40);}
+  WF.ready=true;computeField(35*Math.PI/180,true);return true;}
+/* PHI and the wave shadow for a wave train heading at angle wr (radians): walk each node back against the heading, 4 m a step, 160 m at most */
+function computeField(wr,force){const key=Math.round(wr*180/Math.PI/2.5);if(!force&&key===WF.windKey)return;WF.windKey=key;const n=WG.n,nb=WG.nb,dxw=Math.cos(wr),dzw=Math.sin(wr),pxw=-dzw,pzw=dxw;
+  const Ls=[110,28],ks=Ls.map(L=>TAU/L),LUT=Ls.map((L,m)=>{const a=[];for(let i=0;i<=128;i++){const D=0.05+i*(0.6*L-0.05)/128;a.push(Math.min(nIndex(D,ks[m]),6));}return a;});
+  const PHs=[WF.PH1,WF.PH2];
+  for(let j=0;j<nb;j++)for(let i=0;i<nb;i++){const x=WG.x0+i*WG.cellB,z=WG.z0+j*WG.cellB;let acc=[0,0];
+    for(let st=1;st<=40;st++){const px=x-dxw*st*4,pz=z-dzw*st*4,h=wfH(px,pz);if(px<WG.x0||pz<WG.z0||px>WG.x0+(n-1)*WG.cell||pz>WG.z0+(n-1)*WG.cell)break;
+      const D=-h;for(let m=0;m<2;m++){const L=Ls[m];let nn;if(D<=0.05)nn=6;else if(D>=0.6*L)nn=1;else nn=LUT[m][Math.round((D-0.05)/(0.6*L-0.05)*128)];acc[m]+=(nn-1)*4;}}
+    PHs[0][j*nb+i]=Math.min(acc[0],639);PHs[1][j*nb+i]=Math.min(acc[1],639);}
+  const B=WF.texB.image.data;for(let k=0;k<nb*nb;k++){const a=Math.round(PHs[0][k]/640*65535),b=Math.round(PHs[1][k]/640*65535);B[k*4]=a>>8;B[k*4+1]=a&255;B[k*4+2]=b>>8;B[k*4+3]=b&255;}
+  /* wave shadow: three rays 10 m apart; a ray that passes over land (height above 0.2 m) is blocked; soft edges about 20 m wide */
+  const A=WF.texA.image.data;
+  for(let j=0;j<n;j++)for(let i=0;i<n;i++){const x=WG.x0+i*WG.cell,z=WG.z0+j*WG.cell;let blk=0;
+    for(let r=-1;r<=1;r++){const ox=x+pxw*r*10,oz=z+pzw*r*10;for(let st=1;st<=40;st++){const px=ox-dxw*st*4,pz=oz-dzw*st*4;const fi=Math.round((px-WG.x0)/WG.cell),fj=Math.round((pz-WG.z0)/WG.cell);
+        if(fi<0||fj<0||fi>=n||fj>=n)break;if(WF.H[fj*n+fi]>0.2){blk++;break;}}}
+    WF.shd[j*n+i]=blk/3;A[(j*n+i)*4+2]=Math.round(blk/3*255);}
+  WF.texA.needsUpdate=true;WF.texB.needsUpdate=true;}
+/* the CPU twin of islDepth / islPhase, for the boat, crates and camera */
+function islAt(x,z,tide){const dep=-wfH(x,z)+tide;return {dep,shd:wfShadow(x,z),p1:wfB(WF.PH1,x,z),p2:wfB(WF.PH2,x,z)};}
+function tideAt(t){return state.islandsOn?TIDE_AMP*Math.sin(TAU*t/TIDE_PERIOD+0.6):0;}
+function groundAt(x,z){return state.islandsOn&&WF.ready?wfH(x,z):-40;}
+function tanhA(x){x=clamp(x,0,3);return Math.min(1,x*(27+x*x)/(27+9*x*x));}
+
 /* the CPU port: SAME formulas as seaAt() in the shader, without the camera distance fade, and only waves of 6 m and longer (a 4.4 m boat does not follow shorter ones) */
-function cpuDisp(W,p0x,p0z,t,P){let dx=0,dz=0,dy=0;
-  for(const w of W){if(w.L<6)continue;const th=w.k*(w.dx*p0x+w.dz*p0z)-w.w*t+w.phi,s=Math.sin(th),c=Math.cos(th);
-    dx-=w.Q*w.A*w.dx*s;dz-=w.Q*w.A*w.dz*s;dy+=w.A*c;}
+function cpuDisp(W,p0x,p0z,t,P){let dx=0,dz=0,dy=0;const on=state.islandsOn&&WF.ready,tide=on?tideAt(t):0,F=on?islAt(p0x,p0z,tide):null;
+  for(const w of W){if(w.L<6)continue;let A=w.A,th;
+    if(on){const tl=sm((Math.log(w.L)-3.22)/(4.70-3.22)),phi=F.p2+(F.p1-F.p2)*tl,sh=Math.min(Math.pow(1/Math.max(tanhA(w.k*Math.max(F.dep,0)),.05),.25),1.6);
+      A=Math.min(A*sh*(1-.85*F.shd),.9*Math.max(F.dep,0)*w.A/W.asum);th=w.k*(w.dx*p0x+w.dz*p0z+phi)-w.w*t+w.phi;}
+    else th=w.k*(w.dx*p0x+w.dz*p0z)-w.w*t+w.phi;
+    const s=Math.sin(th),c=Math.cos(th);dx-=w.Q*A*w.dx*s;dz-=w.Q*A*w.dz*s;dy+=A*c;}
   const rx=p0x-VORT[0],rz=p0z-VORT[1],e=Math.exp(-(rx*rx+rz*rz)/(VORT[2]*VORT[2]));dy-=P.vort*VORT[3]*e;
-  return [dx,dy+P.surge,dz];}
+  return [dx,dy+P.surge+tide,dz];}
 function seaHeight(W,x,z,t,P){let px=x,pz=z,d;for(let i=0;i<4;i++){d=cpuDisp(W,px,pz,t,P);px=x-d[0];pz=z-d[2];}return d[1];}   /* invert the horizontal pinch by fixed-point iteration */
 
 /* ------------------------------------------------------------ shaders ------------------------------------------------------------ */
 const GLSL_COMMON=`
 uniform float uT;uniform int uN;uniform vec4 uW[NW];uniform vec3 uW2[NW];uniform vec2 uMesh;uniform vec4 uVort;uniform float uVK;uniform float uLevel;uniform vec3 uCam;
-/* the wave sum: x = x0 - Q A d sin(th), y = A cos(th), th = k d.p0 - w t + phi. Returns displacement, a slope-based normal and the Jacobian determinant (small = crests folding = foam).
-   A wave fades out with distance from the camera once it is much shorter than the distance (the mesh could not draw it). */
+#ifdef ISL
+/* the island field, from two small textures made on the CPU (see buildWorld): A = depth below the mean sea level (16 bit), wave-shadow, ground class; B = the extra phase path of a swell-length and a wind-sea-length wave (16 bit each) */
+uniform sampler2D uTexA;uniform sampler2D uTexB;uniform vec4 uWA;uniform vec4 uWB;uniform float uTide;uniform float uAsum;
+float gBr=0.0;float gCr=0.0;
+float dec16(float hi,float lo){return (hi*256.0+lo)*(1.0/257.0);}
+vec4 fA(vec2 ij){return texture2D(uTexA,(ij+0.5)/uWA.w);}
+void islDepth(vec2 p,out float dep,out float shd){vec2 q=(p-uWA.xy)/uWA.z;vec2 i=floor(q),f=q-i;
+  vec4 a=fA(i),b=fA(i+vec2(1.0,0.0)),c=fA(i+vec2(0.0,1.0)),d=fA(i+vec2(1.0,1.0));
+  float D=mix(mix(dec16(a.x,a.y),dec16(b.x,b.y),f.x),mix(dec16(c.x,c.y),dec16(d.x,d.y),f.x),f.y);dep=D*52.0-12.0+uTide;
+  shd=mix(mix(a.z,b.z,f.x),mix(c.z,d.z,f.x),f.y);}
+vec2 islPhase(vec2 p){vec2 q=(p-uWB.xy)/uWB.z;vec2 i=floor(q),f=q-i;
+  vec4 a=texture2D(uTexB,(i+0.5)/uWB.w),b=texture2D(uTexB,(i+vec2(1.0,0.0)+0.5)/uWB.w),c=texture2D(uTexB,(i+vec2(0.0,1.0)+0.5)/uWB.w),d=texture2D(uTexB,(i+vec2(1.0,1.0)+0.5)/uWB.w);
+  return vec2(mix(mix(dec16(a.x,a.y),dec16(b.x,b.y),f.x),mix(dec16(c.x,c.y),dec16(d.x,d.y),f.x),f.y),mix(mix(dec16(a.z,a.w),dec16(b.z,b.w),f.x),mix(dec16(c.z,c.w),dec16(d.z,d.w),f.x),f.y))*640.0;}
+float tanhA(float x){x=clamp(x,0.0,3.0);return min(1.0,x*(27.0+x*x)/(27.0+9.0*x*x));}
+#endif
+/* the wave sum: x = x0 - Q A d sin(th), y = A cos(th), th = k d.p0 - w t + phi, th = k (d.p0 + PHI(p0)) - w t + phi in the island version (PHI = extra path length from the slower waves in shallow water).
+   Returns displacement, a slope-based normal and the Jacobian determinant (small = crests folding = foam). A wave fades out with distance from the camera once it is much shorter than the distance (the mesh could not draw it).
+   Island version: SHOALING (A grows as depth falls, Green's law, d^-1/4), BREAKING LIMIT (the waves' summed height is held under 0.9 depth, split by each wave's share, so the surface never leaves the bed), WAVE SHADOW behind land, and with ISL2 the REFRACTION (the wave's direction is d + grad PHI,
+   which is how the crests bend to run parallel to the shore). SWASH (island mesh only): A is 0.4 of the deep amplitude, no depth limit, so the same sum gives the run-up. */
 void seaAt(vec2 p0,float dist,out vec3 d,out vec3 n,out float J){
   float dx=0.,dz=0.,dy=0.,jxx=0.,jzz=0.,jxz=0.,hx=0.,hz=0.;
+#ifdef ISL
+  float dep,shd;islDepth(p0,dep,shd);vec2 ph=islPhase(p0);float e2=0.0,asum=0.0;
+ #ifdef ISL2
+  vec2 phx=islPhase(p0+vec2(4.0,0.0)),phz=islPhase(p0+vec2(0.0,4.0));vec2 g1=vec2(phx.x-ph.x,phz.x-ph.x)*0.25,g2=vec2(phx.y-ph.y,phz.y-ph.y)*0.25;
+ #endif
+#endif
   for(int i=0;i<NW;i++){vec4 w=uW[i];vec3 w2=uW2[i];
-    float L=6.2831853/w.z;float A=w.w*(1.0-smoothstep(L*6.0,L*14.0,dist));
-    float th=w.z*dot(w.xy,p0)-w2.y*uT+w2.z;float s=sin(th),c=cos(th);float qa=w2.x*A,kA=w.z*A;
-    dx-=qa*w.x*s;dz-=qa*w.y*s;dy+=A*c;
-    jxx+=w2.x*kA*w.x*w.x*c;jzz+=w2.x*kA*w.y*w.y*c;jxz+=w2.x*kA*w.x*w.y*c;
-    hx-=w.x*kA*s;hz-=w.y*kA*s;}
+    float L=6.2831853/w.z;float A=w.w*(1.0-smoothstep(L*6.0,L*14.0,dist));vec2 wd=w.xy;float kl=w.z;
+#ifdef ISL
+    float tl=smoothstep(3.22,4.70,log(L));float phi=mix(ph.y,ph.x,tl);
+  #ifdef SWASH
+    A=w.w*SWASHK*(1.0-0.85*shd);
+  #else
+    float xk=w.z*max(dep,0.0);float sh=min(pow(1.0/max(tanhA(xk),0.05),0.25),1.6);
+    A=A*sh*(1.0-0.85*shd);e2+=A*A;A=min(A,0.9*max(dep,0.0)*w.w/uAsum);asum+=A;
+  #endif
+  #ifdef ISL2
+    vec2 vv=wd+mix(g2,g1,tl);float nl=max(length(vv),0.2);wd=vv/nl;kl=w.z*nl;
+  #endif
+    float th=w.z*(dot(w.xy,p0)+phi)-w2.y*uT+w2.z;
+#else
+    float th=w.z*dot(w.xy,p0)-w2.y*uT+w2.z;
+#endif
+    float s=sin(th),c=cos(th);float qa=w2.x*A,kA=kl*A;
+    dx-=qa*wd.x*s;dz-=qa*wd.y*s;dy+=A*c;
+    jxx+=w2.x*kA*wd.x*wd.x*c;jzz+=w2.x*kA*wd.y*wd.y*c;jxz+=w2.x*kA*wd.x*wd.y*c;
+    hx-=wd.x*kA*s;hz-=wd.y*kA*s;}
   vec2 rv=p0-uVort.xy;float R=uVort.z;float e=exp(-dot(rv,rv)/(R*R));
   dy-=uVK*uVort.w*e;hx+=uVK*uVort.w*e*2.0*rv.x/(R*R);hz+=uVK*uVort.w*e*2.0*rv.y/(R*R);
   J=(1.0-jxx)*(1.0-jzz)-jxz*jxz;
+#ifdef ISL
+  gBr=2.83*sqrt(e2)/max(dep,0.08);gCr=dy/max(asum,0.03);
+#endif
   d=vec3(dx,dy+uLevel,dz);n=normalize(vec3(-hx,max(J,0.25),-hz));}
 `;
 const GLSL_SKY=`
@@ -160,12 +267,16 @@ vec3 skyCol(vec3 d,float clouds){
   return c;}
 vec3 tone(vec3 c,float e){c*=e;c=(c*(2.51*c+0.03))/(c*(2.43*c+0.59)+0.14);return pow(clamp(c,0.,1.),vec3(1.0/2.2));}
 `;
-const SEA_VS=GLSL_COMMON+`varying vec3 vP;varying vec3 vN;varying float vJ;varying float vDist;
+const SEA_VS=GLSL_COMMON+`varying vec3 vP;varying vec3 vN;varying float vJ;varying float vDist;varying float vBr;varying float vDep;varying float vCr;
 void main(){vec2 p0=position.xz+uMesh;float dist=length(vec3(p0.x-uCam.x,uCam.y,p0.y-uCam.z));vec3 d;vec3 n;float J;seaAt(p0,dist,d,n,J);
-  vec3 P=vec3(p0.x+d.x,d.y,p0.y+d.z);vP=P;vN=n;vJ=J;vDist=dist;gl_Position=projectionMatrix*viewMatrix*vec4(P,1.0);}`;
-const SEA_FS=`precision highp float;`+GLSL_SKY+`
-uniform float uT;uniform vec3 uDeep,uShal,uFogC;uniform float uFog,uFoamT,uFoam,uStreak,uSmoke,uExp,uChopKA,uPix,uHs,uWindA;uniform vec4 uVort;uniform float uVK;
-varying vec3 vP;varying vec3 vN;varying float vJ;varying float vDist;
+  vec3 P=vec3(p0.x+d.x,d.y,p0.y+d.z);vP=P;vN=n;vJ=J;vDist=dist;vBr=0.0;vDep=1000.0;vCr=0.0;
+#ifdef ISL
+  {float dp,sh;islDepth(p0,dp,sh);vDep=dp;vBr=gBr;vCr=gCr;}
+#endif
+gl_Position=projectionMatrix*viewMatrix*vec4(P,1.0);}`;
+const SEA_FS=`precision highp float;precision highp sampler2D;`+GLSL_SKY+`
+uniform float uT;uniform float uTide;uniform vec3 uDeep,uShal,uFogC;uniform float uFog,uFoamT,uFoam,uStreak,uSmoke,uExp,uChopKA,uPix,uHs,uWindA;uniform vec4 uVort;uniform float uVK;
+varying vec3 vP;varying vec3 vN;varying float vJ;varying float vDist;varying float vBr;varying float vDep;varying float vCr;
 void main(){
   vec3 V=normalize(cameraPosition-vP);vec3 N=normalize(vN);vec2 W=vec2(cos(uWindA),sin(uWindA)),Wp=vec2(-W.y,W.x);
   /* fine ripples in the pixel shader: sharp crests, fade as they near the pixel footprint (the same idea as li_sea.js rip()) */
@@ -176,10 +287,13 @@ void main(){
   N=normalize(N+vec3(-g.x,0.0,-g.y));
   float ndv=max(dot(N,V),0.0);float fres=0.02+0.98*pow(1.0-ndv,5.0);
   vec3 R=reflect(-V,N);R.y=abs(R.y);vec3 sk=skyCol(R,float(CLOUDS));
-  float lift=clamp(0.5+0.5*(vP.y-uVK*0.0)/max(uHs,0.05)*0.55,0.0,1.0);
+  float lift=clamp(0.5+0.5*(vP.y-uTide)/max(uHs,0.05)*0.55,0.0,1.0);
   vec3 body=mix(uDeep,uShal,pow(lift,2.5)*0.8+0.05)*(0.35+0.9*uSunI*max(uSunDir.y,0.1)+0.25*max(dot(N,uSunDir),0.0));
   body+=uShal*0.5*pow(max(dot(V,-uSunDir),0.0),3.0)*pow(lift,3.0)*uSunI*0.5;   /* light through a thin crest */
   body*=mix(1.0,mix(0.30,1.0,smoothstep(0.08,0.70,lift)),clamp(uFoam,0.0,1.0))*(1.0-0.30*uDark);   /* troughs read darker when it blows */
+#ifdef ISL
+  {float shal=exp(-max(vDep,0.0)*1.0);vec3 bed=vec3(.62,.56,.42)*(0.22+0.50*uSunI*max(uSunDir.y,0.15))*(1.0-0.4*uDark);body=mix(body,mix(bed,uShal*1.5,0.45),shal*0.85);}   /* the seabed seen through shallow water: sand colour, turquoise tint */
+#endif
   vec3 col=mix(body,sk,fres);
   float sd=max(dot(reflect(-V,N),uSunDir),0.0);col+=uSunCol*(pow(sd,350.0)*18.0+pow(sd,60.0)*0.6)*uSunI*(1.0-uDark*0.5)*smoothstep(0.0,0.15,uSunDir.y+0.05);
   /* foam from the Jacobian (crests that fold) with noise, plus wind streaks, plus the whirlpool's spiral arms */
@@ -195,18 +309,51 @@ void main(){
     foam=max(foam,smoothstep(0.66,0.84,st)*uStreak*0.30*(0.45+0.55*smoothstep(0.35,0.85,lift)));}
   if(uVK>0.0){vec2 rv=vP.xz-uVort.xy;float r=length(rv);float th=atan(rv.y,rv.x);float arms=sin(3.0*th+6.5*log(r+1.0)-uT*0.9);
     foam=max(foam,uVK*smoothstep(0.35,0.9,arms)*exp(-r/(uVort.z*1.4))*0.85*(0.6+0.4*nzz));}
-  foam=min(foam,0.88);
+#ifdef ISL
+  /* breaking: Hs over depth above about 0.77 (depth under 1.3 wave heights), on the crests and in noisy patches; and the shore-break band, a lace of foam in the last half metre of depth */
+  {vec2 qb=vec2(dot(vP.xz,W),dot(vP.xz,Wp));float nbk=0.55*vn(vec2(qb.x*2.0+uT*0.3,qb.y*0.30))+0.45*vn(vec2(qb.x*5.5,qb.y*0.9));   /* break-up stretched ALONG the crests (across the wind) so the foam makes lines, not blobs */
+   float brk=smoothstep(0.55,1.5,vBr)*smoothstep(0.03,0.35,vDep)*smoothstep(0.50,0.90,vCr)*(0.30+0.70*smoothstep(0.35,0.72,nbk));
+   brk=max(brk,0.20*smoothstep(0.7,1.8,vBr)*smoothstep(0.05,0.4,vDep)*smoothstep(0.30,0.8,vCr)*smoothstep(0.45,0.80,nbk));   /* thin trailing foam behind the breaking crest */
+   float amt=clamp(0.30+0.45*uHs,0.0,1.0);float band=(1.0-smoothstep(0.06,0.60,vDep))*smoothstep(-0.30,0.05,vDep)*(0.30+0.70*smoothstep(0.38,0.78,n2+0.18*sin(uT*1.1+vP.x*0.4+vP.z*0.3)))*amt;
+   foam=max(foam,max(brk*0.95,band*0.85));}
+#endif
+  foam=min(foam,0.90);
   vec3 foamC=vec3(0.80,0.87,0.89)*(0.50+0.45*uSunI*max(uSunDir.y,0.12))*(1.0-0.40*uDark);
   col=mix(col,foamC,clamp(foam,0.0,1.0));
   if(uSmoke>0.0){float sm1=fbm(vP.xz*0.035+vec2(uT*0.03,0.0));col=mix(col,uFogC,uSmoke*smoothstep(0.35,0.8,sm1)*0.55*exp(-vDist*0.004));}
   float fg=1.0-exp(-pow(vDist*uFog,2.0));col=mix(col,uFogC*1.0,fg);
   gl_FragColor=vec4(tone(col,uExp),1.0);}`;
+const ISL_VS=GLSL_COMMON+`attribute vec4 aCol;varying vec4 vCol;varying vec3 vNn;varying float vWater;varying float vEnv;varying vec3 vP;varying float vDist;uniform float uEnvA;
+void main(){vec3 P=position;vec3 d;vec3 n;float J;seaAt(P.xz,0.0,d,n,J);
+  float fade=1.0-smoothstep(0.4,2.8,P.y-uTide-uLevel);float eta=uLevel+(d.y-uLevel)*fade;vWater=eta-P.y;vEnv=uLevel+uEnvA*fade-P.y;   /* the swash: the same wave sum at a fraction of its height, fading with height above the tide */
+  vCol=aCol;vNn=normal;vP=P;vDist=length(P-cameraPosition);gl_Position=projectionMatrix*viewMatrix*vec4(P,1.0);}`;
+const ISL_FS=`precision highp float;precision highp sampler2D;`+GLSL_SKY+`
+uniform vec3 uShal,uFogC;uniform float uFog,uHs,uExp,uT;
+varying vec4 vCol;varying vec3 vNn;varying float vWater;varying float vEnv;varying vec3 vP;varying float vDist;
+void main(){vec3 N=normalize(vNn);vec3 V=normalize(cameraPosition-vP);float sunl=max(dot(N,uSunDir),0.0);
+  vec3 amb=mix(uHor,uZen,0.5);
+  vec3 lit=vCol.rgb*(0.28+0.60*uSunI*sunl+0.30*amb)*(1.0-0.25*uDark);
+  /* wet sand: darker, a little glossy; the wet band reaches above the live swash (the sand has not dried yet) */
+  float wet=max(smoothstep(-0.50,-0.06,vEnv),smoothstep(-0.03,0.03,vWater))*vCol.a;
+  lit*=mix(1.0,0.52,wet);float ndv=max(dot(N,V),0.0);vec3 R=reflect(-V,N);R.y=abs(R.y);
+  lit+=skyCol(R,0.0)*wet*0.16*pow(1.0-ndv,3.0)+uSunCol*0.03*wet*pow(max(dot(R,uSunDir),0.0),40.0)*uSunI;
+  /* water on the sand: a thin sheet that clears the sand colour the thinner it is, with a foam lip at its edge and lace behind it */
+  float sheet=smoothstep(0.0,0.10,vWater);vec3 wc=mix(uShal*1.2,uHor,0.30)*(0.6+0.5*uSunI*max(uSunDir.y,0.15));
+  vec3 col=mix(lit,mix(lit,wc,0.80),sheet);
+  float nz=vn(vP.xz*2.6+uT*0.25)*0.6+vn(vP.xz*7.0-uT*0.4)*0.4;float amt=clamp(0.30+0.45*uHs,0.0,1.0);
+  float lip=smoothstep(-0.02,0.015,vWater)*(1.0-smoothstep(0.015,0.17,vWater))*smoothstep(0.25,0.62,nz+0.25)*amt;
+  float lace=smoothstep(0.10,0.22,vWater)*(1.0-smoothstep(0.22,0.50,vWater))*smoothstep(0.55,0.80,nz)*0.55*amt;
+  col=mix(col,vec3(0.78,0.85,0.86)*(0.50+0.45*uSunI*max(uSunDir.y,0.12))*(1.0-0.4*uDark),clamp(max(lip,lace),0.0,0.9));
+  float fg=1.0-exp(-pow(vDist*uFog,2.0));col=mix(col,uFogC,fg);gl_FragColor=vec4(tone(col,uExp),1.0);}`;
 const SKY_VS=`varying vec3 vD;void main(){vD=position;gl_Position=projectionMatrix*viewMatrix*vec4(position+cameraPosition,1.0);gl_Position.z=gl_Position.w*0.9999;}`;
 const SKY_FS=`precision highp float;`+GLSL_SKY+`uniform vec3 uFogC;uniform float uExp;varying vec3 vD;
 void main(){vec3 d=normalize(vD);vec3 c=skyCol(d,float(CLOUDS));c=mix(c,uFogC,smoothstep(0.35,0.0,d.y)*0.5);gl_FragColor=vec4(tone(c,uExp),1.0);}`;
 const SPRAY_VS=GLSL_COMMON+`attribute vec4 aS;uniform float uAmt;uniform vec2 uWind;uniform float uPxScale;uniform float uFoamT;varying float vA;
 void main(){float life=fract(aS.x+uT*(0.25+0.5*aS.w));float r=22.0+aS.y*70.0*aS.y;float a=aS.z*6.2832;vec2 p0=uCam.xz+vec2(cos(a),sin(a))*r;
   vec3 d;vec3 n;float J;seaAt(p0,r,d,n,J);float on=smoothstep(uFoamT+0.05,uFoamT-0.15,J)*uAmt;
+#ifdef ISL
+  {float dp,sh;islDepth(p0,dp,sh);on=max(on,smoothstep(0.55,0.95,gBr)*0.7*max(uAmt,0.35))*smoothstep(0.05,0.4,dp);}   /* spray off the breakers */
+#endif
   vec3 P=vec3(p0.x+d.x,d.y,p0.y+d.z);P.xz+=uWind*life*3.0;P.y+=life*(1.0-life)*(1.0+3.0*aS.w)*1.6;
   vA=on*(1.0-life)*smoothstep(0.0,0.1,life);gl_Position=projectionMatrix*viewMatrix*vec4(P,1.0);gl_PointSize=uPxScale*(0.25+0.5*aS.w)*(0.5+life)/max(gl_Position.w,1.0)*60.0;if(on<=0.02)gl_Position=vec4(3.0,3.0,3.0,1.0);}`;
 const SPRAY_FS=`precision highp float;uniform vec3 uCol;varying float vA;void main(){float d=length(gl_PointCoord-0.5);if(d>0.5)discard;gl_FragColor=vec4(uCol,vA*(1.0-d*2.0)*0.75);}`;
@@ -228,9 +375,9 @@ const renderer=new THREE.WebGLRenderer({canvas,antialias:false,powerPreference:'
 const isGL2=renderer.capabilities.isWebGL2;
 const scene=new THREE.Scene();const camera=new THREE.PerspectiveCamera(58,1,0.2,4000);
 const state={tier:['radeon','max'].includes(Q.get('tier'))?Q.get('tier'):'ipad',K:null,type:TYPES[Q.get('type')]?Q.get('type'):'calm',s:parseFloat(Q.get('s')||'0.8'),t0:performance.now()/1000,
-  freeze:Q.get('freeze')==='1',tFix:Q.get('t')!==null?parseFloat(Q.get('t')):null,cam:Q.get('cam')!==null?parseFloat(Q.get('cam')):.7,user:false,follow:false,free:false,W:[],P:null,ms:0,tris:0,calls:0};
-let seaMesh=null,skyMesh=null,sprayPts=null,debPts=null,boat=null,crates=[],hulk=null,bolt=null;
-const U={uT:{value:0},uT2:{value:0},uN:{value:0},uMesh:{value:new THREE.Vector2()},uDebOn:{value:0},uDebAmt:{value:1},uW:{value:Array.from({length:MAXW},()=>new THREE.Vector4())},uW2:{value:Array.from({length:MAXW},()=>new THREE.Vector3())},
+  freeze:Q.get('freeze')==='1',tFix:Q.get('t')!==null?parseFloat(Q.get('t')):null,cam:Q.get('cam')!==null?parseFloat(Q.get('cam')):.7,user:false,follow:false,free:false,islands:Q.get('islands')!=='0',islandsOn:false,drift:Q.get('drift')==='1',W:[],P:null,ms:0,tris:0,calls:0};
+let islMesh=null,seaMesh=null,skyMesh=null,sprayPts=null,debPts=null,boat=null,crates=[],hulk=null,bolt=null;
+const U={uT:{value:0},uT2:{value:0},uN:{value:0},uTexA:{value:null},uTexB:{value:null},uWA:{value:new THREE.Vector4()},uWB:{value:new THREE.Vector4()},uTide:{value:0},uAsum:{value:1},uEnvA:{value:0},uMesh:{value:new THREE.Vector2()},uDebOn:{value:0},uDebAmt:{value:1},uW:{value:Array.from({length:MAXW},()=>new THREE.Vector4())},uW2:{value:Array.from({length:MAXW},()=>new THREE.Vector3())},
   uVort:{value:new THREE.Vector4(...VORT)},uVK:{value:0},uLevel:{value:0},uCam:{value:new THREE.Vector3()},
   uHor:{value:new THREE.Vector3()},uZen:{value:new THREE.Vector3()},uSunDir:{value:new THREE.Vector3()},uSunCol:{value:new THREE.Vector3(3,2.2,1.5)},uCloudC:{value:new THREE.Vector3()},
   uSunI:{value:1},uCover:{value:.3},uRainbow:{value:0},uRays:{value:0},uFlash:{value:0},uDark:{value:0},
@@ -245,17 +392,33 @@ function polarGrid(rings,segs,R){const pos=new Float32Array((rings+1)*segs*3),id
 function seeded(n,seed){const a=new Float32Array(n*4);for(let i=0;i<n;i++){for(let k=0;k<4;k++)a[i*4+k]=hash(i*4+k,seed);}return a;}
 function build(){
   const T=effTier();state.T=T;
-  [seaMesh,skyMesh,sprayPts,debPts].forEach(o=>{if(o){scene.remove(o);o.geometry.dispose();o.material.dispose();}});
-  seaMesh=new THREE.Mesh(polarGrid(T.rings,T.segs,900),mat(SEA_VS,SEA_FS,{RIP:T.rip,CLOUDS:T.clouds}));seaMesh.material.side=THREE.DoubleSide;seaMesh.frustumCulled=false;scene.add(seaMesh);
+  [seaMesh,skyMesh,sprayPts,debPts,islMesh].forEach(o=>{if(o){scene.remove(o);o.geometry.dispose();o.material.dispose();}});
+  state.islandsOn=!!T.islands&&buildWorld();const isl=state.islandsOn?{ISL:1}:{};if(isl.ISL&&T.refract!==0)isl.ISL2=1;
+  if(state.islandsOn){U.uTexA.value=WF.texA;U.uTexB.value=WF.texB;U.uWA.value.set(WG.x0,WG.z0,WG.cell,WG.n);U.uWB.value.set(WG.x0,WG.z0,WG.cellB,WG.nb);}
+  seaMesh=new THREE.Mesh(polarGrid(T.rings,T.segs,900),mat(SEA_VS,SEA_FS,Object.assign({RIP:T.rip,CLOUDS:T.clouds},isl)));seaMesh.material.side=THREE.DoubleSide;seaMesh.frustumCulled=false;scene.add(seaMesh);
   skyMesh=new THREE.Mesh(new THREE.SphereGeometry(1000,32,16),mat(SKY_VS,SKY_FS,{CLOUDS:T.clouds}));skyMesh.material.side=THREE.BackSide;skyMesh.frustumCulled=false;skyMesh.renderOrder=-1;scene.add(skyMesh);
   const sg=new THREE.BufferGeometry();sg.setAttribute('position',new THREE.Float32BufferAttribute(new Float32Array(T.spray*3),3));sg.setAttribute('aS',new THREE.BufferAttribute(seeded(T.spray,5),4));
-  sprayPts=new THREE.Points(sg,mat(SPRAY_VS,SPRAY_FS,{},null,true));sprayPts.frustumCulled=false;sprayPts.material.blending=THREE.NormalBlending;scene.add(sprayPts);
+  sprayPts=new THREE.Points(sg,mat(SPRAY_VS,SPRAY_FS,Object.assign({},isl),null,true));sprayPts.frustumCulled=false;sprayPts.material.blending=THREE.NormalBlending;scene.add(sprayPts);
   const dg=new THREE.BufferGeometry();dg.setAttribute('position',new THREE.Float32BufferAttribute(new Float32Array(T.debris*3),3));dg.setAttribute('aS',new THREE.BufferAttribute(seeded(T.debris,9),4));
   const col=new Float32Array(T.debris*3);const pal=[[.36,.26,.17],[.45,.33,.2],[.62,.58,.5],[.25,.2,.16],[.7,.68,.62],[.5,.18,.12]];
   for(let i=0;i<T.debris;i++){const c=pal[Math.floor(hash(i,31)*pal.length)];col.set(c,i*3);}dg.setAttribute('aC',new THREE.BufferAttribute(col,3));
   const dd={VORT_RMIN:'6.0',FLOATSZ:T.flotsam?'38.0':'40.0'};if(T.flotsam)dd.FLOTSAM=1;debPts=new THREE.Points(dg,mat(DEB_VS,DEB_FS,dd));debPts.frustumCulled=false;scene.add(debPts);
+  islMesh=null;if(state.islandsOn){islMesh=islandMesh(T,isl);scene.add(islMesh);}
   U.uPxScale.value=renderer.getPixelRatio()*canvas.clientHeight/700;
 }
+/* the island terrain: one grid per island, 1.5 m cells (iPad 3 m), heights from the same bicubic data the CPU uses (meshH), vertex colours from the ground class, normals from the grid.
+   Coloured sand, shingle, turf, rock; the w channel says how much a wet band darkens it (sand most, turf least). */
+const GCOL={0:[.86,.78,.58,1],2:[.58,.56,.52,.8],3:[.38,.52,.27,.25],4:[.55,.41,.35,.45]};
+function islandMesh(T,isl){const st=T.islStep,half=100,nn=Math.round(2*half/st)+1,groups=[];const pos=[],col=[],idx=[];let base=0;
+  for(const I of ISLS){const cx=Math.round(I.cx),cz=Math.round(I.cz);
+    for(let j=0;j<nn;j++)for(let i=0;i<nn;i++){const x=cx-half+i*st,z=cz-half+j*st;let h=meshH(x,z);const gcl=groundClass(x,z),c=GCOL[gcl]||GCOL[0];
+      const v=.92+.16*hash((x*7.1+z*13.3)*4|0,77),under=h<-0.1;const k=under?.62:1;h=Math.max(h,-6);
+      pos.push(x,h,z);col.push(c[0]*v*k,c[1]*v*k,c[2]*v*k*(under?1.05:1),c[3]);}
+    for(let j=0;j<nn-1;j++)for(let i=0;i<nn-1;i++){const a=base+j*nn+i,b=a+1,c2=a+nn,d=c2+1;idx.push(a,c2,b,b,c2,d);}
+    base+=nn*nn;}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('aCol',new THREE.Float32BufferAttribute(col,4));g.setIndex(idx);g.computeVertexNormals();
+  const d=Object.assign({SWASHK:SWASHK.toFixed(3),ISL:1,SWASH:1},isl.ISL2?{ISL2:1}:{});
+  const m=new THREE.Mesh(g,mat(ISL_VS,ISL_FS,d));m.frustumCulled=false;return m;}
 function buildBoat(){
   boat=new THREE.Group();const hull=new THREE.Mesh(new THREE.BoxGeometry(4.4,.8,1.6),new THREE.MeshBasicMaterial({color:0x3d5f73}));hull.position.y=.1;boat.add(hull);
   const trim=new THREE.Mesh(new THREE.BoxGeometry(4.5,.12,1.7),new THREE.MeshBasicMaterial({color:0xe8dcc0}));trim.position.y=.52;boat.add(trim);
@@ -268,22 +431,31 @@ function buildBoat(){
   const bg=new THREE.BufferGeometry();bg.setAttribute('position',new THREE.Float32BufferAttribute(new Float32Array(3*24),3));bolt=new THREE.Line(bg,new THREE.LineBasicMaterial({color:0xdde6ff,transparent:true,opacity:0}));bolt.frustumCulled=false;scene.add(bolt);
 }
 /* the boat and crates ride the CPU height query: five points under the hull, like boat_motion.floatMotion but with looser caps so a storm is felt */
-function placeBody(m,W,x,z,yaw,L,B,t,P,capA,capH){
-  const c=Math.cos(yaw),s=Math.sin(yaw),h=(px,pz)=>seaHeight(W,px,pz,t,P);
+function placeBody(m,W,x,z,yaw,L,B,t,P,capA,capH,lift){
+  lift=lift===undefined?.3:lift;const c=Math.cos(yaw),s=Math.sin(yaw),h=(px,pz)=>state.islandsOn?Math.max(seaHeight(W,px,pz,t,P),groundAt(px,pz)+lift):seaHeight(W,px,pz,t,P);   /* in the shallows a body cannot sink below the ground: it grounds out and takes the slope */
   const hc=h(x,z),hb=h(x+c*L/2,z+s*L/2),hs=h(x-c*L/2,z-s*L/2),hp=h(x-s*B/2,z+c*B/2),hq=h(x+s*B/2,z-c*B/2);
   const pitch=capA*Math.tanh(Math.atan((hb-hs)/L)/capA),roll=capA*Math.tanh(Math.atan((hp-hq)/B)/capA);
   m.position.set(x,hc+.05,z);m.rotation.set(0,0,0);m.rotation.order='YZX';m.rotation.y=-yaw;m.rotation.z=pitch;m.rotation.x=roll;return hc;}
 
+/* the boat and the crates: anchored by default; with Drift on they slip downwind and the shallows stop them (speed falls to nothing as the water gets as deep as the hull sits) */
+const bodies=[{x:0,z:0,yaw:0,draft:.38,sp:1,grounded:false}].concat([0,1,2].map(i=>{const a=i*2.1+.5;return {x:Math.cos(a)*(9+i*2),z:Math.sin(a)*(9+i*2),yaw:a,draft:.2,sp:.8+.25*i,grounded:false};}));
+const bodies0=bodies.map(b=>Object.assign({},b));
+{const q=Q.get('boat');if(q){const p=q.split(',').map(parseFloat);if(p.length>=2&&isFinite(p[0])&&isFinite(p[1])){bodies[0].x=p[0];bodies[0].z=p[1];bodies0[0].x=p[0];bodies0[0].z=p[1];}}
+ const qc=Q.get('crates');if(qc){const v=qc.split(';').map(a=>a.split(',').map(parseFloat));v.forEach((p,i)=>{if(bodies[i+1]&&p.length>=2&&isFinite(p[0])&&isFinite(p[1])){bodies[i+1].x=p[0];bodies[i+1].z=p[1];bodies0[i+1].x=p[0];bodies0[i+1].z=p[1];}});}}
+function resetBodies(){bodies.forEach((b,i)=>Object.assign(b,bodies0[i],{grounded:false}));}
+function driftBodies(dt,P){if(!state.drift||!state.islandsOn)return;dt=Math.min(dt,.1);const wr=P.wind*Math.PI/180,tide=tideAt(state.t||0);
+  for(const b of bodies){if(b.grounded)continue;const dep=-groundAt(b.x,b.z)+tide,f=clamp((dep-b.draft)/1.2,0,1);
+    if(dep<=b.draft+.02){b.grounded=true;continue;}const spd=(.55+1.1*state.s)*b.sp*(.2+.8*f);b.x+=Math.cos(wr+.12*b.sp)*spd*dt;b.z+=Math.sin(wr+.12*b.sp)*spd*dt;}}
 function applyParams(t){
   const P=state.P=paramsFor(state.type,state.s),T=state.T||effTier();
-  const W=state.W=buildWaves(P,T);U.uN.value=W.length;
+  const W=state.W=buildWaves(P,T);U.uN.value=W.length;{let sa=0;for(const w of W)sa+=w.A;W.asum=Math.max(sa,1e-4);U.uAsum.value=W.asum;}
   W.forEach((w,i)=>{U.uW.value[i].set(w.dx,w.dz,w.k,w.A);U.uW2.value[i].set(w.Q,w.w,w.phi);});
   let e=0;for(const w of W)e+=w.A*w.A/2;U.uHs.value=4*Math.sqrt(e);
   U.uHor.value.set(...P.hor);U.uZen.value.set(...P.zen);U.uCloudC.value.set(...P.cloud);U.uFogC.value.set(...P.fogC);U.uDeep.value.set(...P.deep);U.uShal.value.set(...P.shal);
   const el=P.sunEl*Math.PI/180,az=P.sunAz*Math.PI/180;U.uSunDir.value.set(Math.sin(az)*Math.cos(el),Math.sin(el),-Math.cos(az)*Math.cos(el)).normalize();
   U.uSunI.value=P.sunI;U.uCover.value=P.cover;U.uRainbow.value=P.rainbow;U.uRays.value=P.rays;U.uDark.value=P.dark;U.uFog.value=P.fog;U.uFoamT.value=P.foamT;U.uFoam.value=P.foam;
   U.uStreak.value=P.streak;U.uSmoke.value=P.smoke;U.uExp.value=P.exp;U.uChopKA.value=P.chKA;U.uWindA.value=P.wind*Math.PI/180;U.uWind.value.set(Math.cos(P.wind*Math.PI/180),Math.sin(P.wind*Math.PI/180));
-  const stormK=sm((P.wsKA-.03)/.12);U.uDebOn.value=(T.flotsam&&T.debris>0)?1:0;U.uDebAmt.value=.12+.38*stormK;U.uVK.value=P.vort;U.uLevel.value=P.surge;U.uAmt.value=clamp((P.foam+P.streak)*.8,0,1)*sm((P.wsKA-.03)/.12);
+  const stormK=sm((P.wsKA-.03)/.12);U.uDebOn.value=(T.flotsam&&T.debris>0)?1:0;U.uDebAmt.value=.12+.38*stormK;U.uVK.value=P.vort;const tide=tideAt(t);U.uTide.value=tide;U.uLevel.value=P.surge+tide;{let ea=0;for(const w of W)ea+=w.A;U.uEnvA.value=ea*SWASHK*.8;}if(state.islandsOn)computeField(P.wind*Math.PI/180);U.uAmt.value=clamp((P.foam+P.streak)*.8,0,1)*sm((P.wsKA-.03)/.12);
   /* lightning: a flash every 7 s of game time (thunder type only), a deterministic function of time */
   let fl=0;if(state.type==='thunder'){const ph=t%7;const e1=Math.exp(-ph*9)*(ph<.6?1:0),e2=ph>.25?Math.exp(-(ph-.25)*14)*.7:0;fl=(e1+e2)*state.s;}U.uFlash.value=fl;
   if(bolt){bolt.material.opacity=fl>.05&&(state.T||TIERS[state.tier]).flashBolt?Math.min(1,fl*1.5):0;if(bolt.material.opacity>0){const k=Math.floor(t/7),a=hash(k,3)*TAU,p=bolt.geometry.attributes.position;let x=Math.cos(a)*600,z=Math.sin(a)*600,y=420;
@@ -301,7 +473,7 @@ const camKeys={};let camHit=0;
 function camPose(){const cp=Math.cos(cam.pitch),sp=Math.sin(cam.pitch),cy=Math.cos(cam.yaw),sy=Math.sin(cam.yaw);
   if(state.free){return {x:cam.px,y:cam.py,z:cam.pz,fx:-cp*cy,fy:-sp,fz:-cp*sy};}
   return {x:cam.tx+cam.dist*cp*cy,y:cam.ty+cam.dist*sp,z:cam.tz+cam.dist*cp*sy,fx:-cp*cy,fy:-sp,fz:-cp*sy};}
-function camFloor(x,z,t){return seaHeight(state.W,x,z,t,state.P)+0.5;}   /* the surface the camera may never go under: the CPU wave height plus half a metre */
+function camFloor(x,z,t){return Math.max(seaHeight(state.W,x,z,t,state.P),groundAt(x,z))+0.5;}   /* the surface the camera may never go under: the CPU wave height plus half a metre */
 function camReset(){state.user=false;state.free=false;state.follow=false;cam.yaw=state.cam;cam.pitch=Math.atan2(6,22);cam.dist=Math.hypot(22,6);syncCamButtons();}
 function camSetFree(on){if(on===state.free)return;state.user=true;
   if(on){const p=camPose();cam.px=p.x;cam.py=p.y;cam.pz=p.z;state.free=true;state.follow=false;}
@@ -328,6 +500,7 @@ function updateCamera(dt,t,P){
   camera.position.set(p.x,y,p.z);
   if(state.free)camera.lookAt(p.x+p.fx,y+p.fy,p.z+p.fz);else camera.lookAt(cam.tx,cam.ty,cam.tz);}
 function syncCamButtons(){const f=document.getElementById('bFollow'),r=document.getElementById('bFree');if(f)f.classList.toggle('on',state.follow);if(r)r.classList.toggle('on',state.free);}
+function camBeach(){state.user=true;state.free=false;state.follow=false;cam.tx=30;cam.ty=.4;cam.tz=30;cam.dist=36;cam.pitch=.2;cam.yaw=-Math.PI/2+.5;syncCamButtons();}
 function camEvents(){const el=canvas,ptr=new Map();let lastPinch=0,lastMid=null;
   el.addEventListener('contextmenu',e=>e.preventDefault());
   el.addEventListener('pointerdown',e=>{try{el.setPointerCapture(e.pointerId);}catch(_){}ptr.set(e.pointerId,{x:e.clientX,y:e.clientY,b:e.button,sh:e.shiftKey});el.style.cursor='grabbing';
@@ -344,6 +517,12 @@ function camEvents(){const el=canvas,ptr=new Map();let lastPinch=0,lastMid=null;
   window.addEventListener('keyup',e=>{const k=e.key.toLowerCase();if(k==='shift')camKeys.shift=false;else delete camKeys[k];});
   window.addEventListener('blur',()=>{for(const k in camKeys)delete camKeys[k];});
   document.getElementById('bReset').onclick=camReset;
+  const bI2=document.getElementById('bIsl'),bD=document.getElementById('bDrift');
+  const syncI=()=>{bI2.classList.toggle('on',state.islands);bD.classList.toggle('on',state.drift);};
+  bI2.onclick=()=>{state.islands=!state.islands;syncI();build();resize();};bD.onclick=()=>{state.drift=!state.drift;syncI();};
+  document.getElementById('bBeach').onclick=camBeach;document.getElementById('bBack').onclick=resetBodies;syncI();
+  if(Q.get('view')==='beach')camBeach();
+  {const v=Q.get('look');if(v){const p=v.split(',').map(parseFloat);if(p.length>=5&&p.every(isFinite)){state.user=true;cam.tx=p[0];cam.ty=p[1];cam.tz=p[2];cam.dist=p[3];cam.pitch=p[4];if(p.length>5)cam.yaw=p[5];}}}
   document.getElementById('bFollow').onclick=()=>{if(state.free)camSetFree(false);state.user=true;state.follow=!state.follow;syncCamButtons();};
   document.getElementById('bFree').onclick=()=>camSetFree(!state.free);}
 
@@ -369,15 +548,16 @@ function gpuSrcLabel(){return GPU.kind==='timer'?'GPU timer query':'sampled fini
    One axis at a time from a light base (24k triangles, 8 waves, no spray, no debris, 1x resolution), about 6 s a rung; then one combined rung with every axis at its last good value.
    An axis stops at the first rung where the frame time is over 33 ms for 5 frames in a row (or a rung that ends with an average over 33 ms). If even the first rung of the first axis is over, the whole bench stops (software GL does this).
    An error (context lost, a shader error, an exception) stops it at once. Numbers are what this browser measured on this machine: nothing is assumed about any other device. */
-const BASE={tris:24000,waves:8,spray:0,debris:0,scale:1,follow:1,flotsam:1};
+const BASE={tris:24000,waves:8,spray:0,debris:0,scale:1,follow:1,flotsam:1,islands:0};
 const AXES=[
  {id:'mesh',label:'Sea mesh',unit:'triangles',key:'tris',vals:[24000,100000,210000,500000,1000000,2000000]},
  {id:'waves',label:'Wave count',unit:'waves',key:'waves',vals:[8,24,48,96]},
  {id:'spray',label:'Spray particles',unit:'points',key:'spray',vals:[0,20000,100000,400000]},
  {id:'debris',label:'Debris points',unit:'points',key:'debris',vals:[0,5000,20000,100000]},
+ {id:'islands',label:'Islands in the sea (2 islands, shoaling, refraction, swash, wave shadow)',unit:'off/on',key:'islands',vals:[0,1]},
  {id:'scale',label:'Render resolution',unit:'x scale',key:'scale',vals:[1,1.5,2,3]}];
 const BQ={sec:parseFloat(Q.get('benchsec')||'6'),warm:parseFloat(Q.get('benchwarm')||'1.2'),limit:parseFloat(Q.get('benchlimit')||'33'),n:5,maxRungs:parseInt(Q.get('benchrungs')||'99',10),hardCap:parseFloat(Q.get('benchcap')||'25')};
-const fmtV=(a,v)=>a.key==='tris'?(v>=1e6?v/1e6+'M':v/1e3+'k'):a.key==='scale'?v+'x':(v>=1000?v/1000+'k':''+v);
+const fmtV=(a,v)=>a.key==='tris'?(v>=1e6?v/1e6+'M':v/1e3+'k'):a.key==='scale'?v+'x':a.key==='islands'?(v?'on':'off'):(v>=1000?v/1000+'k':''+v);
 const bench={running:false,rows:[],plan:[],i:-1,rung:null,stop:'',err:'',savedState:null,report:''};
 function benchPlan(){const p=[];for(const a of AXES)a.vals.slice(0,BQ.maxRungs).forEach((v,j)=>p.push({axis:a,v,j}));p.push({axis:{id:'all',label:'Everything up (combined)',unit:'',key:'all'},v:0,j:0});return p;}
 const benchBox=document.getElementById('benchBox');
@@ -434,10 +614,10 @@ function benchFinish(){if(!bench.running)return;bench.running=false;bench.rung=n
   document.getElementById('bbCopy').onclick=()=>benchCopy();document.getElementById('bbClose').onclick=()=>{benchBox.style.display='none';};
   document.getElementById('bbMax').onclick=()=>{const k=benchKnee();TIERS.max.tris=k.tris;TIERS.max.waves=k.waves;TIERS.max.spray=k.spray;TIERS.max.debris=k.debris;window.__setTier('max');document.getElementById('bbMsg').textContent='Radeon MAX now uses: '+k.tris+' triangles, '+k.waves+' waves, '+k.spray+' spray, '+k.debris+' debris.';};}
 function benchKnee(){const k={tris:TIERS.max.tris,waves:TIERS.max.waves,spray:TIERS.max.spray,debris:TIERS.max.debris};   /* knee = the biggest rung that still held 55 fps on average (18 ms) with the 95th percentile under 25 ms */
-  for(const a of AXES){let best=null;for(const r of bench.rows)if(r.axis.id===a.id&&!r.bad&&r.avg<=18&&r.p95<=25)best=r.v;if(best!==null&&a.key!=='scale')k[a.key]=best;}return k;}
+  for(const a of AXES){let best=null;for(const r of bench.rows)if(r.axis.id===a.id&&!r.bad&&r.avg<=18&&r.p95<=25)best=r.v;if(best!==null&&a.key!=='scale'&&a.key!=='islands')k[a.key]=best;}return k;}
 function benchReport(){const L=[],f=(v,n)=>typeof v==='number'&&isFinite(v)&&v>=0?v.toFixed(n===undefined?1:n):'n/a';
   L.push('SEA BENCH (Living Islands sea prototype)','renderer: '+(glName||'unknown (browser hides it)')+(isGL2?'  WebGL2':'  WEBGL1'),'GPU timer: '+(GPU.kind==='timer'?'EXT_disjoint_timer_query_webgl2 (GPU ms are per-frame GPU time)':'not available; GPU ms from a sampled finish() (rough)'),
-    'page '+window.innerWidth+' x '+window.innerHeight+' css px, device pixel ratio '+(window.devicePixelRatio||1).toFixed(2),'rule: an axis stops when a rung is over '+BQ.limit+' ms for '+BQ.n+' frames; each rung '+BQ.sec+' s after '+BQ.warm+' s warm-up','base: 24k triangles, 8 waves, no spray, no debris, 1x; storm weather (gale, 0.85)');
+    'page '+window.innerWidth+' x '+window.innerHeight+' css px, device pixel ratio '+(window.devicePixelRatio||1).toFixed(2),'rule: an axis stops when a rung is over '+BQ.limit+' ms for '+BQ.n+' frames; each rung '+BQ.sec+' s after '+BQ.warm+' s warm-up','base: 24k triangles, 8 waves, no spray, no debris, 1x, islands off; storm weather (gale, 0.85)');
   if(soft)L.push('NOTE: this is a SOFTWARE renderer. It stops early by itself, and its numbers say nothing about a real graphics card.');
   for(const a of AXES.concat([{id:'all',label:'Everything up (combined)',unit:'',key:'all'}])){const rows=bench.rows.filter(r=>r.axis.id===a.id);if(!rows.length)continue;L.push('','== '+a.label+(a.unit?' ('+a.unit+')':'')+' ==');
     for(const r of rows)L.push((a.id==='all'?'combined':fmtV(a,r.v)).padEnd(10)+' frame avg '+f(r.avg)+' ms, p95 '+f(r.p95)+', worst '+f(r.max)+'   GPU '+(r.gpu>=0?f(r.gpu,2)+' ms':'n/a')+'   '+r.meshTris.toLocaleString('en-US')+' mesh tris, '+r.nW+' waves, '+r.res+'   '+(r.bad?'OVER '+BQ.limit+' ms':'ok'));
@@ -459,8 +639,8 @@ function frame(now){
   const t=state.tFix!==null?state.tFix+(state.freeze?0:(now/1000-state.t0)):(now/1000-state.t0);state.t=t;
   U.uT.value=t;U.uT2.value=t;applyParams(t);const P=state.P;
   /* the boat holds its place; crates drift in a small ring; the hulk lies at the whirlpool's edge, listing */
-  const yaw=P.wind*Math.PI/180+.5;placeBody(boat,state.W,0,0,yaw,4.4,1.6,t,P,.38,1);
-  crates.forEach((c,i)=>{const a=i*2.1+.5;placeBody(c,state.W,Math.cos(a)*(9+i*2),Math.sin(a)*(9+i*2),a,.9,.9,t,P,.5,1);});
+  const yaw=P.wind*Math.PI/180+.5;driftBodies(dt/1000,P);const bb=bodies[0];placeBody(boat,state.W,bb.x,bb.z,bb.grounded?bb.yaw:yaw,4.4,1.6,t,P,.38,1,.30);
+  crates.forEach((c,i)=>{const b=bodies[i+1];placeBody(c,state.W,b.x,b.z,b.yaw,.9,.9,t,P,.5,1,.18);});
   hulk.visible=P.vort>.05;if(hulk.visible){const hy=placeBody(hulk,state.W,VORT[0]+VORT[2]*1.15,VORT[1]+VORT[2]*.4,.9,16,5.4,t,P,.3,1);hulk.position.y=hy+.4;hulk.rotation.x+=.18*P.vort;hulk.scale.setScalar(1);}
   updateCamera(dt/1000,t,P);
   U.uCam.value.copy(camera.position);{const T=state.T;if(T&&T.follow)U.uMesh.value.set(Math.round(camera.position.x*2)/2,Math.round(camera.position.z*2)/2);else U.uMesh.value.set(0,0);}
@@ -496,7 +676,7 @@ function ui(){const sel=document.getElementById('type');for(const k in TYPES){co
   window.__setTier=setTier;bI.onclick=()=>setTier('ipad');bR.onclick=()=>setTier('radeon');bM.onclick=()=>setTier('max');setTier(state.tier);
   if(Q.get('ui')==='0')document.getElementById('ui').style.display='none';}
 ui();buildBoat();camEvents();resize();requestAnimationFrame(frame);
-window.__sea={bench,benchStart,benchWarn,effTier,state,GPU,gpuMean,busyLine,updateStats,glName:()=>glName,TYPES,TIERS,cam,camPose,camKeys,camFloor:(x,z)=>camFloor(x,z,state.t),camera,seaHeight:(x,z,t)=>seaHeight(state.W,x,z,t===undefined?state.t:t,state.P),ready:true};
+window.__sea={bodies,groundAt,tideAt,WF,WG,bench,benchStart,benchWarn,effTier,state,GPU,gpuMean,busyLine,updateStats,glName:()=>glName,TYPES,TIERS,cam,camPose,camKeys,camFloor:(x,z)=>camFloor(x,z,state.t),camera,seaHeight:(x,z,t)=>seaHeight(state.W,x,z,t===undefined?state.t:t,state.P),ready:true};
 })();
 </script>
 </body>

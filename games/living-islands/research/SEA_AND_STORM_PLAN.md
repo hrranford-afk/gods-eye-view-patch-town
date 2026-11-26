@@ -254,3 +254,24 @@ Recommended first slice (about 7 days, steps 0 to 5): the sea moves, the boat ri
 * `storm.js` and friends are not on the branch yet (step 0).
 * Damage tuning can feel unfair; the first-storm rules and the salvage rule are the guard.
 * No real-device number appears in this note; everything measured is software GL.
+
+## 17. Benchmark and maxed tier (sea_proto, 26 Nov 2026)
+
+What the prototype page gained after the owner first ran it on the Radeon VII (the card was about 18 percent busy: the Radeon sea is far below its limit, and there was no context).
+
+* **GPU readout.** Frame ms, GPU ms from `EXT_disjoint_timer_query_webgl2` (a sampled `gl.finish()` when the browser hides the timer, labelled rough), "GPU busy about N percent of a 16.7 ms frame" (an estimate), the raw renderer string, triangles, draw calls, resolution. It says whether the page is limited by the 60 Hz display, by the GPU, or by something else.
+* **Bench ladder.** A Bench button, a warning, then Start. Each rung about 6 s after a 1.2 s warm-up; axes one at a time from a light base: mesh 24k to 2M triangles, waves 8 to 96, spray 0 to 400k, debris 0 to 100k, islands off/on, render scale 1x to 3x, then one combined rung at each axis's last good value. An axis stops at the first rung over 33 ms for 5 frames; if the very first rung is over, the bench stops (software GL does). An error (lost context, shader error) stops it at once. The report lists GPU ms per rung, the last good rung per axis, a suggested Radeon MAX from the 55 fps knee, and has a Copy report button. No paths, URLs or user data in it.
+* **Radeon MAX.** 48 waves, a 500k-triangle polar mesh that is re-centred on the camera (so the dense rings are where you look), 100k spray, 20k flotsam points drifting with the wind round the viewer. "Use these limits for Radeon MAX" in the report applies the bench knee. Defaults are guesses until a real report arrives.
+* **Storm foam fixed.** The first version covered whole slopes in white. Now: whitecaps need a folded crest AND height on the wave AND a noise threshold; a thin trailing foam; wind streaks that are short, sparse and never opaque; troughs darker. Pictures: `sea_proto_shots/radeon_gale_foam_before.jpg` and `..._fixed.jpg`. Still wrong: the water is teal rather than slate, the pixel-ripple layer leaves a moire grain at low angles, and the 100k spray is barely visible at this point size.
+
+### 17.1 Islands in the sea
+Two copies of the seed 9001 island (heights and ground class from the landform arrays, bicubic as `rubble/terrain.js` reads them), one turned so its lee beach faces the waves. Approximations, each with what it gets wrong:
+
+* **Shoaling and breaking limit:** amplitude grows as depth^-1/4 (Green's law, capped at 1.6x), and the summed height is held under 0.9 of the depth. Wrong: no nonlinear steepening, saturated surf looks flatter than a real surf zone.
+* **Shorter wavelength:** an extra phase path PHI (the integral of n-1 along the wind, n from the tanh dispersion) is made on a 4 m grid for a swell and a wind-sea length. Wrong: one heading (the wind) for all waves, rays are straight, so strong refraction round headlands is not right.
+* **Refraction (Radeon, MAX):** each wave's direction is its own plus the gradient of PHI, so crests bend to run along the shore. The iPad tier has no refraction (phase and damping only).
+* **Wave shadow:** three rays 10 m apart along the wind; a blocked ray damps waves by up to 85 percent. Wrong: no diffraction, edges are a guess.
+* **Breaking foam:** where wave height over depth is above about 0.77 (depth under 1.3 wave heights), in lines along the crests, plus a lace band in the last 0.6 m of depth, plus spray off the breakers.
+* **Swash and wet sand:** the island mesh runs the same wave sum at 0.4 of the height with no depth limit, fading with height above the tide; where it is above the ground there is a thin water sheet, a foam lip and lace; sand is darkened up to the swash envelope. The tide is the world's 1.1 m cut to 0.6 m on a 4 minute period so it can be watched. Wrong: it is not a hydrodynamic run-up, there is no backwash memory.
+* **Boat and crates:** with Drift on they slip downwind, slow as the water gets as deep as their hull, ground out and take the slope; the CPU query is the same maths as the shader, minus refraction direction.
+Pictures: `sea_proto_shots/*_isl_*.jpg` (three tiers, calm, rising, storm) and `close_calm_hi/lo.jpg` (the same beach at high and low tide). All software GL: they show the look, never the speed.

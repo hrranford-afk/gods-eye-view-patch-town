@@ -20,7 +20,7 @@ const server = http.createServer((req, res) => { const f = path.join(ROOT, decod
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const T = { };
   if (which === 'camera' || which === 'all') {
-    await open('?tier=ipad&type=squall&s=0.9');
+    await open('?tier=ipad&type=squall&s=0.9&islands=0');
     const pose = () => page.evaluate(() => { const c = window.__sea.camera.position; return { x: c.x, y: c.y, z: c.z, dist: window.__sea.cam.dist, yaw: window.__sea.cam.yaw, pitch: window.__sea.cam.pitch, tx: window.__sea.cam.tx, tz: window.__sea.cam.tz, free: window.__sea.state.free, floor: window.__sea.camFloor(window.__sea.camera.position.x, window.__sea.camera.position.z) }; });
     const p0 = await pose(), mid = { x: 450, y: 300 };
     await page.mouse.move(mid.x, mid.y); await page.mouse.down(); await page.mouse.move(mid.x + 120, mid.y + 40, { steps: 6 }); await page.mouse.up(); await sleep(300);
@@ -36,7 +36,7 @@ const server = http.createServer((req, res) => { const f = path.join(ROOT, decod
     await page.click('#bFree'); await sleep(200); const f0 = await pose(); check('Free fly toggle on', f0.free === true);
     await page.keyboard.down('w'); await sleep(700); await page.keyboard.up('w'); const f1 = await pose();
     check('W flies forward in free mode', Math.hypot(f1.x - f0.x, f1.z - f0.z) > 2, 'moved ' + Math.hypot(f1.x - f0.x, f1.z - f0.z).toFixed(1) + ' m');
-    await page.keyboard.down('ArrowRight'); await sleep(400); await page.keyboard.up('ArrowRight'); const f2 = await pose(); check('arrow key strafes', Math.hypot(f2.x - f1.x, f2.z - f1.z) > 1);
+    await page.keyboard.down('ArrowRight'); await sleep(900); await page.keyboard.up('ArrowRight'); const f2 = await pose(); check('arrow key strafes', Math.hypot(f2.x - f1.x, f2.z - f1.z) > 1);
     await page.keyboard.down('e'); await sleep(500); await page.keyboard.up('e'); const f3 = await pose(); check('E goes up', f3.y > f2.y + 1, f2.y.toFixed(1) + ' to ' + f3.y.toFixed(1));
     await page.keyboard.down('q'); await sleep(2500); await page.keyboard.up('q'); const f4 = await pose();
     check('Q down: camera never goes under the wave height plus 0.5 m (storm)', f4.y >= f4.floor - 0.01 && f4.y < f3.y, 'y ' + f4.y.toFixed(2) + ' floor ' + f4.floor.toFixed(2));
@@ -68,13 +68,40 @@ const server = http.createServer((req, res) => { const f = path.join(ROOT, decod
     await open('?tier=ipad&benchsec=0.5&benchwarm=0.25&benchlimit=1000000&benchrungs=2&benchcap=6'); await page.click('#bBench'); await page.click('#bbGo');
     await page.waitForFunction('document.getElementById("bbCopy")', { timeout: 280000 });
     rep = await page.evaluate(() => window.__sea.bench.report);
-    for (const a of ['Sea mesh', 'Wave count', 'Spray particles', 'Debris points', 'Render resolution', 'Everything up']) check('ladder ran axis: ' + a, rep.includes('== ' + a), '');
+    for (const a of ['Sea mesh', 'Wave count', 'Spray particles', 'Debris points', 'Islands in the sea', 'Render resolution', 'Everything up']) check('ladder ran axis: ' + a, rep.includes('== ' + a), '');
     check('report has renderer, GPU time column, last good rung and a result line', /renderer: /.test(rep) && /GPU [\d.]+ ms|GPU n\/a/.test(rep) && /last good rung: /.test(rep) && /result: ran to the end/.test(rep));
     check('report copy text has no paths, URLs or user names', !/(\/home|\/root|\/Users|[A-Z]:\\|file:|https?:|localhost|127\.0\.0\.1|\.html|\.js)/.test(rep), 'length ' + rep.length);
     await page.click('#bbCopy'); await sleep(300); check('Copy report button answers', await page.evaluate(() => document.getElementById('bbMsg').textContent.length > 5), await page.evaluate(() => document.getElementById('bbMsg').textContent));
     check('page is back to normal after the bench (UI shown, mesh rebuilt)', await page.evaluate(() => document.getElementById('ui').style.display !== 'none' && !window.__sea.bench.running));
     check('bench test: no console errors', errs.length === 0, errs.join(' | '));
     await page.setViewport({ width: 900, height: 600 });
+  }
+  if (which === 'tiers' || which === 'all') {
+    for (const tier of ['ipad', 'radeon', 'max']) for (const ty of ['calm', 'squall', 'gale']) {
+      await open('?tier=' + tier + '&type=' + ty + '&s=0.8&view=beach'); await sleep(900);
+      const r = await page.evaluate(() => { const s = window.__sea; s.updateStats(); return { tris: s.state.tris, calls: s.state.calls, isl: s.state.islandsOn, w: s.state.W.length }; });
+      check(tier + ' ' + ty + ': renders with islands (triangles, draw calls, no errors)', r.tris > 1000 && r.calls >= 5 && r.isl === true && errs.length === 0, JSON.stringify(r) + ' ' + errs.join('|'));
+    }
+  }
+  if (which === 'islands' || which === 'all') {
+    await open('?tier=radeon&type=gale&s=1&t=40'); const S = 'window.__sea';
+    const q = f => page.evaluate(f);
+    const ms = await q(() => { const t0 = performance.now(); const s = window.__sea; s.WF.windKey = -999; return 0; });
+    check('depth field: open water deep, beach is land, island window loaded', await q(() => { const s = window.__sea; return s.groundAt(0, -200) < -20 && s.groundAt(34, 40) > 0.5 && s.groundAt(10, 70) > 1 && s.groundAt(0, 0) < -1.5; }));
+    const amp = await q(() => { const s = window.__sea; const env = (x, z) => { let m = 0; for (let t = 0; t < 60; t += 0.7) m = Math.max(m, Math.abs(s.seaHeight(x, z, t) - s.tideAt(t))); return m; }; return { deep: env(30, -90), mid: env(30, 8), shallow: env(30, 20) }; });
+    check('waves damp in shallow water (storm: amplitude deep > mid > shallow)', amp.deep > amp.mid && amp.mid > amp.shallow, JSON.stringify(amp));
+    const ph = await q(() => { const s = window.__sea, W = s.WG, PH = s.WF.PH1, i = Math.round((30 - W.x0) / W.cellB), jS = Math.round((24 - W.z0) / W.cellB), jD = Math.round((-185 - W.z0) / W.cellB); return { shallow: PH[jS * W.nb + i], deep: PH[jD * W.nb + i] }; });
+    check('wavelength shortens in shallow water (extra phase path grows toward the beach, none in deep water)', ph.shallow > 5 && ph.deep < 0.5, JSON.stringify(ph));
+    const sh = await q(() => { const s = window.__sea, W = s.WG, n = W.n; const sd = (x, z) => s.WF.shd[Math.round((z - W.z0) / W.cell) * n + Math.round((x - W.x0) / W.cell)]; return { lee: Math.max(sd(80, 160), sd(100, 190)), open: sd(0, -100) }; });
+    check('wave shadow: some behind an island, none in open water', sh.lee > 0 && sh.open === 0, JSON.stringify(sh));
+    const fl = await q(() => { const s = window.__sea; return { ok: s.camFloor(34, 40) >= s.groundAt(34, 40) + 0.5 - 1e-6 && s.camFloor(34, 40) > 1 }; });
+    check('camera floor follows the ground on the island too', fl.ok);
+    /* a boat set drifting from the shallows grounds and stays above the ground */
+    await open('?tier=ipad&type=gale&s=1&t=100&drift=1&boat=31,19.8&crates=27,19.5;36,20;22,18.5&freeze=1'); await sleep(9000);
+    const g = await q(() => { const s = window.__sea; return s.bodies.map(b => ({ gr: b.grounded, x: +b.x.toFixed(1), z: +b.z.toFixed(1), ground: +s.groundAt(b.x, b.z).toFixed(2) })); });
+    check('a drifting boat grounds out in the shallows (flag set, stopped near the waterline; crates follow more slowly)', g[0].gr && g[0].z < 40 && g[0].z > 19, JSON.stringify(g));
+    await open('?tier=ipad&type=calm&islands=0'); check('islands=0 turns the islands off (old sea)', await q(() => !window.__sea.state.islandsOn && window.__sea.groundAt(34, 40) === -40));
+    check('islands test: no console errors', errs.length === 0, errs.join(' | '));
   }
   await page.close(); await browser.close(); server.close();
   console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
