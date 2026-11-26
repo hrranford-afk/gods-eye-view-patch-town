@@ -1,5 +1,5 @@
 {
- "when": "2026-11-26T14:28:07.857Z",
+ "when": "2026-11-26T14:54:12.451Z",
  "node": "v22.22.0",
  "checks": [
   {
@@ -26,6 +26,41 @@
    "name": "B1: the bolt flight is deterministic (the same six launches give the same hash twice: 1bdb097b)",
    "ok": true,
    "detail": "1bdb097b / 1bdb097b"
+  },
+  {
+   "name": "B2: acorns and marbles fly clean (no spin at all: 0 and 0 rad/s at most) and pass within a few spreads of where the drag-aware aim sent them (closest approach to the aim point as a multiple of dist x spread: acorn 0.56, marble 0.24)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "B2: the coconut flies with a gentle spin along its flight (4.93 rad/s about the flight direction, asked 5)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "B2: the glass float keeps its natural tumble (mean spin 2.31 rad/s, up to 3.64)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "B2: the bottle is thrown neck first and stays within 15 degrees of its flight (worst 4.4 deg over 16 launches)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "B2: the tin lid passes within a few spreads of where the aim (drag and lift) sent it (0.31 spreads)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "B2: the tin lid sails further with its lift (17.2 m against 16.6 m without it, same throw)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "B2: all seven ammo kinds fly deterministically (the same volley gives the same hash twice: efbe6984)",
+   "ok": true,
+   "detail": "efbe6984 / efbe6984"
   }
  ],
  "numbers": {
@@ -46,7 +81,61 @@
     0.24
    ],
    "hitsThatMovedBricks": 4,
-   "ms": 32471
+   "ms": 31784
+  },
+  "ammoFlight": {
+   "acorn": {
+    "launches": 16,
+    "maxSpinRadS": 0,
+    "meanSpinRadS": 0,
+    "worstAxisDeg": 0,
+    "worstMissInSpreads": 0.56,
+    "coconutSpinAlongFlight": 0
+   },
+   "marble": {
+    "launches": 16,
+    "maxSpinRadS": 0,
+    "meanSpinRadS": 0,
+    "worstAxisDeg": 0,
+    "worstMissInSpreads": 0.24,
+    "coconutSpinAlongFlight": 0
+   },
+   "coconut": {
+    "launches": 16,
+    "maxSpinRadS": 5,
+    "meanSpinRadS": 4.72,
+    "worstAxisDeg": 0,
+    "worstMissInSpreads": 0.18,
+    "coconutSpinAlongFlight": 4.93
+   },
+   "lid": {
+    "launches": 16,
+    "maxSpinRadS": 30,
+    "meanSpinRadS": 28.48,
+    "worstAxisDeg": 0,
+    "worstMissInSpreads": 0.31,
+    "coconutSpinAlongFlight": 0
+   },
+   "float": {
+    "launches": 16,
+    "maxSpinRadS": 3.64,
+    "meanSpinRadS": 2.31,
+    "worstAxisDeg": 0,
+    "worstMissInSpreads": 0.15,
+    "coconutSpinAlongFlight": 0
+   },
+   "bottle": {
+    "launches": 16,
+    "maxSpinRadS": 47.33,
+    "meanSpinRadS": 3.08,
+    "worstAxisDeg": 4.4,
+    "worstMissInSpreads": 0.22,
+    "coconutSpinAlongFlight": 0
+   }
+  },
+  "lidRangeM": {
+   "withLift": 17.2,
+   "withoutLift": 16.6
   }
  }
 }

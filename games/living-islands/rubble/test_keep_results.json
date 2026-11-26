@@ -1,5 +1,5 @@
 {
- "when": "2026-11-26T14:19:13.430Z",
+ "when": "2026-11-26T14:56:35.540Z",
  "node": "v22.22.0",
  "checks": [
   {
@@ -120,22 +120,22 @@
   {
    "name": "after 3 of 12 shots the round is still playing with 9 left, and the percent is of the base without the perch (571 pieces, perch 429)",
    "ok": true,
-   "detail": "{\"shots\":3,\"left\":9,\"percent\":1.5761821366024518,\"knocked\":9,\"outer\":571,\"bellUp\":true,\"stars\":0,\"over\":null}"
+   "detail": "{\"shots\":3,\"left\":9,\"percent\":2.8021015761821366,\"knocked\":16,\"outer\":571,\"bellUp\":true,\"stars\":0,\"over\":null}"
   },
   {
    "name": "Done ends the round once the bricks rest (not at once), with a result and 1 or more stars",
    "ok": true,
-   "detail": "{\"shots\":3,\"left\":9,\"percent\":1.5761821366024518,\"knocked\":9,\"outer\":571,\"bellUp\":true,\"stars\":1,\"over\":\"result\"}"
+   "detail": "{\"shots\":3,\"left\":9,\"percent\":3.1523642732049035,\"knocked\":18,\"outer\":571,\"bellUp\":true,\"stars\":1,\"over\":\"result\"}"
   },
   {
-   "name": "rods at the perch drop the bell (after 1 rods): the round is over with Bell down, no stars",
+   "name": "rods at the perch drop the bell (after 4 rods): the round is over with Bell down, no stars",
    "ok": true,
-   "detail": "{\"shots\":1,\"left\":39,\"percent\":0,\"knocked\":0,\"outer\":571,\"bellUp\":false,\"stars\":0,\"over\":\"bell\"}"
+   "detail": "{\"shots\":4,\"left\":36,\"percent\":0,\"knocked\":0,\"outer\":571,\"bellUp\":false,\"stars\":0,\"over\":\"bell\"}"
   },
   {
    "name": "the same Keep volley gives the same hash and the same knocked-out count in two fresh sessions",
    "ok": true,
-   "detail": "e5ee281e:9 / e5ee281e:9"
+   "detail": "22609794:16 / 22609794:16"
   },
   {
    "name": "every ammo kind has a strong or gentle label (strong from 1000 J): {\"acorn\":\"gentle\",\"marble\":\"gentle\",\"coconut\":\"gentle\",\"lid\":\"strong\",\"float\":\"gentle\",\"bottle\":\"gentle\",\"rod\":\"strong\"}",
@@ -143,17 +143,17 @@
    "detail": ""
   },
   {
-   "name": "a gentle volley (12 marbles) at the outer wall leaves the bell and the whole perch alone and knocks out some of the base (5.2 percent)",
+   "name": "a gentle volley (12 marbles) at the outer wall leaves the bell and the whole perch alone and knocks out some of the base (6.2 percent)",
    "ok": true,
    "detail": ""
   },
   {
-   "name": "a strong volley (12 tin lids) clears a good part of the outer wall (41.2 percent of the front wall, 13.2 percent of the base) and the bell and perch stand (at most 7 of the 692 perch pieces nudged more than 20 cm: 3)",
+   "name": "a strong volley (12 tin lids) clears a good part of the outer wall (21.9 percent of the front wall, 8.6 percent of the base) and the bell and perch stand (at most 7 of the 692 perch pieces nudged more than 20 cm: 3)",
    "ok": true,
    "detail": ""
   },
   {
-   "name": "12 big rods at the outer wall leave the bell standing (6.9 percent, 22.6 of the front wall), the perch untouched",
+   "name": "12 big rods at the outer wall leave the bell standing (12.1 percent, 39.7 of the front wall), the perch untouched",
    "ok": true,
    "detail": ""
   }
@@ -168,7 +168,7 @@
     "heightM": 2.25,
     "driftCm": 6.22,
     "bellMoveMm": 0.06,
-    "ms": 2414
+    "ms": 3330
    },
    {
     "pieces": 5000,
@@ -178,7 +178,7 @@
     "heightM": 2.49,
     "driftCm": 8.25,
     "bellMoveMm": 0.05,
-    "ms": 3572
+    "ms": 3910
    },
    {
     "pieces": 10000,
@@ -188,7 +188,7 @@
     "heightM": 2.49,
     "driftCm": 7.47,
     "bellMoveMm": 0.06,
-    "ms": 5001
+    "ms": 5538
    }
   ],
   "fort": [
@@ -198,7 +198,7 @@
     "perch": 693,
     "driftCm": 6.9,
     "heightM": 2.25,
-    "ms": 4549
+    "ms": 4808
    },
    {
     "shape": "castle",
@@ -206,7 +206,7 @@
     "perch": 1119,
     "driftCm": 8.2,
     "heightM": 2.49,
-    "ms": 11262
+    "ms": 11275
    },
    {
     "shape": "castle",
@@ -214,7 +214,7 @@
     "perch": 1695,
     "driftCm": 7.9,
     "heightM": 2.49,
-    "ms": 25073
+    "ms": 24769
    },
    {
     "shape": "wall",
@@ -222,7 +222,7 @@
     "perch": 693,
     "driftCm": 6.9,
     "heightM": 2.25,
-    "ms": 4164
+    "ms": 4634
    },
    {
     "shape": "tower",
@@ -230,7 +230,7 @@
     "perch": 693,
     "driftCm": 7.3,
     "heightM": 2.25,
-    "ms": 3992
+    "ms": 4360
    },
    {
     "shape": "grand",
@@ -238,17 +238,17 @@
     "perch": 1119,
     "driftCm": 9.9,
     "heightM": 2.49,
-    "ms": 11685
+    "ms": 12073
    }
   ],
-  "perchRods": 1,
+  "perchRods": 4,
   "strategies": [
    {
     "strategy": "12 marbles along the front wall",
     "ammo": "marble",
     "shots": 12,
-    "percent": 5.2,
-    "frontWallPercent": 17.1,
+    "percent": 6.2,
+    "frontWallPercent": 20.4,
     "bellStanding": true,
     "perchPiecesMoved": 0,
     "stars": 1
@@ -257,8 +257,8 @@
     "strategy": "12 tin lids along the front wall",
     "ammo": "lid",
     "shots": 12,
-    "percent": 13.2,
-    "frontWallPercent": 41.2,
+    "percent": 8.6,
+    "frontWallPercent": 21.9,
     "bellStanding": true,
     "perchPiecesMoved": 3,
     "stars": 1
@@ -267,8 +267,8 @@
     "strategy": "12 big rods along the front wall",
     "ammo": "rod",
     "shots": 12,
-    "percent": 6.9,
-    "frontWallPercent": 22.6,
+    "percent": 12.1,
+    "frontWallPercent": 39.7,
     "bellStanding": true,
     "perchPiecesMoved": 0,
     "stars": 1

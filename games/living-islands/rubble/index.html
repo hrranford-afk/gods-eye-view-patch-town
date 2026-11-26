@@ -74,7 +74,7 @@ body.keepmode #ammo .am .tag{display:block}
     <div class="row" style="margin-top:4px"><button class="btn" id="look">Look: Pretty</button></div></div>
   <div class="card"><div class="row"><button class="btn" id="replay">Replay slow</button><button class="btn" id="bench">Bench...</button></div>
     <div style="margin-top:6px;opacity:.85">Slow motion is only the replay: it rebuilds the same scene and plays your shots again at one quarter speed.</div></div>
-  <div class="card"><div class="row"><button class="btn" id="boltHead">Bolt head: pointed</button></div><div style="margin-top:4px;opacity:.85;font-size:12px">The Bolt flies point first. The head shape is only for looks.</div></div>
+  <div class="card"><div class="row"><button class="btn" id="boltHead">Bolt head: pointed</button><button class="btn on" id="trails">Trails: on</button></div><div style="margin-top:4px;opacity:.85;font-size:12px">The Bolt flies point first. The head shape is only for looks.</div></div>
   <div class="card" id="aimbox"></div>
 </div>
 <div id="ammo"></div>
@@ -268,6 +268,30 @@ Object.keys(KINDS).forEach(function (k) {
   m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(CAP[k] * 3), 3); scene.add(m); IM[k] = m;
 });
 var zeroM = new Float32Array(16);
+/* shot trails (Pretty look only): one LineSegments for every shot in the air, a short fading streak of its last ten positions in the ammo's colour. One draw call, no triangles.
+   Looks only: it reads the positions the physics already has and never touches a body. */
+var trailsOn = true, TRN = 10, TRMAX = 400;
+var trailGeo = new THREE.BufferGeometry(), trailPos = new Float32Array(TRMAX * TRN * 6), trailCol = new Float32Array(TRMAX * TRN * 6);
+trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3).setUsage(THREE.DynamicDrawUsage)); trailGeo.setAttribute('color', new THREE.BufferAttribute(trailCol, 3).setUsage(THREE.DynamicDrawUsage)); trailGeo.setDrawRange(0, 0);
+var trailLines = new THREE.LineSegments(trailGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+trailLines.frustumCulled = false; trailLines.visible = false; scene.add(trailLines);
+function updateTrails(sim) {
+  if (!pretty || !trailsOn) { trailLines.visible = false; return; }
+  var q = sim.ammoQ, i, j, r, tr, nseg = 0, c, K, f, moving, rr, gg, bb, n;
+  for (i = 0; i < q.length && nseg < TRMAX * (TRN - 1); i++) {
+    r = q[i]; if (r.dead || r.cx === undefined) { continue; }
+    tr = r.tr || (r.tr = []);
+    moving = r.actStep >= sim.steps - 2 && r.px !== undefined && Math.abs(r.cx - r.px) + Math.abs(r.cy - r.py) + Math.abs(r.cz - r.pz) > 0.05;
+    if (moving) { if (!tr.length || tr[tr.length - 3] !== r.cx || tr[tr.length - 2] !== r.cy || tr[tr.length - 1] !== r.cz) { tr.push(r.cx, r.cy, r.cz); if (tr.length > TRN * 3) tr.splice(0, 3); } } else if (tr.length) tr.splice(0, 3);
+    n = tr.length / 3; if (n < 2) continue;
+    c = r.K.col; rr = ((c >> 16) & 255) / 255; gg = ((c >> 8) & 255) / 255; bb = (c & 255) / 255;
+    for (j = 0; j < n - 1 && nseg < TRMAX * (TRN - 1); j++) {
+      trailPos.set([tr[j * 3], tr[j * 3 + 1], tr[j * 3 + 2], tr[j * 3 + 3], tr[j * 3 + 4], tr[j * 3 + 5]], nseg * 6);
+      f = (j + 0.5) / (n - 1) * 0.55; trailCol.set([rr * f * 0.5, gg * f * 0.5, bb * f * 0.5, rr * (f + 0.08), gg * (f + 0.08), bb * (f + 0.08)], nseg * 6); nseg++;
+    }
+  }
+  trailGeo.setDrawRange(0, nseg * 2); trailGeo.attributes.position.needsUpdate = true; trailGeo.attributes.color.needsUpdate = true; trailLines.visible = nseg > 0;
+}
 var hooks = {
   add: function (rec) {
     var k = rec.kind, s = free[k].length ? free[k].pop() : nextSlot[k]++; if (s >= CAP[k]) { rec.slot = -1; return; }
@@ -409,7 +433,7 @@ function groundRay(o, d) {                              /* where a ray meets the
 function aimUpdate() {
   if (!ses) return;
   var K = KINDS[ammoKind], m = ses.muzzle(), sp = K.speed * (0.45 + 0.55 * power);
-  if (aim.target) { var a = SIM.aimAt(m, aim.target, sp, K.fly && K.fly.drag); if (a) { aim.yaw = a.yaw; aim.elev = a.elev; aim.reach = true; } else { aim.yaw = Math.atan2(aim.target.x - m.x, -(aim.target.z - m.z)); aim.elev = 0.7; aim.reach = false; } }
+  if (aim.target) { var a = SIM.aimAt(m, aim.target, sp, K.fly); if (a) { aim.yaw = a.yaw; aim.elev = a.elev; aim.reach = true; } else { aim.yaw = Math.atan2(aim.target.x - m.x, -(aim.target.z - m.z)); aim.elev = 0.7; aim.reach = false; } }
   var pts = [], i, vx = Math.sin(aim.yaw) * Math.cos(aim.elev) * sp, vy = Math.sin(aim.elev) * sp, vz = -Math.cos(aim.yaw) * Math.cos(aim.elev) * sp, t, step = 0.045;
   for (i = 0; i < 40; i++) { t = i * step; pts.push(new THREE.Vector3(m.x + vx * t, m.y + vy * t - 0.5 * 9.81 * t * t, m.z + vz * t)); }
   arcLine.geometry.setFromPoints(pts);
@@ -512,6 +536,7 @@ $('shadows').textContent = 'Shadows: ' + (shadowsOn ? 'on' : 'off');
 $('qGate').addEventListener('click', function () { quickAim('gate'); }); $('qTower').addEventListener('click', function () { quickAim('tower'); }); $('qKeep').addEventListener('click', function () { quickAim('keep'); });
 $('fly').addEventListener('click', function () { flyRound = !flyRound; this.textContent = 'Fly round: ' + (flyRound ? 'on' : 'off'); this.classList.toggle('on', flyRound); });
 $('boltHead').addEventListener('click', function () { boltPointed = !boltPointed; this.textContent = 'Bolt head: ' + (boltPointed ? 'pointed' : 'blunt'); var old = IM.rod.geometry; IM.rod.geometry = boltGeo(KINDS.rod, boltPointed); old.dispose(); });
+$('trails').addEventListener('click', function () { trailsOn = !trailsOn; this.textContent = 'Trails: ' + (trailsOn ? 'on' : 'off'); this.classList.toggle('on', trailsOn); });
 $('look').addEventListener('click', function () { applyLook(!pretty); this.textContent = 'Look: ' + (pretty ? 'Pretty' : 'Plain'); this.classList.toggle('on', pretty); });
 
 /* ---------- slow-motion replay (deliberate only) ---------- */
@@ -566,7 +591,7 @@ function frame(now) {
     if (pretty) { var tt = now / 1000; seaPretty.uniforms.time.value = tt; skyMesh.position.copy(cam.position); waveCloth(flagCloth, tt); mill.userData.sails.rotation.z = -tt * 0.5; }
     armAnim = Math.max(0, armAnim - dt * 5); armPivot.rotation.x = aim.elev + 0.6 - armAnim * 0.9;
     if (flyRound && !drag) orb.az += Math.min(dtms / 1000, 0.5) * 0.22;
-    drawBodies(sim, ses.replay ? acc / DT : Math.min(1, acc / DT)); placeCam();
+    drawBodies(sim, ses.replay ? acc / DT : Math.min(1, acc / DT)); updateTrails(sim); placeCam();
     scoreT += dtms; if (scoreT > 250) { scoreT = 0; scoreUI(); }
     renderer.render(scene, cam);
     pushStat(P.frame, dtms); pushStat(P.phys, physMs); pushStat(P.steps, n);
@@ -667,7 +692,7 @@ $('shots').value = shotsMax; setShotsLabel(); document.body.classList.toggle('ke
 await build(start); setPiecesLabel();
 applyLook(pretty); $('look').textContent = 'Look: ' + (pretty ? 'Pretty' : 'Plain'); $('look').classList.toggle('on', pretty);
 recolor(tideNow, groundMode); placeCam(); requestAnimationFrame(frame);
-window.__rubble = { orb: orb, cam: cam, get ses() { return ses; }, site: site, THREE: THREE, P: P, build: build, fire: function (k, n) { ammoKind = k; for (var i = 0; i < (n || 1); i++) fireNow(); }, aim: aim, aimUpdate: aimUpdate, setAmmo: function (k) { ammoKind = k; syncAmmo(); aimUpdate(); }, perfText: perfText, renderer: renderer, applyLook: applyLook, look: function () { return pretty; }, benchRun: benchRun, tier: function () { return tier; }, quickAim: quickAim, fly: function () { return flyRound; }, keep: function () { return { on: keepMode, shotsMax: shotsMax, over: roundOver, best: bestGet() }; }, setMode: setMode, done: function () { $('keepDone').click(); } };
+window.__rubble = { orb: orb, cam: cam, get ses() { return ses; }, site: site, THREE: THREE, P: P, build: build, fire: function (k, n) { ammoKind = k; for (var i = 0; i < (n || 1); i++) fireNow(); }, aim: aim, aimUpdate: aimUpdate, setAmmo: function (k) { ammoKind = k; syncAmmo(); aimUpdate(); }, perfText: perfText, renderer: renderer, applyLook: applyLook, look: function () { return pretty; }, benchRun: benchRun, tier: function () { return tier; }, quickAim: quickAim, fly: function () { return flyRound; }, trails: function () { return { on: trailsOn, visible: trailLines.visible, drawn: trailGeo.drawRange.count }; }, keep: function () { return { on: keepMode, shotsMax: shotsMax, over: roundOver, best: bestGet() }; }, setMode: setMode, done: function () { $('keepDone').click(); } };
 })();
 </script>
 </body></html>

@@ -69,6 +69,27 @@ async function main() {
     check('with localStorage blocked the page still plays Keep the bell and shows a result (Done with no shots), no errors', /still standing/.test(e3) && errs2.length === 0, e3.slice(0, 90) + (errs2.length ? ' ERR ' + errs2[0] : ''));
     await ctx2.close();
   }
+  /* Flight: trails in the Pretty look (one draw call, no triangles), switchable; the Bolt head button. Run alone with --flight-only. */
+  async function flightSection() {
+    await page.setViewportSize({ width: 700, height: 460 });
+    await page.goto(base + '?tier=radeon&pieces=250', { waitUntil: 'load' }); await ready();
+    await page.waitForFunction('!window.__rubble.ses.settling', null, { timeout: 240000 }); await settle(1000);
+    var r0 = await page.evaluate(async function () {
+      var r = window.__rubble, wait = function (ms) { return new Promise(function (x) { setTimeout(x, ms); }); }, out = {};
+      await wait(600); out.base = { tris: r.renderer.info.render.triangles, calls: r.renderer.info.render.calls };
+      r.setAmmo('rod'); r.fire('rod', 1); r.setAmmo('marble'); r.fire('marble', 2); await wait(400);
+      out.trailOn = r.trails(); out.flying = { tris: r.renderer.info.render.triangles, calls: r.renderer.info.render.calls };
+      document.getElementById('trails').click(); await wait(300); out.trailOff = r.trails(); out.off = { tris: r.renderer.info.render.triangles, calls: r.renderer.info.render.calls };
+      document.getElementById('trails').click(); r.applyLook(false); await wait(400); out.plain = r.trails(); r.applyLook(true); await wait(300);
+      var g0 = r.renderer.info.render.triangles; document.getElementById('boltHead').click(); await wait(400); out.head = document.getElementById('boltHead').textContent; out.trisAfterHead = r.renderer.info.render.triangles - g0;
+      out.names = SIM_names(); function SIM_names() { return window.RSim.KINDS.rod.name; } return out;
+    });
+    check('trails: a shot in the air draws a streak in the Pretty look (' + r0.trailOn.drawn + ' vertices), it is one extra draw call and no triangles (' + r0.off.calls + ' -> ' + r0.flying.calls + ' calls, ' + r0.off.tris + ' -> ' + r0.flying.tris + ' triangles)', r0.trailOn.on && r0.trailOn.visible && r0.trailOn.drawn > 0 && r0.flying.calls - r0.off.calls <= 1, JSON.stringify(r0));
+    check('trails switch off with the button and are hidden in the Plain look', !r0.trailOff.visible && !r0.plain.visible, JSON.stringify([r0.trailOff, r0.plain]));
+    check('the Big rod is now the Bolt (label) and the head button swaps pointed and blunt (' + r0.head + ')', /Bolt/.test(r0.names) && /blunt/.test(r0.head), r0.names);
+    await page.screenshot({ path: path.join(shots, 'rubble-23-flight-trails.png') });
+  }
+  if (process.argv.indexOf('--flight-only') > 0) { await flightSection(); check('zero console errors and zero page errors (Flight section)', errs.length === 0, errs.slice(0, 5).join(' | ')); await browser.close(); server.close(); console.log('\n' + (fails ? fails + ' FAILED' : 'ALL PASSED') + ' (' + results.length + ' checks)'); process.exit(fails ? 1 : 0); }
   if (process.argv.indexOf('--keep-only') > 0) { await keepSection(); check('zero console errors and zero page errors (Keep section)', errs.length === 0, errs.slice(0, 5).join(' | ')); await browser.close(); server.close(); console.log('\n' + (fails ? fails + ' FAILED' : 'ALL PASSED') + ' (' + results.length + ' checks)'); process.exit(fails ? 1 : 0); }
   /* 1. load with the island ground */
   await page.goto(base + '?tier=radeon&pieces=250', { waitUntil: 'load' }); await ready();
@@ -178,6 +199,7 @@ async function main() {
   results.push({ name: 'INFO grand 10000 Pretty render cost (software GL, counts only)', ok: true, detail: JSON.stringify({ pretty: g10.pretty, plain: g10.plain, kinds: g10.kinds }) });
   await page.screenshot({ path: path.join(shots, 'rubble-13-grand-10000.png') });
   await keepSection();
+  await flightSection();
   /* 6. replay */
   await page.evaluate(function () { var p = document.getElementById('pieces'); p.value = 0; p.dispatchEvent(new Event('input')); }); await page.click('#buildFort'); await page.waitForFunction('window.__rubble.ses.sim.bodies.length === 40 && !window.__rubble.ses.settling', null, { timeout: 240000 }); await settle(1500);
   await page.evaluate(function () { var r = window.__rubble; r.fire('rod', 2); r.fire('coconut', 2); }); await settle(3500);

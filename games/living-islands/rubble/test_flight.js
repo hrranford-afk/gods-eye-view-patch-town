@@ -35,7 +35,7 @@ async function main() {
     var ses = SIM.makeSession(R, lee, { pieces: 40, seed: 1, fort: 'tower', ammoCap: 400 }), worstAll = 0, n = 0, i, bad = [], powers = [0.5, 0.7, 0.85, 1], touched = 0, spin0 = [], mu = ses.muzzle(), rowsum = 0;
     for (i = 0; i < 400 && n < 200; i++) {
       var dist = 6 + (i % 10), yawT = ((i * 37) % 21 - 10) * 0.025, pw = powers[i % 4], tx = mu.x + Math.sin(yawT) * dist, tz = mu.z - Math.cos(yawT) * dist, ty = lee.H(tx, tz) + 0.3 + (i % 5) * 0.2;
-      var a = SIM.aimAt(mu, { x: tx, y: ty, z: tz }, K.speed * (0.45 + 0.55 * pw), K.fly.drag); if (!a) continue;
+      var a = SIM.aimAt(mu, { x: tx, y: ty, z: tz }, K.speed * (0.45 + 0.55 * pw), K.fly); if (!a) continue;
       var r = flyOne(ses, 'rod', a.yaw + (i % 3 - 1) * 0.02, a.elev, pw); n++; if (r.touched) touched++; rowsum += r.steps;
       if (r.worst > worstAll) worstAll = r.worst; if (r.worst > 10) bad.push(i + ':' + r.worst.toFixed(1));
       ses.sim.remove(r.rec);
@@ -57,7 +57,7 @@ async function main() {
     var ses = SIM.makeSession(R, lee, { pieces: 3000, seed: 1, fort: 'grand', ammoCap: 100 }), f, g, tgt, i, miss = [], worst = 0, mu = ses.muzzle(), t0 = Date.now(), hits = 0, off = null;
     for (i = 0; i < 4; i++) {                                   /* a fresh fort for each launch, so an earlier hit cannot get in the way */
       if (i) ses.rebuild({}); f = ses.sim.fort; g = f.design.bells[1]; tgt = { x: g.x, y: f.bellHomes[1], z: g.z };
-      var a = SIM.aimAt(mu, tgt, K.speed, K.fly.drag), r = flyOne(ses, 'rod', a.yaw, a.elev, 1);
+      var a = SIM.aimAt(mu, tgt, K.speed, K.fly), r = flyOne(ses, 'rod', a.yaw, a.elev, 1);
       var dd = Math.sqrt(Math.pow(r.hit.x - tgt.x, 2) + Math.pow(r.hit.y - tgt.y, 2));      /* sideways and up/down: the gatehouse face is in front of the bell, so depth does not count */ miss.push(dd); worst = Math.max(worst, dd);
       for (var k = 0; k < 240; k++) ses.step(); if (ses.score().moved > 0) hits++;
     }
@@ -70,6 +70,48 @@ async function main() {
   (function () {
     function run() { var ses = SIM.makeSession(R, lee, { pieces: 40, seed: 3, fort: 'tower', ammoCap: 100 }), i, k, mu = ses.muzzle(), h; for (i = 0; i < 6; i++) { var a = SIM.aimAt(mu, { x: mu.x + i - 3, y: lee.H(mu.x, mu.z - 11) + 0.4, z: mu.z - 11 }, K.speed); ses.fire('rod', a.yaw, a.elev, 0.6 + 0.08 * i); for (k = 0; k < 60; k++) ses.step(); } h = ses.sim.hash(); ses.sim.dispose(); return h; }
     var h1 = run(), h2 = run(); check('B1: the bolt flight is deterministic (the same six launches give the same hash twice: ' + h1 + ')', h1 === h2, h1 + ' / ' + h2);
+  })();
+
+  /* ---------- B2: the other ammo ---------- */
+  (function () {
+    var mu, ses = SIM.makeSession(R, lee, { pieces: 40, seed: 1, fort: 'tower', ammoCap: 400 }), kinds = ['acorn', 'marble', 'coconut', 'lid', 'float', 'bottle'], rows = {};
+    mu = ses.muzzle();
+    kinds.forEach(function (kind) {
+      var KK = SIM.KINDS[kind], i, wmax = 0, wsum = 0, wn = 0, worstAxis = 0, missMax = 0, rec, k, w, v, q, sp, ang, ax, ay, az, touch, t, n = 0, parSpin = 0;
+      for (i = 0; i < 16; i++) {
+        var dist = 7 + (i % 8), yawT = ((i * 37) % 21 - 10) * 0.025, tx = mu.x + Math.sin(yawT) * dist, tz = mu.z - Math.cos(yawT) * dist, ty = lee.H(tx, tz) + 0.35;
+        var a = SIM.aimAt(mu, { x: tx, y: ty, z: tz }, KK.speed, KK.fly); if (!a) continue; n++; var best = 1e9;
+        rec = ses.fire(kind, a.yaw, a.elev, 1); var col = rec.body.collider(0); touch = false;
+        for (k = 0; k < 240 && !touch; k++) {
+          w = rec.body.angvel(); v = rec.body.linvel(); q = rec.body.rotation(); sp = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+          var wm = Math.sqrt(w.x * w.x + w.y * w.y + w.z * w.z); if (wm > wmax) wmax = wm; wsum += wm; wn++;
+          if (kind === 'bottle') { ax = 2 * (q.x * q.y - q.w * q.z); ay = 1 - 2 * (q.x * q.x + q.z * q.z); az = 2 * (q.y * q.z + q.w * q.x); ang = Math.acos(Math.max(-1, Math.min(1, (ax * v.x + ay * v.y + az * v.z) / sp))) * 180 / Math.PI; if (ang > worstAxis) worstAxis = ang; }
+          if (kind === 'coconut' && k === 5) parSpin += (w.x * v.x + w.y * v.y + w.z * v.z) / sp;
+          t = rec.body.translation(); var dd3 = Math.sqrt(Math.pow(t.x - tx, 2) + Math.pow(t.y - ty, 2) + Math.pow(t.z - tz, 2)); if (dd3 < best) best = dd3;
+          ses.step(); ses.sim.world.contactPairsWith(col, function (o) { ses.sim.world.contactPair(col, o, function (man) { if (man.numContacts() > 0) touch = true; }); });
+        }
+        var dm = best / Math.max(1, dist * Math.max(KK.spread, 0.01)); if (dm > missMax) missMax = dm; ses.sim.remove(rec);
+      }
+      rows[kind] = { launches: n, maxSpinRadS: +wmax.toFixed(2), meanSpinRadS: +(wsum / wn).toFixed(2), worstAxisDeg: +worstAxis.toFixed(1), worstMissInSpreads: +missMax.toFixed(2), coconutSpinAlongFlight: +(parSpin / n).toFixed(2) };
+    });
+    results.numbers.ammoFlight = rows; console.log('INFO  ' + JSON.stringify(rows));
+    check('B2: acorns and marbles fly clean (no spin at all: ' + rows.acorn.maxSpinRadS + ' and ' + rows.marble.maxSpinRadS + ' rad/s at most) and pass within a few spreads of where the drag-aware aim sent them (closest approach to the aim point as a multiple of dist x spread: acorn ' + rows.acorn.worstMissInSpreads + ', marble ' + rows.marble.worstMissInSpreads + ')', rows.acorn.maxSpinRadS < 0.5 && rows.marble.maxSpinRadS < 0.5 && rows.acorn.worstMissInSpreads < 2.5 && rows.marble.worstMissInSpreads < 2.5, '');
+    check('B2: the coconut flies with a gentle spin along its flight (' + rows.coconut.coconutSpinAlongFlight + ' rad/s about the flight direction, asked 5)', rows.coconut.coconutSpinAlongFlight > 3.5 && rows.coconut.coconutSpinAlongFlight < 6.5, '');
+    check('B2: the glass float keeps its natural tumble (mean spin ' + rows.float.meanSpinRadS + ' rad/s, up to ' + rows.float.maxSpinRadS + ')', rows.float.meanSpinRadS > 1.0, '');
+    check('B2: the bottle is thrown neck first and stays within 15 degrees of its flight (worst ' + rows.bottle.worstAxisDeg + ' deg over ' + rows.bottle.launches + ' launches)', rows.bottle.worstAxisDeg <= 15, '');
+    check('B2: the tin lid passes within a few spreads of where the aim (drag and lift) sent it (' + rows.lid.worstMissInSpreads + ' spreads)', rows.lid.worstMissInSpreads < 2.5, '');
+    /* the lid's lift: the same throw goes further with it than without, and the aim that knows about it lands on target */
+    var KL = SIM.KINDS.lid, sav = KL.fly, far = {};
+    ['with', 'without'].forEach(function (mode) {
+      KL.fly = mode === 'with' ? sav : { drag: sav.drag }; var s2 = SIM.makeSession(R, lee, { pieces: 40, seed: 1, fort: 'tower', ammoCap: 50 }), rec = s2.fire('lid', 0.0, 0.2, 1), col = rec.body.collider(0), touch = false, k, t, m2 = s2.muzzle();
+      for (k = 0; k < 400 && !touch; k++) { s2.step(); s2.sim.world.contactPairsWith(col, function (o) { s2.sim.world.contactPair(col, o, function (man) { if (man.numContacts() > 0) touch = true; }); }); }
+      t = rec.body.translation(); far[mode] = Math.sqrt(Math.pow(t.x - m2.x, 2) + Math.pow(t.z - m2.z, 2)); s2.sim.dispose();
+    }); KL.fly = sav;
+    results.numbers.lidRangeM = { withLift: +far.with.toFixed(1), withoutLift: +far.without.toFixed(1) };
+    check('B2: the tin lid sails further with its lift (' + far.with.toFixed(1) + ' m against ' + far.without.toFixed(1) + ' m without it, same throw)', far.with > far.without + 0.5, '');
+    ses.sim.dispose();
+    function run() { var s3 = SIM.makeSession(R, lee, { pieces: 40, seed: 5, fort: 'tower', ammoCap: 100 }), i, k, m3 = s3.muzzle(); SIM.AMMO.forEach(function (kind, j) { var a = SIM.aimAt(m3, { x: m3.x + j - 3, y: lee.H(m3.x, m3.z - 10) + 0.3, z: m3.z - 10 }, SIM.KINDS[kind].speed, SIM.KINDS[kind].fly); s3.fire(kind, a.yaw, a.elev, 0.9); for (k = 0; k < 50; k++) s3.step(); }); for (k = 0; k < 200; k++) s3.step(); var h = s3.sim.hash(); s3.sim.dispose(); return h; }
+    var h1 = run(), h2 = run(); check('B2: all seven ammo kinds fly deterministically (the same volley gives the same hash twice: ' + h1 + ')', h1 === h2, h1 + ' / ' + h2);
   })();
 
   fs.writeFileSync(path.join(__dirname, 'test_flight_results.json'), JSON.stringify(results, null, 1));

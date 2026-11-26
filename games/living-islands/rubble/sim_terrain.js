@@ -20,12 +20,12 @@
   var KINDS = {
     brick:   { name: 'Brick',          shape: 'box', lay: 0.06, hx: 0.15, hy: 0.06, hz: 0.10, dens: 350, fr: 0.70, rest: 0.05, role: 'target', col: 0xc08347 },
     can:     { name: 'Tin can',        shape: 'cyl', lay: 0.07, hh: 0.07, r: 0.05, dens: 250, fr: 0.50, rest: 0.20, roll: 1, rc: 0.075, rs: 0.05, role: 'target', col: 0xc9ccd0 },
-    acorn:   { name: 'Acorns (rapid)', shape: 'ball', lay: 0.035, r: 0.035, dens: 800, fr: 0.50, rest: 0.30, roll: 1, rc: 0.035, rs: 0.035, ccd: true, solo: true, role: 'ammo', speed: 30, rate: 10, spread: 0.03, col: 0x9b6a2f, note: 'small and light, 10 a second, they do not collide with each other' },
-    marble:  { name: 'Marble',         shape: 'ball', lay: 0.05, r: 0.05, dens: 2500, fr: 0.30, rest: 0.45, roll: 1, rc: 0.05, rs: 0.05, ccd: true, role: 'ammo', speed: 24, rate: 3, spread: 0.01, col: 0x7fb6e8, note: 'glass, heavy for its size, bouncy' },
-    coconut: { name: 'Coconut',        shape: 'ball', lay: 0.11, r: 0.11, dens: 650, fr: 0.60, rest: 0.25, roll: 1, rc: 0.11, rs: 0.11, ccd: true, role: 'ammo', speed: 17, rate: 1.2, spread: 0.01, col: 0x6b4a2a, note: 'about 3.5 kg, floats' },
-    lid:     { name: 'Tin lid',        shape: 'cyl', lay: 0.02, hh: 0.02, r: 0.09, dens: 7800, fr: 0.30, rest: 0.30, roll: 1, rc: 0.09, rs: 0.02, ccd: true, role: 'ammo', speed: 22, rate: 2.5, spread: 0.02, spin: 30, flat: true, col: 0xb7bcc2, note: 'thrown flat and spinning; lands and rolls on its edge' },
-    float:   { name: 'Glass float',    shape: 'ball', lay: 0.15, r: 0.15, dens: 350, fr: 0.35, rest: 0.45, roll: 1, rc: 0.15, rs: 0.15, ccd: true, role: 'ammo', speed: 15, rate: 0.8, spread: 0.01, col: 0x6fd1b0, note: 'big, light, very bouncy, floats' },
-    bottle:  { name: 'Bottle',         shape: 'bottle', lay: 0.045, dens: 900, fr: 0.30, rest: 0.20, roll: 1, rc: 0.15, rs: 0.045, ccd: true, role: 'ammo', speed: 16, rate: 1.5, spread: 0.02, align: true, col: 0x5aa07a, note: 'rolls in an arc because of its neck' },
+    acorn:   { name: 'Acorns (rapid)', shape: 'ball', lay: 0.035, r: 0.035, dens: 800, fr: 0.50, rest: 0.30, roll: 1, rc: 0.035, rs: 0.035, ccd: true, solo: true, role: 'ammo', speed: 30, rate: 10, spread: 0.03, calm: true, fly: { drag: 0.0006 }, col: 0x9b6a2f, note: 'small and light, 10 a second, they do not collide with each other' },
+    marble:  { name: 'Marble',         shape: 'ball', lay: 0.05, r: 0.05, dens: 2500, fr: 0.30, rest: 0.45, roll: 1, rc: 0.05, rs: 0.05, ccd: true, role: 'ammo', speed: 24, rate: 3, spread: 0.01, calm: true, fly: { drag: 0.0006 }, col: 0x7fb6e8, note: 'glass, heavy for its size, bouncy' },
+    coconut: { name: 'Coconut',        shape: 'ball', lay: 0.11, r: 0.11, dens: 650, fr: 0.60, rest: 0.25, roll: 1, rc: 0.11, rs: 0.11, ccd: true, role: 'ammo', speed: 17, rate: 1.2, spread: 0.01, axspin: 5, fly: { drag: 0.004 }, col: 0x6b4a2a, note: 'about 3.5 kg, floats' },
+    lid:     { name: 'Tin lid',        shape: 'cyl', lay: 0.02, hh: 0.02, r: 0.09, dens: 7800, fr: 0.30, rest: 0.30, roll: 1, rc: 0.09, rs: 0.02, ccd: true, role: 'ammo', speed: 22, rate: 2.5, spread: 0.02, spin: 30, flat: true, fly: { drag: 0.003, lift: 0.004 }, col: 0xb7bcc2, note: 'thrown flat and spinning; lands and rolls on its edge' },
+    float:   { name: 'Glass float',    shape: 'ball', lay: 0.15, r: 0.15, dens: 350, fr: 0.35, rest: 0.45, roll: 1, rc: 0.15, rs: 0.15, ccd: true, role: 'ammo', speed: 15, rate: 0.8, spread: 0.01, fly: { drag: 0.008 }, col: 0x6fd1b0, note: 'big, light, very bouncy, floats' },
+    bottle:  { name: 'Bottle',         shape: 'bottle', lay: 0.045, dens: 900, fr: 0.30, rest: 0.20, roll: 1, rc: 0.15, rs: 0.045, ccd: true, role: 'ammo', speed: 16, rate: 1.5, spread: 0.02, align: true, calm: true, fly: { drag: 0.004, stab: 5, adamp: 3 }, col: 0x5aa07a, note: 'rolls in an arc because of its neck' },
     rod:     { name: 'Bolt (heavy, flies point first)', shape: 'capsule', lay: 0.05, hh: 0.50, r: 0.05, dens: 1450, fr: 0.60, rest: 0.10, roll: 1, rc: 0.06, rs: 0.05, ccd: true, role: 'ammo', speed: 14, rate: 0.7, spread: 0.01, align: true, axspin: 6, fly: { drag: 0.002, stab: 24, adamp: 12 }, col: 0x8a6a45, note: 'about 12 kg, 1.1 m, thrown point first with a slow spin, it keeps its nose into the wind' },
     beam:    { name: 'Beam',           shape: 'box', lay: 0.06, hx: 0.60, hy: 0.06, hz: 0.10, dens: 350, fr: 0.70, rest: 0.05, role: 'target', col: 0x7c4a22 },
     bell:    { name: 'Bell',           shape: 'bell', lay: 0.10, hh: 0.10, r: 0.11, rt: 0.05, dens: 2000, fr: 0.60, rest: 0.10, role: 'target', col: 0xd9a441 },
@@ -179,6 +179,7 @@
         if (ex * ex + ey * ey + ez * ez > 0.64) { rec.landed = true; return; }
       }
       gh = site.H(t.x, t.z); if (t.y - gh < (K.rc || 0.1) + 0.15 || sp < 1) { rec.landed = true; return; }
+      if (F.lift) { v = { x: v.x, y: v.y + F.lift * (v.x * v.x + v.z * v.z) * DT, z: v.z }; b.setLinvel(v, false); sp = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z); }
       if (F.drag) { k = 1 - F.drag * sp * DT; v = { x: v.x * k, y: v.y * k, z: v.z * k }; b.setLinvel(v, false); sp *= k; }
       if (F.stab) {
         q = b.rotation(); w = b.angvel();
@@ -382,7 +383,7 @@
       var a = yaw + (rr() - 0.5) * 2 * K.spread, e = elev + (rr() - 0.5) * 2 * K.spread, ce = Math.cos(e);
       var dir = [Math.sin(a) * ce, Math.sin(e), -Math.cos(a) * ce], m = ses.muzzle();
       var q = K.align ? qFromTo(dir) : K.flat ? qYaw(rr() * 6) : qRandom(rr);
-      var wv = K.axspin ? { x: dir[0] * K.axspin, y: dir[1] * K.axspin, z: dir[2] * K.axspin } : K.spin ? { x: 0, y: K.spin, z: 0 } : { x: (rr() - 0.5) * 6, y: (rr() - 0.5) * 6, z: (rr() - 0.5) * 6 };
+      var wv = K.calm && !K.align ? { x: 0, y: 0, z: 0 } : K.calm ? { x: dir[0] * 3, y: dir[1] * 3, z: dir[2] * 3 } : K.axspin ? { x: dir[0] * K.axspin, y: dir[1] * K.axspin, z: dir[2] * K.axspin } : K.spin ? { x: 0, y: K.spin, z: 0 } : { x: (rr() - 0.5) * 6, y: (rr() - 0.5) * 6, z: (rr() - 0.5) * 6 };
       var ev = { s: ses.sim.steps, t: 'shot', k: kind, p: [m.x, m.y, m.z], v: [dir[0] * sp, dir[1] * sp, dir[2] * sp], q: q, w: [wv.x, wv.y, wv.z] };
       ses.events.push(ev); return applyEvent(ev);
     };
@@ -462,22 +463,23 @@
   }
 
   /* the elevation that lands a shot (no drag) on a point; low arc. Returns null if out of reach. */
-  function aimAt(from, to, speed, drag) {
+  function aimAt(from, to, speed, fly) {
+    var drag = fly && typeof fly === 'object' ? (fly.drag || 0) : (fly || 0), lift = fly && typeof fly === 'object' ? (fly.lift || 0) : 0;
     var dx = to.x - from.x, dz = to.z - from.z, d = Math.sqrt(dx * dx + dz * dz), dy = to.y - from.y, g = -GRAV, v2 = speed * speed;
     var disc = v2 * v2 - g * (g * d * d + 2 * dy * v2); if (disc < 0 || d < 0.01) return null;
     var r = { yaw: Math.atan2(dx, -dz), elev: Math.atan2(v2 - Math.sqrt(disc), g * d), dist: d };
-    if (drag) {                                           /* with air drag (the ammo's fly.drag): two secant steps on the elevation, using the same stepping as the physics */
-      var e0 = r.elev, e1 = e0 + 0.01, f0 = trajY(speed, e0, drag, d) , f1 = trajY(speed, e1, drag, d), i;
-      for (i = 0; i < 6 && f0 !== null && f1 !== null; i++) { var e2 = e1 - (f1 - dy) * (e1 - e0) / ((f1 - f0) || 1e-9); e0 = e1; f0 = f1; e1 = e2; f1 = trajY(speed, e1, drag, d); if (f1 !== null && Math.abs(f1 - dy) < 0.002) break; }
+    if (drag || lift) {                                   /* with air drag (the ammo's fly.drag): two secant steps on the elevation, using the same stepping as the physics */
+      var e0 = r.elev, e1 = e0 + 0.01, f0 = trajY(speed, e0, drag, d, lift), f1 = trajY(speed, e1, drag, d, lift), i;
+      for (i = 0; i < 6 && f0 !== null && f1 !== null; i++) { var e2 = e1 - (f1 - dy) * (e1 - e0) / ((f1 - f0) || 1e-9); e0 = e1; f0 = f1; e1 = e2; f1 = trajY(speed, e1, drag, d, lift); if (f1 !== null && Math.abs(f1 - dy) < 0.002) break; }
       if (f1 !== null) r.elev = e1;
     }
     return r;
   }
   /* height of a shot (from the muzzle, no wind) when it has gone dist metres along the ground: the physics' own order, gravity into the velocity, the position, then the drag */
-  function trajY(speed, elev, drag, dist) {
+  function trajY(speed, elev, drag, dist, lift) {
     var vx = speed * Math.cos(elev), vy = speed * Math.sin(elev), x = 0, y = 0, i, px, py, k;
     for (i = 0; i < 1200; i++) {
-      px = x; py = y; vy += GRAV * DT; x += vx * DT; y += vy * DT; k = 1 - drag * Math.sqrt(vx * vx + vy * vy) * DT; vx *= k; vy *= k;
+      px = x; py = y; vy += GRAV * DT; x += vx * DT; y += vy * DT; if (lift) vy += lift * vx * vx * DT; k = 1 - drag * Math.sqrt(vx * vx + vy * vy) * DT; vx *= k; vy *= k;
       if (x >= dist) return py + (y - py) * (dist - px) / (x - px);
     }
     return null;

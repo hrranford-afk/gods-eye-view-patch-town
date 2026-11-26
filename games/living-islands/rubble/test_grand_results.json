@@ -1,5 +1,5 @@
 {
- "when": "2026-11-26T14:39:58.745Z",
+ "when": "2026-11-26T14:55:44.338Z",
  "node": "v22.22.0",
  "checks": [
   {
@@ -183,7 +183,7 @@
    "detail": "drift 10.4 cm"
   },
   {
-   "name": "grand replay code (3000-piece fort, fixed volley at the gate) is repeatable: 1f2ad7b4",
+   "name": "grand replay code (3000-piece fort, fixed volley at the gate) is repeatable: 921f8e08",
    "ok": true,
    "detail": ""
   },
@@ -450,11 +450,11 @@
     "settleSteps": 90,
     "driftCm": 9.8,
     "tilt": 0.0336,
-    "buildAndSettleMs": 6277,
+    "buildAndSettleMs": 12838,
     "bells": 6,
-    "msPerStepAsleep": 0.922,
-    "msPerStepAfterHit": 19.65,
-    "worstStepMs": 66.4,
+    "msPerStepAsleep": 0.657,
+    "msPerStepAfterHit": 17.41,
+    "worstStepMs": 132.8,
     "peakAwake": 1837,
     "rodsToDropGateBell": 1,
     "movedAfterHit": 4,
@@ -469,11 +469,11 @@
     "settleSteps": 100,
     "driftCm": 10,
     "tilt": 0.0157,
-    "buildAndSettleMs": 22146,
+    "buildAndSettleMs": 19792,
     "bells": 6,
-    "msPerStepAsleep": 2.188,
-    "msPerStepAfterHit": 22.52,
-    "worstStepMs": 111,
+    "msPerStepAsleep": 1.499,
+    "msPerStepAfterHit": 21.74,
+    "worstStepMs": 124.1,
     "peakAwake": 3652,
     "rodsToDropGateBell": 1,
     "movedAfterHit": 1,
@@ -488,11 +488,11 @@
     "settleSteps": 100,
     "driftCm": 9.9,
     "tilt": 0.0092,
-    "buildAndSettleMs": 67335,
+    "buildAndSettleMs": 64235,
     "bells": 6,
-    "msPerStepAsleep": 3.472,
-    "msPerStepAfterHit": 83.3,
-    "worstStepMs": 364.5,
+    "msPerStepAsleep": 2.633,
+    "msPerStepAfterHit": 75.25,
+    "worstStepMs": 351.8,
     "peakAwake": 9995,
     "rodsToDropGateBell": 1,
     "movedAfterHit": 3,
@@ -507,11 +507,11 @@
     "settleSteps": 100,
     "driftCm": 8.9,
     "tilt": 0.0058,
-    "buildAndSettleMs": 193588,
+    "buildAndSettleMs": 191347,
     "bells": 6,
-    "msPerStepAsleep": 6.936,
-    "msPerStepAfterHit": 71.04,
-    "worstStepMs": 411.5,
+    "msPerStepAsleep": 7.183,
+    "msPerStepAfterHit": 66.82,
+    "worstStepMs": 377.9,
     "peakAwake": 10728,
     "rodsToDropGateBell": 1,
     "movedAfterHit": 2,
@@ -522,27 +522,27 @@
   "perf": [
    {
     "pieces": 5000,
-    "msPerStepAsleep": 2.188,
-    "msPerStepAfterHit": 22.52,
-    "worstStepMs": 111,
+    "msPerStepAsleep": 1.499,
+    "msPerStepAfterHit": 21.74,
+    "worstStepMs": 124.1,
     "peakAwake": 3652
    },
    {
     "pieces": 10000,
-    "msPerStepAsleep": 3.472,
-    "msPerStepAfterHit": 83.3,
-    "worstStepMs": 364.5,
+    "msPerStepAsleep": 2.633,
+    "msPerStepAfterHit": 75.25,
+    "worstStepMs": 351.8,
     "peakAwake": 9995
    },
    {
     "pieces": 20000,
-    "msPerStepAsleep": 6.936,
-    "msPerStepAfterHit": 71.04,
-    "worstStepMs": 411.5,
+    "msPerStepAsleep": 7.183,
+    "msPerStepAfterHit": 66.82,
+    "worstStepMs": 377.9,
     "peakAwake": 10728
    }
   ],
-  "grandCode": "1f2ad7b4",
+  "grandCode": "921f8e08",
   "keeps": [
    {
     "baseModules": 3,
