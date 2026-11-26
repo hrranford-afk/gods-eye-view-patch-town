@@ -549,6 +549,12 @@ function buildDom() {
   applyZoom(); addEventListener('resize', applyZoom);
 }
 function applyZoom() { const z = (C && C.ui) ? C.ui() : 1; if (G.ui.root) { G.ui.root.style.zoom = z === 1 ? '' : String(z); } }
+/* the delivery boat rides the wave sea when the page has one (&waves=1): height and tilt from sea_waves.js through the page; with no wave sea it is left as it was */
+function seaRide(o) {
+  let w = null; try { w = C.li().sea; } catch (e) { w = null; } if (!w || !w.on()) return;
+  const n = w.n(o.position.x, o.position.z), c = Math.cos(o.rotation.y), s = Math.sin(o.rotation.y), lx = n[0] * c - n[2] * s, lz = n[0] * s + n[2] * c;
+  o.rotation.order = 'YXZ'; o.position.y = w.h(o.position.x, o.position.z) + .03; o.rotation.x = Math.atan2(lz, n[1]); o.rotation.z = -Math.atan2(lx, n[1]);
+}
 function toast(t, ms) { G.toast = t; const e = G.ui.toast; e.textContent = t; e.classList.add('on'); clearTimeout(G.toastT); G.toastT = setTimeout(() => e.classList.remove('on'), ms || 4200); }
 function closeCard() { G.ui.layer.innerHTML = ''; G.cardOpen = null; }
 function card(id, html, cls) {
@@ -1203,14 +1209,14 @@ function deliveryTick(dt) {
     if (d.t > 9) { d.phase = 'out'; d.t = 0; td.visible = true; td.userData.p0 = [sh.position.x - dir[0] * 4, sh.position.z - dir[1] * 4]; td.position.set(td.userData.p0[0], tide, td.userData.p0[1]); td.rotation.y = Math.atan2(-(wp.z - td.userData.p0[1]), wp.x - td.userData.p0[0]); }
   } else if (d.phase === 'out') {
     const p0 = td.userData.p0, p1 = [wp.x + dir[0] * 2.5, wp.z + dir[1] * 2.5], k = clamp(d.t / 13, 0, 1), e = k * k * (3 - 2 * k);
-    td.position.set(p0[0] + (p1[0] - p0[0]) * e, tide + .03 + bob, p0[1] + (p1[1] - p0[1]) * e); td.rotation.y = Math.atan2(-(p1[1] - p0[1]), p1[0] - p0[0]);
+    td.position.set(p0[0] + (p1[0] - p0[0]) * e, tide + .03 + bob, p0[1] + (p1[1] - p0[1]) * e); td.rotation.y = Math.atan2(-(p1[1] - p0[1]), p1[0] - p0[0]); seaRide(td);
     if (k >= 1) { d.phase = 'drop'; d.t = 0; }
   } else if (d.phase === 'drop') {
-    td.position.y = tide + .03 + bob; if (d.t > 2.2 && !d.dropped) { d.dropped = true; addDeliveryCrate(1, true); td.userData.cargo.visible = false; toast('Crate number 1. Nobody on the boat. It just knows the way.', 6500); focus(S.tender.drop.x, S.tender.drop.z, 22); }
+    td.position.y = tide + .03 + bob; seaRide(td); if (d.t > 2.2 && !d.dropped) { d.dropped = true; addDeliveryCrate(1, true); td.userData.cargo.visible = false; toast('Crate number 1. Nobody on the boat. It just knows the way.', 6500); focus(S.tender.drop.x, S.tender.drop.z, 22); }
     if (d.t > 5 && (!PHYS() || PHYS().unloaded())) { d.phase = 'back'; d.t = 0; }
   } else if (d.phase === 'back') {
     const p0 = [wp.x + dir[0] * 2.5, wp.z + dir[1] * 2.5], p1 = td.userData.p0, k = clamp(d.t / 14, 0, 1), e = k * k * (3 - 2 * k);
-    td.position.set(p0[0] + (p1[0] - p0[0]) * e, tide + .03 + bob, p0[1] + (p1[1] - p0[1]) * e); td.rotation.y = Math.atan2(-(p1[1] - p0[1]), p1[0] - p0[0]);
+    td.position.set(p0[0] + (p1[0] - p0[0]) * e, tide + .03 + bob, p0[1] + (p1[1] - p0[1]) * e); td.rotation.y = Math.atan2(-(p1[1] - p0[1]), p1[0] - p0[0]); seaRide(td);
     if (k >= 1) { d.phase = 'away'; d.t = 0; td.visible = false; }
   } else if (d.phase === 'away') {
     const k = clamp(d.t / 8, 0, 1); sh.position.x += dir[0] * dt * 3.2 * k; sh.position.z += dir[1] * dt * 3.2 * k; sh.position.y = tide - .15 + bob; sh.scale.setScalar(1 - .5 * k);

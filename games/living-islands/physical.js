@@ -241,6 +241,13 @@ function mat(col, o) { return new T.MeshStandardMaterial(Object.assign({ color: 
 function inst(geo, m, n, shadow) { const im = new T.InstancedMesh(geo, m, n); im.frustumCulled = false; im.castShadow = !!shadow; im.receiveShadow = true; im.setColorAt(0, new T.Color(1, 1, 1)); im.count = 0; return im; }   /* the colour buffer is sized from count, so it is made before count is set to 0 */
 let _q, _e, _m, _s, _p, _c;   /* scratch objects, made when three.js is there (this file loads before it) */
 function scratch() { _q = new T.Quaternion(); _e = new T.Euler(); _m = new T.Matrix4(); _s = new T.Vector3(); _p = new T.Vector3(); _c = new T.Color(); }
+/* the wave sea (islands_look.html &waves=1, sea_waves.js): the height and tilt of the water under a floating thing. null when the page has no wave sea, and the old flat bob stays. ry is the thing's yaw (the tilt is given in its own frame). */
+function surfAt(x, z, ry) {
+  let s = null; try { s = C.li().sea; } catch (e) { s = null; } if (!s || !s.on()) return null;
+  const n = s.n(x, z), c = Math.cos(ry || 0), sn = Math.sin(ry || 0), lx = n[0] * c - n[2] * sn, lz = n[0] * sn + n[2] * c;
+  return { y: s.h(x, z), rx: Math.atan2(lz, n[1]), rz: -Math.atan2(lx, n[1]) };
+}
+function seaPose(o, lift) { const sf = surfAt(o.position.x, o.position.z, o.rotation.y); if (!sf) return; o.rotation.order = 'YXZ'; o.position.y = sf.y + lift; o.rotation.x = sf.rx; o.rotation.z = sf.rz; }
 function setI(im, i, x, y, z, sx, sy, sz, ry, rx, rz, col) { _e.set(rx || 0, ry || 0, rz || 0, 'YXZ'); _q.setFromEuler(_e); _p.set(x, y, z); _s.set(sx, sy, sz); _m.compose(_p, _q, _s); im.setMatrixAt(i, _m); if (col !== undefined) im.setColorAt(i, _c.setHex(col).convertSRGBToLinear()); }
 const PIECE_COL = { planks: [0xa88a5c, 0x9a7448, 0xb59868], rope: [0xb19a6b, 0xa68f60, 0xc2ad7c], glass: [0x58b8a4, 0x6fb9a8, 0x4aa38f], metal: [0x8d9291, 0x7b8180, 0x9a6a4a] };
 function buildKit() {
@@ -494,7 +501,7 @@ function runsTick(dt) {
     const aboard = list.filter(c => c.phys && c.phys.st === 'boat' && c.phys.run === 'run').length;
     P.run = runStep(run, dt, { sail, leave, blocked: bf.hold, aboard }); P.run.berth = bf.berth || P.run.berth; P.run.dock = dock;
     const k = runK(P.run, { sail, leave }), e = k * k * (3 - 2 * k); td.visible = P.run.phase !== 'gone';
-    td.position.set(start.x + (dock.x - start.x) * e, tide + .03 + Math.sin(P.t * 1.1) * .04, start.z + (dock.z - start.z) * e); td.rotation.y = Math.atan2(-(P.run.phase === 'out' ? (start.z - dock.z) : (dock.z - start.z)), P.run.phase === 'out' ? (start.x - dock.x) : (dock.x - start.x));
+    td.position.set(start.x + (dock.x - start.x) * e, tide + .03 + Math.sin(P.t * 1.1) * .04, start.z + (dock.z - start.z) * e); td.rotation.y = Math.atan2(-(P.run.phase === 'out' ? (start.z - dock.z) : (dock.z - start.z)), P.run.phase === 'out' ? (start.x - dock.x) : (dock.x - start.x)); seaPose(td, .03);
     if (P.run.phase === 'gone') { P.run = null; td.visible = false; }
   }
   list.forEach(c => { const ph_ = c.phys; if (!ph_) return;
@@ -600,7 +607,7 @@ function arrivalTick(dt) {
   const a = P.arr; if (!a) return; const O = A.objs(), td = O && O.tender, S = A.spots(); if (!td || !S) return; a.t += dt; const d = C.W.camp.dir, wp = S.tender.wp, tide = C.tide(), p1 = { x: wp.x + d[0] * 16, z: wp.z + d[1] * 16 }, p0 = { x: p1.x + d[0] * 45, z: p1.z + d[1] * 45 };
   let k, vis = true; if (a.t < 14) k = a.t / 14; else if (a.t < 19) k = 1; else if (a.t < 33) k = 1 + (a.t - 19) / 14; else { vis = false; k = 2; }
   const e = k <= 1 ? k * k * (3 - 2 * k) : 1 - (k - 1) * (k - 1) * (3 - 2 * (k - 1)) * 0 - 0; const f = k <= 1 ? e : 1 - ((k - 1) * (k - 1) * (3 - 2 * (k - 1)));
-  td.visible = vis; if (!vis) { P.arr = null; return; } td.position.set(p0.x + (p1.x - p0.x) * f, tide + .03 + Math.sin(P.t * 1.1) * .04, p0.z + (p1.z - p0.z) * f); td.rotation.y = Math.atan2(-(k <= 1 ? (p1.z - p0.z) : (p0.z - p1.z)), k <= 1 ? (p1.x - p0.x) : (p0.x - p1.x));
+  td.visible = vis; if (!vis) { P.arr = null; return; } td.position.set(p0.x + (p1.x - p0.x) * f, tide + .03 + Math.sin(P.t * 1.1) * .04, p0.z + (p1.z - p0.z) * f); td.rotation.y = Math.atan2(-(k <= 1 ? (p1.z - p0.z) : (p0.z - p1.z)), k <= 1 ? (p1.x - p0.x) : (p0.x - p1.x)); seaPose(td, .03);
 }
 
 /* ---- the opening: you arrive by boat, the dock is half built, the robots have stalled ---- */
@@ -631,7 +638,8 @@ function sparesSpot() { const L = layout(); if (!L || !L.dock) return null; cons
 function floatsTick() {
   const op = ph().op, V = P.V; if (!op || !op.on || !V) return; const tide = C.tide(); let n = 0, bd = null; try { bd = root.LI_BOAT_DRIVE.page; } catch (e) { bd = null; }
   const bs = bd && bd.state && bd.state(), boat = bs && bs.ready && bs.avail ? bs.b : null;
-  op.floats.forEach(f => { if (f.gone) return; setI(V.floats, n, f.x, tide + .03 + Math.sin(P.t * 1.3 + f.id * 2) * .05, f.z, f.kind === 'rope' ? .5 : 1, f.kind === 'rope' ? 2.4 : 1, f.kind === 'rope' ? 1.6 : 1, f.id * 1.1, 0, Math.sin(P.t + f.id) * .05, PIECE_COL[f.kind][0]); n++;
+  op.floats.forEach(f => { if (f.gone) return; const sf = surfAt(f.x, f.z, f.id * 1.1);   /* crates and timber ride the wave sea when there is one */
+    setI(V.floats, n, f.x, sf ? sf.y + .03 : tide + .03 + Math.sin(P.t * 1.3 + f.id * 2) * .05, f.z, f.kind === 'rope' ? .5 : 1, f.kind === 'rope' ? 2.4 : 1, f.kind === 'rope' ? 1.6 : 1, f.id * 1.1, sf ? sf.rx : 0, sf ? sf.rz : Math.sin(P.t + f.id) * .05, PIECE_COL[f.kind][0]); n++;
     if (boat && bs.mode === 'drive') { const used = Object.values(boat.load || {}).reduce((a, c) => a + c, 0), cap = boat.engine ? 8 : 4; if (used < cap && hypot(boat.x - f.x, boat.z - f.z) < 2.9) { f.gone = true; bd.give({ load: { [f.kind]: ((boat.load || {})[f.kind] || 0) + 1 } }); A.toast('Loaded ' + f.kind + '. ' + (used + 1) + ' of ' + cap + ' in the boat.', 3200); puff(f.x, tide + .2, f.z, 4, 'dust'); P.dirty = true; P.cheer = P.t + 1.6; } } });
   V.floats.count = n; V.floats.instanceMatrix.needsUpdate = true; if (V.floats.instanceColor) V.floats.instanceColor.needsUpdate = true;
 }
