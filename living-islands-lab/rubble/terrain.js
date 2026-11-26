@@ -76,6 +76,7 @@
       var cx = x0 + (ti + 0.5) * tile, cz = x0 + (tj + 0.5) * tile, g = spec.ground(cx, cz);
       if (S.berm && Math.abs(cz - S.berm.z) < S.berm.halfw + 0.9) g = SHINGLE;
       if (rockAt(cx, cz)) g = ROCK;
+      if (S.pad && S.pad.ground !== undefined && Math.abs(cx - S.pad.x) < S.pad.hw && Math.abs(cz - S.pad.z) < S.pad.hd) g = S.pad.ground;     /* a big pad is one ground type (turf), so the fort does not stand half on sand and half on rock */
       base[tj * nt + ti] = g;
     }
     site.base = base;
@@ -144,13 +145,13 @@
       ground: function (x, z) { return isl.baseGround(LEE.cx + x, LEE.cz + z); },
       layout: layout,
       sculpt: {
-        pad: { x: 0, z: -7, hw: 2.6, hd: 2.4, margin: 1.6 },
+        pad: opts.grand ? { x: 0, z: -7, hw: 13.5, hd: 10.5, margin: 1.6, ground: TURF } : { x: 0, z: -7, hw: 2.6, hd: 2.4, margin: 1.6 },
         gully: { x: -9, z0: -17, z1: 9, halfw: 0.7, depth: 0.32, wob: 0.5 },
         hollow: { x: 7, z: 4, r: 2.2, depth: 0.28 },
         berm: { z: 1.5, halfw: 1.2, height: 0.10 },
         rocks: [{ x: 11, z: -12, r: 3.0, height: 0.45 }, { x: -14, z: -4, r: 2.2, height: 0.3 }]
       },
-      notes: ['real: heights, shore and vegetation of seed 9001 (bicubic from 2 m cells)', 'stand-in: noise, gully, hollow, shingle berm, two rock outcrops, levelled pad']
+      notes: ['real: heights, shore and vegetation of seed 9001 (bicubic from 2 m cells)', opts.grand ? 'stand-in: noise, gully, hollow, shingle berm, two rock outcrops, and a big levelled turf pad (27 by 21 m, for the Grand Fort; the shelf is cut and filled in the sculpt layer, the real 2 m data is not that flat)' : 'stand-in: noise, gully, hollow, shingle berm, two rock outcrops, levelled pad']
     });
   }
   /* a procedural beach with the same layout and a similar slope, for when the world file is not there */
