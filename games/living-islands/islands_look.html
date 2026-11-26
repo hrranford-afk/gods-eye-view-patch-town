@@ -59,7 +59,7 @@ body.noui #top,body.noui #bar,body.noui #info,body.noui #gpuInfo,body.noui #benc
 <script>if(/[?&]game=gift/.test(location.search))document.write('<script src="boat_drive.js"><\/script>');</script>
 <script>if(/[?&]game=gift/.test(location.search)&&!/[?&]waves=0/.test(location.search)||/[?&]waves=1/.test(location.search))document.write('<script src="sea_waves.js"><\/script>');</script>
 <script>if(/[?&]game=gift/.test(location.search)&&!/[?&]storm=0/.test(location.search))document.write('<script src="storm.js"><\/script>');</script>
-<script>if(/[?&]cost=1/.test(location.search))document.write('<script src="cost_ladder.js"><\/script>');</script>
+<script>if(/[?&]cost=1/.test(location.search))document.write('<script src="tiers.js"><\/script><script src="cost_ladder.js"><\/script>');</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="li_sea.js"></script>
 <script src="li_kit.js"></script>
@@ -3097,7 +3097,7 @@ function init(){
     zoomLanding:()=>{if(!LD.on)return;const k=.62;Object.assign(cam,{tx:LD.L.x*k+LD.tent.x*(1-k)-LD.L.t[0]*.4,tz:LD.L.z*k+LD.tent.z*(1-k)-LD.L.t[1]*.4,dist:21,phi:.55,theta:.52});clampCam();snap=true;}};
   /* the cost ladder (&cost=1, cost_ladder.js, research/GRAPHICS_REVIEW.md): one panel that switches layers off and on and reports the frame-time cost of each without the vsync lock; absent = nothing is loaded and nothing changes */
   if(Q.get('cost')==='1'&&window.LI_COST){const CZ={dyn:false};
-    window.__li.cost=LI_COST.attach({renderer,scene,camera,layers:{sea:[waterMesh],terrain:[terrainMesh],props:[propsMesh],clouds:()=>{const P=WXR&&WXR.parts?WXR.parts():null;return P?[P.puffs,P.deck,P.dome]:[];},rain:()=>{const P=WXR&&WXR.parts?WXR.parts():null;return P?[P.rain]:[];}},
+    window.__li.cost=LI_COST.attach({renderer,scene,camera,tiers:window.LI_TIERS||null,tierKey:()=>DEV==='ipad'||DEV==='desktop'||DEV==='radeon'?DEV:(ULT.on?'desktop':'ipad'),layers:{sea:[waterMesh],terrain:[terrainMesh],props:[propsMesh],clouds:()=>{const P=WXR&&WXR.parts?WXR.parts():null;return P?[P.puffs,P.deck,P.dome]:[];},rain:()=>{const P=WXR&&WXR.parts?WXR.parts():null;return P?[P.rain]:[];}},
       renderFull:()=>renderScene(),renderDirect:()=>renderer.render(scene,camera),hasPost:()=>!NOPOST,
       freeze:on=>{if(on){CZ.dyn=ULT.dynOn;ULT.dynOn=false;CZ.auto=autoQDone;autoQDone=true;}else{ULT.dynOn=CZ.dyn;autoQDone=CZ.auto;if(COSTK!==1){COSTK=1;size();}}},
       device:()=>DEV||'none',tier:tierName,gpuName:()=>ULT.gpuRaw||ULT.gpu.name||'unknown',gpuKind:()=>ULT.gpu.kind,

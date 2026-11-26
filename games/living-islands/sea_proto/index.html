@@ -60,6 +60,7 @@ canvas{touch-action:none;cursor:grab}
 <script src="island_9001.js"></script>
 <script src="salvage.js"></script>
 <script src="salvage_world.js"></script>
+<script>if(/[?&]cost=1/.test(location.search))document.write('<script src="../tiers.js"><\/script>');</script>
 <script>
 (function(){
 'use strict';
@@ -99,6 +100,8 @@ const TIERS={
     more spray, and a debris cloud of flotsam drifting with the wind round the viewer. Numbers are TUNING until the owner's bench report says where the knee is. */
  max:{name:'Radeon MAX',refract:1,tris:500000,waves:48,rip:12,clouds:1,spray:100000,debris:20000,prCap:2,flashBolt:1,follow:1,flotsam:1}
 };
+/* the shared tier table (../tiers.js, loaded and used only with &cost=1): the pixel ratio cap, ripples, spray and debris of each tier come from the one table the island page also reads (the iPad cap is 1.5, not 2: the owner's iPad bench held 1.5x and took 24.1 ms at 2x). Absent = the numbers above, unchanged. */
+if(Q.get('cost')==='1'&&window.LI_TIERS){for(const k of ['ipad','radeon','max']){const f=LI_TIERS.seaFor(k),T=TIERS[k];if(!f||!T)continue;T.prCap=f.prCap;T.rip=f.rip;T.spray=f.spray;T.debris=f.debris;}}
 /* the effective tier: a tier plus the bench / hand knobs state.K = {tris,waves,spray,debris,scale}. tris -> a polar grid (segs about 2.2 x rings); waves -> sets/wind sea/chop in about 5:9:10 */
 function effTier(){const B=TIERS[state.tier],K=state.K,T=Object.assign({},B);
   if(B.tris){T.rings=Math.round(Math.sqrt(B.tris/2/2.2));T.segs=Math.round(T.rings*2.2);}

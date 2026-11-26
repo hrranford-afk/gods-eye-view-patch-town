@@ -89,6 +89,21 @@
     { id: 'scale2', label: 'resolution 2x', kind: 'heavy', dir: -1, scale: 2 }
   ];
 
+  /* the shared tier table (tiers.js) next to what this run saw. T = window.LI_TIERS, key = ipad | desktop | radeon | max, now = {pixelRatio, scale, msaa, shadow, tris, calls}. Returns report lines. */
+  function tableLines(T, key, now) {
+    if (!T || !T.TIERS || !T.TIERS[key]) return [];
+    const t = T.TIERS[key], c = (g, k) => t[g] && t[g][k], now_ = now || {};
+    const cell = x => x ? (x.v === null ? 'none set' : x.v) + ' (' + x.s + ')' : 'n/a';
+    const L = ['tier table (tiers.js) for ' + t.label + ' against this run:'];
+    L.push('  pixel ratio cap: table ' + cell(c('render', 'pixelRatioCap')) + ', this run ' + (isNum(now_.pixelRatio) ? f(now_.pixelRatio, 2) : 'n/a'));
+    L.push('  render scale max: table ' + cell(c('render', 'renderScaleMax')) + ', this run ' + (isNum(now_.scale) ? f(now_.scale, 2) : 'n/a'));
+    L.push('  MSAA samples: table ' + cell(c('render', 'msaa')) + ', this run ' + (now_.msaa === undefined ? 'n/a' : now_.msaa));
+    L.push('  shadow map: table ' + cell(c('render', 'shadowMap')) + ', this run ' + (now_.shadow === undefined ? 'n/a' : now_.shadow));
+    L.push('  triangles per frame (shadow pass included): table ' + cell(c('scene', 'tris')) + ', this run ' + (now_.tris === undefined ? 'n/a' : now_.tris));
+    L.push('  draw calls per frame (shadow pass included): table ' + cell(c('scene', 'drawCalls')) + ', this run ' + (now_.calls === undefined ? 'n/a' : now_.calls));
+    return L;
+  }
+
   /* ---------- the report ---------- */
   /* d = {method:{...}, device, tier, gpu, dpr, screen, canvas, big, msaa, shadow, tris, calls, K, baseMs, cpuMs, gpuMs, rows:[row], fit, stopped, notes:[]}. No paths, no names: the URL is the query string only. */
   function formatReport(d) {
@@ -119,6 +134,7 @@
       L.push('so about ' + f(d.fit.fixed) + ' ms does not depend on resolution (vertices, draw calls, shadow pass) and ' + f(d.fit.perMpix) + ' ms per million pixels does'
         + (isNum(d.fit.mpixAt60) ? '; the 60 fps frame would be reached near ' + f(d.fit.mpixAt60, 1) + ' million pixels (estimate, render only)' : '; no resolution reaches the 60 fps frame on this line'));
     }
+    if (d.table && d.table.length) { L.push(''); for (const x of d.table) L.push(x); }
     if (d.stopped) { L.push(''); L.push('STOPPED: ' + d.stopped); }
     if (d.notes && d.notes.length) { L.push(''); L.push('notes: ' + d.notes.join('; ')); }
     return L.join('\n');
@@ -201,6 +217,7 @@
         const K = kk.K, base = batch(K, full), allBase = [base.ms / K], allCpu = [base.cpu / K], allGpu = isNum(base.gpu) ? [base.gpu / K] : [];
         d.baseMs = base.ms / K; d.cpuMs = base.cpu / K; d.gpuMs = allGpu.length ? allGpu[0] : undefined;
         if (d.baseMs > limit) { d.stopped = 'the plain frame already takes ' + f(d.baseMs, 0) + ' ms per render, over the ' + f(limit, 0) + ' ms limit; nothing was changed'; return; }
+        if (api.tiers && api.tierKey) { const w = parseInt(String(d.canvas).split('x')[0], 10) || 0; d.table = tableLines(api.tiers, api.tierKey(), { pixelRatio: innerWidth ? w / innerWidth : NaN, scale: sz.big ? parseInt(sz.big, 10) / Math.max(1, w) : 1, msaa: d.msaa, shadow: d.shadow, tris: d.tris, calls: d.calls }); }
         const total = rungs.length, fitPts = [{ mpix: sz.pixels / 1e6, ms: d.baseMs }];
         for (let i = 0; i < total; i++) {
           if (S.stop) { d.stopped = 'stopped by the Stop button'; break; }
@@ -291,5 +308,5 @@
     return { run, state: () => ({ running: S.running, progress: S.progress, rows: S.rows.slice(), report: S.report, data: S.data }), stop: () => { S.stop = true; }, report: () => S.report, timer: () => !!ext, limit: () => limit };
   }
 
-  return { FRAME_MS, OVER_MS, STOP_MS, MAX_K, RUNGS, median, findK, fitPixels, mpixAtFrame, rowOf, formatReport, attach };
+  return { FRAME_MS, OVER_MS, STOP_MS, MAX_K, RUNGS, median, findK, fitPixels, mpixAtFrame, rowOf, tableLines, formatReport, attach };
 }));

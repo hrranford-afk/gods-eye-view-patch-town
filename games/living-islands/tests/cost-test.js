@@ -72,5 +72,14 @@ ok(C.median([3, 1, 2]) === 2 && C.median([4, 1, 3, 2]) === 2.5 && C.median([]) =
   const rn = C.formatReport({}); ok(/BASELINE: not measured/.test(rn) && !/NaN|undefined/.test(rn), 'report: an empty run still prints, with no NaN');
   const over = C.formatReport({ baseMs: 40, rows: [] }); ok(/headroom at 60 fps: -23\.33 ms/.test(over), 'report: a frame over 16.7 ms shows negative headroom');
 }
+/* ---- the tier table lines in the report ---- */
+{
+  const T = { TIERS: { ipad: { label: 'iPad', render: { pixelRatioCap: { v: 1.5, s: 'measured' }, renderScaleMax: { v: 1, s: 'measured' }, msaa: { v: 0, s: 'code' }, shadowMap: { v: 1024, s: 'measured' } }, scene: { tris: { v: 150000, s: 'guess' }, drawCalls: { v: null, s: 'unmeasured' } } } } };
+  const L = C.tableLines(T, 'ipad', { pixelRatio: 1, scale: 1, msaa: 0, shadow: 1024, tris: 132148, calls: 260 });
+  ok(L.length === 7 && /iPad/.test(L[0]) && /table 1\.5 \(measured\), this run 1\.00/.test(L[1]) && /table 150000 \(guess\), this run 132148/.test(L[5]) && /table none set \(unmeasured\), this run 260/.test(L[6]), 'tableLines: shows the table value, its status and what the run saw, and "none set" for a null');
+  ok(C.tableLines(T, 'nope', {}).length === 0 && C.tableLines(null, 'ipad', {}).length === 0, 'tableLines: no table or an unknown device gives no lines');
+  const r = C.formatReport({ baseMs: 10, rows: [], table: L });
+  ok(/tier table \(tiers\.js\) for iPad/.test(r) && /pixel ratio cap: table 1\.5 \(measured\)/.test(r), 'report: prints the tier table lines');
+}
 console.log('cost-test: ' + (n - fails) + ' passed, ' + fails + ' failed');
 process.exit(fails ? 1 : 0);
