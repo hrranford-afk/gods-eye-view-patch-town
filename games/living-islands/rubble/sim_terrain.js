@@ -475,6 +475,19 @@
     }
     return r;
   }
+  /* where a shot will be after each of the next n steps, from its start p and velocity v (the aim line, B3): the physics' own stepping, gravity then position (with Rapier's linear damping of 0.02),
+     then the lift and drag of the ammo's fly settings. Spread (the small random part of every shot) is not in it. Stabilisation turns the body and does not move its centre, so it is not in it either. */
+  function predict(kind, p, v, n) {
+    var F = KINDS[kind].fly || {}, x = p.x, y = p.y, z = p.z, vx = v.x, vy = v.y, vz = v.z, out = [], i, k, sp, damp = 1 / (1 + 0.02 * DT);
+    for (i = 0; i < n; i++) {
+      vy += GRAV * DT; vx *= damp; vy *= damp; vz *= damp; x += vx * DT; y += vy * DT; z += vz * DT; out.push({ x: x, y: y, z: z });
+      if (F.lift) vy += F.lift * (vx * vx + vz * vz) * DT;
+      if (F.drag) { sp = Math.sqrt(vx * vx + vy * vy + vz * vz); k = 1 - F.drag * sp * DT; vx *= k; vy *= k; vz *= k; }
+    }
+    return out;
+  }
+  /* the launch velocity of a shot from the aim (no spread): what the aim line is drawn from */
+  function launchV(kind, yaw, elev, power) { var K = KINDS[kind], sp = K.speed * (0.45 + 0.55 * TR.clamp(power === undefined ? 1 : power, 0, 1)), ce = Math.cos(elev); return { x: Math.sin(yaw) * ce * sp, y: Math.sin(elev) * sp, z: -Math.cos(yaw) * ce * sp }; }
   /* height of a shot (from the muzzle, no wind) when it has gone dist metres along the ground: the physics' own order, gravity into the velocity, the position, then the drag */
   function trajY(speed, elev, drag, dist, lift) {
     var vx = speed * Math.cos(elev), vy = speed * Math.sin(elev), x = 0, y = 0, i, px, py, k;
@@ -507,6 +520,6 @@
     for (k = 0; k < 200; k++) s.step();
     h = s.sim.hash(); s.sim.dispose(); return h;
   }
-  var API = { ammoStrength: ammoStrength, STRONG_J: STRONG_J, KEEP_RULES: KEEP_RULES, keepStars: keepStars, grandCode: grandCode, fortCode: fortCode, buildFort: buildFort, settleUnit: settleUnit, BELL_DROP: BELL_DROP, MOVED: MOVED, rubbleCount: rubbleCount, FORT: FORT, determinismCode: determinismCode, KINDS: KINDS, AMMO: AMMO, DT: DT, GRAV: GRAV, RHOW: RHOW, makeSim: makeSim, buildScene: buildScene, makeSession: makeSession, aimAt: aimAt, trajY: trajY, rng: rng, qFromTo: qFromTo, qRandom: qRandom, qYaw: qYaw, volOf: volOf, nowMs: nowMs };
+  var API = { ammoStrength: ammoStrength, STRONG_J: STRONG_J, KEEP_RULES: KEEP_RULES, keepStars: keepStars, grandCode: grandCode, fortCode: fortCode, buildFort: buildFort, settleUnit: settleUnit, BELL_DROP: BELL_DROP, MOVED: MOVED, rubbleCount: rubbleCount, FORT: FORT, determinismCode: determinismCode, KINDS: KINDS, AMMO: AMMO, DT: DT, GRAV: GRAV, RHOW: RHOW, makeSim: makeSim, buildScene: buildScene, makeSession: makeSession, aimAt: aimAt, trajY: trajY, predict: predict, launchV: launchV, rng: rng, qFromTo: qFromTo, qRandom: qRandom, qYaw: qYaw, volOf: volOf, nowMs: nowMs };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.RSim = API;
 })(typeof window !== 'undefined' ? window : globalThis);

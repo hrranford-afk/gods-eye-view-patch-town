@@ -114,6 +114,25 @@ async function main() {
     var h1 = run(), h2 = run(); check('B2: all seven ammo kinds fly deterministically (the same volley gives the same hash twice: ' + h1 + ')', h1 === h2, h1 + ' / ' + h2);
   })();
 
+  /* ---------- B3: the aim line: the predicted first half second matches the real flight within 5 cm ---------- */
+  (function () {
+    var ses = SIM.makeSession(R, lee, { pieces: 40, seed: 2, fort: 'tower', ammoCap: 400 }), mu = ses.muzzle(), worst = 0, worstKind = '', rows = {}, n = 0, i, k, kind;
+    SIM.AMMO.forEach(function (kind) {
+      var wk = 0;
+      [[0.9, 0.25, 1], [-0.9, 0.5, 0.6], [1.2, 0.3, 0.85], [-1.2, 0.8, 0.3]].forEach(function (c) {
+        var rec = ses.fire(kind, c[0], c[1], c[2]), ev = ses.events[ses.events.length - 1], pred = SIM.predict(kind, { x: ev.p[0], y: ev.p[1], z: ev.p[2] }, { x: ev.v[0], y: ev.v[1], z: ev.v[2] }, 30), st;
+        for (st = 0; st < 30; st++) { ses.step(); var t = rec.body.translation(), d = Math.sqrt(Math.pow(t.x - pred[st].x, 2) + Math.pow(t.y - pred[st].y, 2) + Math.pow(t.z - pred[st].z, 2)); if (d > wk) wk = d; }
+        ses.sim.remove(rec); n++;
+      });
+      rows[kind] = +(wk * 100).toFixed(2); if (wk > worst) { worst = wk; worstKind = kind; }
+    });
+    results.numbers.aimLineCm = rows;
+    check('B3: for all seven ammo kinds at four aims and powers, the predicted path matches the real first 0.5 s (30 steps) within 5 cm (worst ' + (worst * 100).toFixed(2) + ' cm, ' + worstKind + '): ' + JSON.stringify(rows), worst <= 0.05 && n === 28, '');
+    var v = SIM.launchV('marble', 0.2, 0.3, 0.5), sp = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+    check('B3: the aim line starts from the same velocity as a shot (marble at half power: ' + sp.toFixed(2) + ' m/s)', Math.abs(sp - 24 * (0.45 + 0.275)) < 1e-9, '');
+    ses.sim.dispose();
+  })();
+
   fs.writeFileSync(path.join(__dirname, 'test_flight_results.json'), JSON.stringify(results, null, 1));
   console.log('\n' + (fails ? fails + ' FAILED' : 'ALL PASSED') + ' (' + results.checks.length + ' checks)'); process.exit(fails ? 1 : 0);
 }

@@ -87,6 +87,12 @@ async function main() {
     check('trails: a shot in the air draws a streak in the Pretty look (' + r0.trailOn.drawn + ' vertices), it is one extra draw call and no triangles (' + r0.off.calls + ' -> ' + r0.flying.calls + ' calls, ' + r0.off.tris + ' -> ' + r0.flying.tris + ' triangles)', r0.trailOn.on && r0.trailOn.visible && r0.trailOn.drawn > 0 && r0.flying.calls - r0.off.calls <= 1, JSON.stringify(r0));
     check('trails switch off with the button and are hidden in the Plain look', !r0.trailOff.visible && !r0.plain.visible, JSON.stringify([r0.trailOff, r0.plain]));
     check('the Big rod is now the Bolt (label) and the head button swaps pointed and blunt (' + r0.head + ')', /Bolt/.test(r0.names) && /blunt/.test(r0.head), r0.names);
+    var am = await page.evaluate(async function () {
+      var r = window.__rubble, wait = function (ms) { return new Promise(function (x) { setTimeout(x, ms); }); }, out = {}, p = document.getElementById('power');
+      p.value = 50; p.dispatchEvent(new Event('input')); await wait(100); out.on = r.aimLine();
+      document.getElementById('aimHelp').click(); await wait(100); out.off = r.aimLine(); document.getElementById('aimHelp').click(); await wait(100); out.back = r.aimLine(); return out;
+    });
+    check('B3: the faint aim line (40 points, the first 0.67 s) and the power meter (50 percent) are shown, switch off with the button and come back', am.on.visible && am.on.pts === 40 && am.on.fill === '50%' && am.on.meter === 'block' && !am.off.visible && am.off.meter === 'none' && am.back.visible, JSON.stringify(am));
     await page.screenshot({ path: path.join(shots, 'rubble-23-flight-trails.png') });
   }
   if (process.argv.indexOf('--flight-only') > 0) { await flightSection(); check('zero console errors and zero page errors (Flight section)', errs.length === 0, errs.slice(0, 5).join(' | ')); await browser.close(); server.close(); console.log('\n' + (fails ? fails + ' FAILED' : 'ALL PASSED') + ' (' + results.length + ' checks)'); process.exit(fails ? 1 : 0); }

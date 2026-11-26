@@ -75,6 +75,8 @@ body.keepmode #ammo .am .tag{display:block}
   <div class="card"><div class="row"><button class="btn" id="replay">Replay slow</button><button class="btn" id="bench">Bench...</button></div>
     <div style="margin-top:6px;opacity:.85">Slow motion is only the replay: it rebuilds the same scene and plays your shots again at one quarter speed.</div></div>
   <div class="card"><div class="row"><button class="btn" id="boltHead">Bolt head: pointed</button><button class="btn on" id="trails">Trails: on</button></div><div style="margin-top:4px;opacity:.85;font-size:12px">The Bolt flies point first. The head shape is only for looks.</div></div>
+  <div class="card"><div id="pbox"><div style="font-weight:700;font-size:12px">Power</div><div id="pbar" style="height:12px;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#2a2016"><i style="display:block;height:100%;width:100%;background:linear-gradient(90deg,#8fc46a,#e8a33d,#d9552b)"></i></div></div>
+    <div class="row" style="margin-top:6px"><button class="btn on" id="aimHelp">Aim line: on</button></div></div>
   <div class="card" id="aimbox"></div>
 </div>
 <div id="ammo"></div>
@@ -327,7 +329,7 @@ function box(w, h, d, m, x, y, z, p) { var o = new THREE.Mesh(new THREE.BoxGeome
 box(1.1, 0.12, 1.5, dark, 0, 0.06, 0); box(0.1, 0.8, 0.1, wood, -0.45, 0.5, 0); box(0.1, 0.8, 0.1, wood, 0.45, 0.5, 0); box(1.0, 0.08, 0.08, wood, 0, 0.88, 0);
 armPivot.position.set(0, 0.88, 0); launcher.add(armPivot); box(0.1, 0.1, 1.6, wood, 0, 0, -0.55, armPivot); var cup = box(0.3, 0.1, 0.3, dark, 0, 0.06, -1.35, armPivot);
 var L0 = site.layout.launcher; launcher.position.set(L0.x, site.H(L0.x, L0.z), L0.z); scene.add(launcher);
-var arcLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(new Array(40).fill(0).map(function () { return new THREE.Vector3(); })), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })); arcLine.frustumCulled = false; scene.add(arcLine);
+var arcLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(new Array(40).fill(0).map(function () { return new THREE.Vector3(); })), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 })); arcLine.frustumCulled = false; scene.add(arcLine);
 var ring = new THREE.Mesh(new THREE.RingGeometry(0.25, 0.4, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.9, depthTest: false })); ring.renderOrder = 5; scene.add(ring);
 
 /* ---------- session ---------- */
@@ -434,13 +436,16 @@ function aimUpdate() {
   if (!ses) return;
   var K = KINDS[ammoKind], m = ses.muzzle(), sp = K.speed * (0.45 + 0.55 * power);
   if (aim.target) { var a = SIM.aimAt(m, aim.target, sp, K.fly); if (a) { aim.yaw = a.yaw; aim.elev = a.elev; aim.reach = true; } else { aim.yaw = Math.atan2(aim.target.x - m.x, -(aim.target.z - m.z)); aim.elev = 0.7; aim.reach = false; } }
-  var pts = [], i, vx = Math.sin(aim.yaw) * Math.cos(aim.elev) * sp, vy = Math.sin(aim.elev) * sp, vz = -Math.cos(aim.yaw) * Math.cos(aim.elev) * sp, t, step = 0.045;
-  for (i = 0; i < 40; i++) { t = i * step; pts.push(new THREE.Vector3(m.x + vx * t, m.y + vy * t - 0.5 * 9.81 * t * t, m.z + vz * t)); }
-  arcLine.geometry.setFromPoints(pts);
+  /* the aim line: the first 0.67 s of the flight as the physics will fly it (sim_terrain's predict: gravity, drag, lift; the shot's small random spread is not drawn) */
+  var pts = [new THREE.Vector3(m.x, m.y, m.z)], i, pr = SIM.predict(ammoKind, m, SIM.launchV(ammoKind, aim.yaw, aim.elev, power), 40);
+  for (i = 0; i < 39; i++) pts.push(new THREE.Vector3(pr[i].x, pr[i].y, pr[i].z));
+  arcLine.geometry.setFromPoints(pts); arcLine.visible = aimHelp;
+  $('pbar').firstChild.style.width = Math.round(power * 100) + '%'; $('pbox').style.display = aimHelp ? 'block' : 'none';
   armPivot.rotation.x = aim.elev + 0.6; launcher.rotation.y = -aim.yaw;
   if (aim.target) { ring.position.set(aim.target.x, aim.target.y + 0.05, aim.target.z); ring.visible = true; } else ring.visible = false;
   $('aimbox').textContent = 'Aim  yaw ' + (aim.yaw * 57.296).toFixed(1) + ' deg   up ' + (aim.elev * 57.296).toFixed(1) + ' deg\nPower ' + Math.round(power * 100) + '%   speed ' + sp.toFixed(1) + ' m/s' + (aim.target && aim.reach === false ? '\nTarget out of reach: aiming high' : '') + '\nMass ' + (ammoMass(ammoKind)).toFixed(2) + ' kg   ' + K.note;
 }
+var aimHelp = true;
 var massCache = {};
 function ammoMass(k) { if (massCache[k]) return massCache[k]; var K = KINDS[k]; massCache[k] = K.dens * SIM.volOf(K); return massCache[k]; }
 /* quick aims: Gate, Tower and Keep turn the launcher to the gatehouse bell, a front corner tower bell (it alternates left and right) and the keep bell; on the other shapes the nearest equivalent */
@@ -537,6 +542,7 @@ $('qGate').addEventListener('click', function () { quickAim('gate'); }); $('qTow
 $('fly').addEventListener('click', function () { flyRound = !flyRound; this.textContent = 'Fly round: ' + (flyRound ? 'on' : 'off'); this.classList.toggle('on', flyRound); });
 $('boltHead').addEventListener('click', function () { boltPointed = !boltPointed; this.textContent = 'Bolt head: ' + (boltPointed ? 'pointed' : 'blunt'); var old = IM.rod.geometry; IM.rod.geometry = boltGeo(KINDS.rod, boltPointed); old.dispose(); });
 $('trails').addEventListener('click', function () { trailsOn = !trailsOn; this.textContent = 'Trails: ' + (trailsOn ? 'on' : 'off'); this.classList.toggle('on', trailsOn); });
+$('aimHelp').addEventListener('click', function () { aimHelp = !aimHelp; this.textContent = 'Aim line: ' + (aimHelp ? 'on' : 'off'); this.classList.toggle('on', aimHelp); aimUpdate(); });
 $('look').addEventListener('click', function () { applyLook(!pretty); this.textContent = 'Look: ' + (pretty ? 'Pretty' : 'Plain'); this.classList.toggle('on', pretty); });
 
 /* ---------- slow-motion replay (deliberate only) ---------- */
@@ -692,7 +698,7 @@ $('shots').value = shotsMax; setShotsLabel(); document.body.classList.toggle('ke
 await build(start); setPiecesLabel();
 applyLook(pretty); $('look').textContent = 'Look: ' + (pretty ? 'Pretty' : 'Plain'); $('look').classList.toggle('on', pretty);
 recolor(tideNow, groundMode); placeCam(); requestAnimationFrame(frame);
-window.__rubble = { orb: orb, cam: cam, get ses() { return ses; }, site: site, THREE: THREE, P: P, build: build, fire: function (k, n) { ammoKind = k; for (var i = 0; i < (n || 1); i++) fireNow(); }, aim: aim, aimUpdate: aimUpdate, setAmmo: function (k) { ammoKind = k; syncAmmo(); aimUpdate(); }, perfText: perfText, renderer: renderer, applyLook: applyLook, look: function () { return pretty; }, benchRun: benchRun, tier: function () { return tier; }, quickAim: quickAim, fly: function () { return flyRound; }, trails: function () { return { on: trailsOn, visible: trailLines.visible, drawn: trailGeo.drawRange.count }; }, keep: function () { return { on: keepMode, shotsMax: shotsMax, over: roundOver, best: bestGet() }; }, setMode: setMode, done: function () { $('keepDone').click(); } };
+window.__rubble = { orb: orb, cam: cam, get ses() { return ses; }, site: site, THREE: THREE, P: P, build: build, fire: function (k, n) { ammoKind = k; for (var i = 0; i < (n || 1); i++) fireNow(); }, aim: aim, aimUpdate: aimUpdate, setAmmo: function (k) { ammoKind = k; syncAmmo(); aimUpdate(); }, perfText: perfText, renderer: renderer, applyLook: applyLook, look: function () { return pretty; }, benchRun: benchRun, tier: function () { return tier; }, quickAim: quickAim, fly: function () { return flyRound; }, aimLine: function () { return { on: aimHelp, visible: arcLine.visible, pts: arcLine.geometry.attributes.position.count, meter: document.getElementById('pbox').style.display, fill: document.getElementById('pbar').firstChild.style.width }; }, trails: function () { return { on: trailsOn, visible: trailLines.visible, drawn: trailGeo.drawRange.count }; }, keep: function () { return { on: keepMode, shotsMax: shotsMax, over: roundOver, best: bestGet() }; }, setMode: setMode, done: function () { $('keepDone').click(); } };
 })();
 </script>
 </body></html>
