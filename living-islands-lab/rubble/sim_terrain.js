@@ -20,13 +20,13 @@
   var KINDS = {
     brick:   { name: 'Brick',          shape: 'box', lay: 0.06, hx: 0.15, hy: 0.06, hz: 0.10, dens: 350, fr: 0.70, rest: 0.05, role: 'target', col: 0xc08347 },
     can:     { name: 'Tin can',        shape: 'cyl', lay: 0.07, hh: 0.07, r: 0.05, dens: 250, fr: 0.50, rest: 0.20, roll: 1, rc: 0.075, rs: 0.05, role: 'target', col: 0xc9ccd0 },
-    acorn:   { name: 'Acorns (rapid)', shape: 'ball', lay: 0.035, r: 0.035, dens: 800, fr: 0.50, rest: 0.30, roll: 1, rc: 0.035, rs: 0.035, ccd: true, solo: true, role: 'ammo', speed: 30, rate: 10, spread: 0.03, col: 0x9b6a2f, note: 'small and light, 10 a second, they do not collide with each other' },
-    marble:  { name: 'Marble',         shape: 'ball', lay: 0.05, r: 0.05, dens: 2500, fr: 0.30, rest: 0.45, roll: 1, rc: 0.05, rs: 0.05, ccd: true, role: 'ammo', speed: 24, rate: 3, spread: 0.01, col: 0x7fb6e8, note: 'glass, heavy for its size, bouncy' },
-    coconut: { name: 'Coconut',        shape: 'ball', lay: 0.11, r: 0.11, dens: 650, fr: 0.60, rest: 0.25, roll: 1, rc: 0.11, rs: 0.11, ccd: true, role: 'ammo', speed: 17, rate: 1.2, spread: 0.01, col: 0x6b4a2a, note: 'about 3.5 kg, floats' },
-    lid:     { name: 'Tin lid',        shape: 'cyl', lay: 0.02, hh: 0.02, r: 0.09, dens: 7800, fr: 0.30, rest: 0.30, roll: 1, rc: 0.09, rs: 0.02, ccd: true, role: 'ammo', speed: 22, rate: 2.5, spread: 0.02, spin: 30, flat: true, col: 0xb7bcc2, note: 'thrown flat and spinning; lands and rolls on its edge' },
-    float:   { name: 'Glass float',    shape: 'ball', lay: 0.15, r: 0.15, dens: 350, fr: 0.35, rest: 0.45, roll: 1, rc: 0.15, rs: 0.15, ccd: true, role: 'ammo', speed: 15, rate: 0.8, spread: 0.01, col: 0x6fd1b0, note: 'big, light, very bouncy, floats' },
-    bottle:  { name: 'Bottle',         shape: 'bottle', lay: 0.045, dens: 900, fr: 0.30, rest: 0.20, roll: 1, rc: 0.15, rs: 0.045, ccd: true, role: 'ammo', speed: 16, rate: 1.5, spread: 0.02, align: true, col: 0x5aa07a, note: 'rolls in an arc because of its neck' },
-    rod:     { name: 'Big rod (driftwood log)', shape: 'capsule', lay: 0.07, hh: 0.55, r: 0.07, dens: 650, fr: 0.60, rest: 0.10, roll: 1, rc: 0.62, rs: 0.07, ccd: true, role: 'ammo', speed: 14, rate: 0.7, spread: 0.01, align: true, col: 0x8a6a45, note: 'about 12 kg, 1.3 m, rolls straight and can wedge' },
+    acorn:   { name: 'Acorns (rapid)', shape: 'ball', lay: 0.035, r: 0.035, dens: 800, fr: 0.50, rest: 0.30, roll: 1, rc: 0.035, rs: 0.035, ccd: true, solo: true, role: 'ammo', speed: 30, rate: 10, spread: 0.03, calm: true, fly: { drag: 0.0006 }, col: 0x9b6a2f, note: 'small and light, 10 a second, they do not collide with each other' },
+    marble:  { name: 'Marble',         shape: 'ball', lay: 0.05, r: 0.05, dens: 2500, fr: 0.30, rest: 0.45, roll: 1, rc: 0.05, rs: 0.05, ccd: true, role: 'ammo', speed: 24, rate: 3, spread: 0.01, calm: true, fly: { drag: 0.0006 }, col: 0x7fb6e8, note: 'glass, heavy for its size, bouncy' },
+    coconut: { name: 'Coconut',        shape: 'ball', lay: 0.11, r: 0.11, dens: 650, fr: 0.60, rest: 0.25, roll: 1, rc: 0.11, rs: 0.11, ccd: true, role: 'ammo', speed: 17, rate: 1.2, spread: 0.01, axspin: 5, fly: { drag: 0.004 }, col: 0x6b4a2a, note: 'about 3.5 kg, floats' },
+    lid:     { name: 'Tin lid',        shape: 'cyl', lay: 0.02, hh: 0.02, r: 0.09, dens: 7800, fr: 0.30, rest: 0.30, roll: 1, rc: 0.09, rs: 0.02, ccd: true, role: 'ammo', speed: 22, rate: 2.5, spread: 0.02, spin: 30, flat: true, fly: { drag: 0.003, lift: 0.004 }, col: 0xb7bcc2, note: 'thrown flat and spinning; lands and rolls on its edge' },
+    float:   { name: 'Glass float',    shape: 'ball', lay: 0.15, r: 0.15, dens: 350, fr: 0.35, rest: 0.45, roll: 1, rc: 0.15, rs: 0.15, ccd: true, role: 'ammo', speed: 15, rate: 0.8, spread: 0.01, fly: { drag: 0.008 }, col: 0x6fd1b0, note: 'big, light, very bouncy, floats' },
+    bottle:  { name: 'Bottle',         shape: 'bottle', lay: 0.045, dens: 900, fr: 0.30, rest: 0.20, roll: 1, rc: 0.15, rs: 0.045, ccd: true, role: 'ammo', speed: 16, rate: 1.5, spread: 0.02, align: true, calm: true, fly: { drag: 0.004, stab: 5, adamp: 3 }, col: 0x5aa07a, note: 'rolls in an arc because of its neck' },
+    rod:     { name: 'Bolt (heavy, flies point first)', shape: 'capsule', lay: 0.05, hh: 0.50, r: 0.05, dens: 1450, fr: 0.60, rest: 0.10, roll: 1, rc: 0.06, rs: 0.05, ccd: true, role: 'ammo', speed: 14, rate: 0.7, spread: 0.01, align: true, axspin: 6, fly: { drag: 0.002, stab: 24, adamp: 12 }, col: 0x8a6a45, note: 'about 12 kg, 1.1 m, thrown point first with a slow spin, it keeps its nose into the wind' },
     beam:    { name: 'Beam',           shape: 'box', lay: 0.06, hx: 0.60, hy: 0.06, hz: 0.10, dens: 350, fr: 0.70, rest: 0.05, role: 'target', col: 0x7c4a22 },
     bell:    { name: 'Bell',           shape: 'bell', lay: 0.10, hh: 0.10, r: 0.11, rt: 0.05, dens: 2000, fr: 0.60, rest: 0.10, role: 'target', col: 0xd9a441 },
     stick:   { name: 'Stick',          shape: 'capsule', lay: 0.035, hh: 0.30, r: 0.035, dens: 600, fr: 0.60, rest: 0.10, roll: 1, rc: 0.335, rs: 0.035, role: 'debris', col: 0x9a7b55 },
@@ -34,6 +34,13 @@
   };
   var AMMO = ['acorn', 'marble', 'coconut', 'lid', 'float', 'bottle', 'rod'];
   var BELL_DROP = 0.32, MOVED = 0.20;                    /* the bell counts as down after 0.32 m (Castle Sound's number; its bricks are the same 0.30 m ones, so its units are metres); a piece has moved after 0.20 m (a brick width) */
+  /* Keep the bell: the round rules. Shots: 12 by default, 6 to 40. Stars, only for a round that ends with the bell standing: 1 star, 2 stars from 50 percent knocked out, 3 stars over 80 percent.
+     After the last shot (or Done) the round waits for the bricks to rest: at least 2 s, at most 10 s of simulated time. */
+  var KEEP_RULES = { shotsDef: 12, shotsMin: 6, shotsMax: 40, two: 50, three: 80, waitMin: 120, waitMax: 600 };
+  /* how hard an ammo hits at full power: its kinetic energy (0.5 m v squared, joules). From 1,000 J it is 'strong' (it breaks walls, and can shake the perch), below it is 'gentle'. Found against the scripted volleys in test_keep.js. */
+  var STRONG_J = 1000;
+  function ammoStrength(k) { var K = KINDS[k], m = K.dens * volOf(K), e = 0.5 * m * K.speed * K.speed; return { energy: e, mass: m, label: e >= STRONG_J ? 'strong' : 'gentle' }; }
+  function keepStars(pct, bellUp) { return !bellUp ? 0 : pct > KEEP_RULES.three ? 3 : pct >= KEEP_RULES.two ? 2 : 1; }
   var BOTTLE = { hh: 0.10, r: 0.045, nh: 0.05, nr: 0.02 };
 
   /* Rapier's own cylinder shape fell through heightfields in about a fifth of random drops (found in testing, see test_terrain_physics.js), a convex prism does not,
@@ -64,7 +71,7 @@
   /* small seeded random generator */
   function rng(seed) { var s = seed >>> 0 || 1; return function () { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
   function qFromTo(v) {                                   /* quaternion that turns the y axis into the unit vector v */
-    var x = -v[2], z = v[0], w = 1 + v[1], l;
+    var x = v[2], z = -v[0], w = 1 + v[1], l;
     if (w < 1e-6) return [1, 0, 0, 0];
     l = Math.sqrt(x * x + z * z + w * w); return [x / l, 0, z / l, w / l];
   }
@@ -162,6 +169,32 @@
     /* the part after Rapier's step: rolling resistance, water, and removing what left the window */
     var gmu = -GRAV, doomed = [], act = [], guard = opts.guard !== false;
     function collect(b) { if (b.__rec) act.push(b.__rec); }
+    /* Flight of the shots that are built to fly well (K.fly: drag, stab, adamp): each step in the air a little quadratic drag, and for long things a weathervane that turns the long axis (the body's y axis)
+       towards the velocity: angular velocity gets stab * speed * (axis x velocity direction) and the sideways part of the spin is damped, so the nose follows the flight; the spin about the axis is left alone.
+       The flight ends at the first knock (a change of velocity beyond what gravity and drag explain) or near the ground. Everything here is a function of the body state, so replays are the same. */
+    function flight(rec, b, K, t) {
+      var v = b.linvel(), F = K.fly, sp = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z), e, gh, w, q, ax, ay, az, dx, dy, dz, cx, cy, cz, dot, par, k;
+      if (rec.pv) {
+        var ex = v.x - rec.pv.x, ey = v.y - (rec.pv.y + GRAV * DT), ez = v.z - rec.pv.z;
+        if (ex * ex + ey * ey + ez * ez > 0.64) { rec.landed = true; return; }
+      }
+      gh = site.H(t.x, t.z); if (t.y - gh < (K.rc || 0.1) + 0.15 || sp < 1) { rec.landed = true; return; }
+      if (F.lift) { v = { x: v.x, y: v.y + F.lift * (v.x * v.x + v.z * v.z) * DT, z: v.z }; b.setLinvel(v, false); sp = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z); }
+      if (F.drag) { k = 1 - F.drag * sp * DT; v = { x: v.x * k, y: v.y * k, z: v.z * k }; b.setLinvel(v, false); sp *= k; }
+      if (F.stab) {
+        q = b.rotation(); w = b.angvel();
+        ax = 2 * (q.x * q.y - q.w * q.z); ay = 1 - 2 * (q.x * q.x + q.z * q.z); az = 2 * (q.y * q.z + q.w * q.x);
+        dx = v.x / sp; dy = v.y / sp; dz = v.z / sp; dot = ax * dx + ay * dy + az * dz;
+        if (dot > 0) {
+          cx = ay * dz - az * dy; cy = az * dx - ax * dz; cz = ax * dy - ay * dx; k = F.stab * sp * DT;
+          w = { x: w.x + cx * k, y: w.y + cy * k, z: w.z + cz * k };
+          par = w.x * ax + w.y * ay + w.z * az; k = Math.min(1, F.adamp * DT);
+          w = { x: w.x - (w.x - par * ax) * k, y: w.y - (w.y - par * ay) * k, z: w.z - (w.z - par * az) * k };
+          b.setAngvel(w, false);
+        }
+      }
+      rec.pv = { x: v.x, y: v.y, z: v.z };
+    }
     function post() {
       var n, i, rec, b, t, tide = sim.tide, K, gh, g, k, v, a, sp, s, f, vol, bodies;
       doomed.length = 0; act.length = 0;
@@ -172,6 +205,7 @@
         t = b.translation(); rec.age++;
         if (track) { rec.px = rec.cx; rec.py = rec.cy; rec.pz = rec.cz; rec.pq = rec.cq; rec.cx = t.x; rec.cy = t.y; rec.cz = t.z; a = b.rotation(); rec.cq = [a.x, a.y, a.z, a.w]; rec.actStep = sim.steps; rec.final = false; }
         if (t.y < sim.floor || t.x < site.x0 - 3 || t.x > -site.x0 + 3 || t.z < site.x0 - 3 || t.z > -site.x0 + 3) { doomed.push(rec); continue; }
+        if (rec.isAmmo && K.fly && !rec.landed) flight(rec, b, K, t);
         /* guard: a centre below the ground surface means the body tunnelled (thin things can, the heightfield has no thickness). Put it back on top and count it. */
         gh = site.H(t.x, t.z);
         if (guard && t.y < gh - 0.06 && t.x > site.x0 && t.x < -site.x0 && t.z > site.x0 && t.z < -site.x0) {
@@ -285,7 +319,7 @@
      The pieces are created here but not yet settled: the caller runs settleUnit() until it says done (the page does it a little each frame, Node all at once). */
   function rubbleCount(n) { return TR.clamp(Math.round(n * 0.25), 30, 400); }
   function buildFort(sim, cfg) {
-    var site = sim.site, d = FORT.design(cfg.fort, cfg.pieces, cfg.seed || 1, site, cfg.force, cfg.tight), i, e, q, recs = [], nr = 0, bellRec = null, bellRecs = [];
+    var site = sim.site, d = FORT.design(cfg.fort, cfg.pieces, cfg.seed || 1, site, cfg.force, cfg.tight, cfg.keep || false), i, e, q, recs = [], nr = 0, bellRec = null, bellRecs = [];
     sim.scene = { bricks: 0, cans: 0, debris: 0, fort: null, rubble: 0 };
     if (cfg.rubble) {                                   /* the loose field first, so the fort is built last and nothing steps it before it is whole */
       nr = rubbleCount(cfg.pieces); var m = 20; while (true) { var nb_ = Math.max(12, Math.round(m * 0.45)), nc_ = TR.clamp(Math.round(m * 0.07), 6, 150); if (m - nb_ - nc_ >= nr) break; m++; }
@@ -320,7 +354,7 @@
 
   /* ---------- a session: scene + shots + replay log ---------- */
   function makeSession(R, site, cfg) {
-    cfg = { pieces: cfg.pieces || 200, seed: cfg.seed || 1, ammoCap: cfg.ammoCap || 60, tide: cfg.tide || 0, ground: cfg.ground === undefined ? -1 : cfg.ground, track: !!cfg.track, hooks: cfg.hooks || null, fort: cfg.fort || '', rubble: !!cfg.rubble, defer: !!cfg.defer, tight: !!cfg.tight, force: cfg.force || null, solverIters: cfg.solverIters || 0, pgs: cfg.pgs || 0 };
+    cfg = { pieces: cfg.pieces || 200, seed: cfg.seed || 1, ammoCap: cfg.ammoCap || 60, tide: cfg.tide || 0, ground: cfg.ground === undefined ? -1 : cfg.ground, track: !!cfg.track, hooks: cfg.hooks || null, fort: cfg.fort || '', rubble: !!cfg.rubble, defer: !!cfg.defer, tight: !!cfg.tight, keep: cfg.keep || false, force: cfg.force || null, solverIters: cfg.solverIters || 0, pgs: cfg.pgs || 0 };
     function simOpts() { var o = { ammoCap: cfg.ammoCap, tide: cfg.tide, track: cfg.track, hooks: cfg.hooks }; if (cfg.solverIters) o.solverIters = cfg.solverIters; if (cfg.pgs) o.pgs = cfg.pgs; return o; }
     var ses = { R: R, site: site, cfg: cfg, events: [], sim: null, rnd: null, replay: null };
     function fresh() {
@@ -349,7 +383,7 @@
       var a = yaw + (rr() - 0.5) * 2 * K.spread, e = elev + (rr() - 0.5) * 2 * K.spread, ce = Math.cos(e);
       var dir = [Math.sin(a) * ce, Math.sin(e), -Math.cos(a) * ce], m = ses.muzzle();
       var q = K.align ? qFromTo(dir) : K.flat ? qYaw(rr() * 6) : qRandom(rr);
-      var wv = K.spin ? { x: 0, y: K.spin, z: 0 } : { x: (rr() - 0.5) * 6, y: (rr() - 0.5) * 6, z: (rr() - 0.5) * 6 };
+      var wv = K.calm && !K.align ? { x: 0, y: 0, z: 0 } : K.calm ? { x: dir[0] * 3, y: dir[1] * 3, z: dir[2] * 3 } : K.axspin ? { x: dir[0] * K.axspin, y: dir[1] * K.axspin, z: dir[2] * K.axspin } : K.spin ? { x: 0, y: K.spin, z: 0 } : { x: (rr() - 0.5) * 6, y: (rr() - 0.5) * 6, z: (rr() - 0.5) * 6 };
       var ev = { s: ses.sim.steps, t: 'shot', k: kind, p: [m.x, m.y, m.z], v: [dir[0] * sp, dir[1] * sp, dir[2] * sp], q: q, w: [wv.x, wv.y, wv.z] };
       ses.events.push(ev); return applyEvent(ev);
     };
@@ -372,7 +406,7 @@
       var ms = ses.sim.step();
       var ff = ses.sim.fort;
       if (ff && !ses.bellDown && ses.sim.steps % 6 === 0 && ff.home) {            /* each bell counts as down once it has fallen 0.32 m; 'bellDown' means the primary bell for a one-bell fort and all of them for a Grand fort */
-        var bi, all = true; for (bi = 0; bi < ff.bells.length; bi++) { if (!ses.bellFlags[bi] && ff.bells[bi].body.translation().y < ff.bellHomes[bi] - BELL_DROP) ses.bellFlags[bi] = ses.sim.steps; if (!ses.bellFlags[bi]) all = false; }
+        var bi, all = true; for (bi = 0; bi < ff.bells.length; bi++) { if (!ses.bellFlags[bi] && (ff.bells[bi].dead || ff.bells[bi].body.translation().y < ff.bellHomes[bi] - BELL_DROP)) ses.bellFlags[bi] = ses.sim.steps; if (!ses.bellFlags[bi]) all = false; }
         if (all) { ses.bellDown = true; ses.bellDownAt = ses.sim.steps; }
       }
       if (rp && ses.sim.steps >= rp.endStep) { var hh = ses.sim.hash(); ses.lastReplay = { ok: hh === rp.hashAtEnd, expected: rp.hashAtEnd, got: hh, steps: ses.sim.steps }; ses.replay = null; ses.events = rp.events; }
@@ -393,20 +427,75 @@
     ses.score = function () {
       var f = ses.sim.fort; if (!f || !f.home) return null;
       var i, t, dx, dy, dz, moved = 0, n = f.recs.length;
-      for (i = 0; i < n; i++) { t = f.recs[i].body.translation(); dx = t.x - f.home[i * 3]; dy = t.y - f.home[i * 3 + 1]; dz = t.z - f.home[i * 3 + 2]; if (dx * dx + dy * dy + dz * dz > MOVED * MOVED) moved++; }
-      var by = f.bell.body.translation().y, shots = 0; for (i = 0; i < ses.events.length; i++) if (ses.events[i].t === 'shot') shots++;
+      for (i = 0; i < n; i++) { if (f.recs[i].dead) { moved++; continue; } t = f.recs[i].body.translation(); dx = t.x - f.home[i * 3]; dy = t.y - f.home[i * 3 + 1]; dz = t.z - f.home[i * 3 + 2]; if (dx * dx + dy * dy + dz * dz > MOVED * MOVED) moved++; }
+      var by = f.bell.dead ? f.bellHome - 5 : f.bell.body.translation().y, shots = 0; for (i = 0; i < ses.events.length; i++) if (ses.events[i].t === 'shot') shots++;
       var nb = f.bells.length, bd = 0, bj; for (bj = 0; bj < nb; bj++) if (ses.bellFlags[bj]) bd++;
-      return { count: n, moved: moved, standing: n - moved, shots: shots, bellDrop: f.bellHome - by, bellDown: ses.bellDown, bellDownAtStep: ses.bellDownAt, bells: nb, bellsDown: bd, bellFlags: f.bells.map(function (b, i) { return !!ses.bellFlags[i]; }) };
+      var kn = null;
+      if (f.design.keep) {                                /* Keep the bell: the perch's own pieces (group 3) are not counted; the percent is of everything else */
+        var pcs = f.design.pieces, outer = 0, kmoved = 0;
+        for (i = 0; i < n; i++) {
+          if (pcs[i].g === 3 || pcs[i].k === 'bell') continue;
+          outer++; if (f.recs[i].dead) { kmoved++; continue; } t = f.recs[i].body.translation(); dx = t.x - f.home[i * 3]; dy = t.y - f.home[i * 3 + 1]; dz = t.z - f.home[i * 3 + 2];
+          if (dx * dx + dy * dy + dz * dz > MOVED * MOVED) kmoved++;
+        }
+        kn = { outer: outer, knocked: kmoved, percent: outer ? 100 * kmoved / outer : 0 };
+      }
+      return { keep: kn, count: n, moved: moved, standing: n - moved, shots: shots, bellDrop: f.bellHome - by, bellDown: ses.bellDown, bellDownAtStep: ses.bellDownAt, bells: nb, bellsDown: bd, bellFlags: f.bells.map(function (b, i) { return !!ses.bellFlags[i]; }) };
+    };
+    /* the Keep round: the state of play for a shot allowance. 'playing' until the bell has fallen 0.32 m ('bell': Bell down, try again), the player is Done, or the shots are used and the bricks have
+       come to rest ('result'); a result carries the percent knocked out and the stars. A round that is over stays over (the caller keeps the first answer). */
+    ses.keepState = function (maxShots, done) {
+      var sc = ses.score(), f = ses.sim.fort; if (!sc || !sc.keep) return null;
+      var pct = sc.keep.percent, base = { shots: sc.shots, left: Math.max(0, maxShots - sc.shots), percent: pct, knocked: sc.keep.knocked, outer: sc.keep.outer, bellUp: !ses.bellDown, stars: 0, over: null };
+      if (ses.bellDown) { base.over = 'bell'; return base; }
+      var last = -1, i; for (i = ses.events.length - 1; i >= 0; i--) if (ses.events[i].t === 'shot') { last = ses.events[i].s; break; }
+      var quiet = false;
+      if (sc.shots >= maxShots || done) {
+        var since = ses.sim.steps - last;
+        if (last < 0 || since >= KEEP_RULES.waitMax) quiet = true;
+        else if (since >= KEEP_RULES.waitMin) { var awake = 0; for (i = 0; i < f.recs.length; i++) if (!f.recs[i].dead && !f.recs[i].body.isSleeping()) awake++; quiet = awake <= 3; }
+      }
+      if (quiet) { base.over = 'result'; base.stars = keepStars(pct, true); }
+      return base;
     };
     ses.finishReplay = function () { while (ses.replay) ses.step(); };
     return ses;
   }
 
   /* the elevation that lands a shot (no drag) on a point; low arc. Returns null if out of reach. */
-  function aimAt(from, to, speed) {
+  function aimAt(from, to, speed, fly) {
+    var drag = fly && typeof fly === 'object' ? (fly.drag || 0) : (fly || 0), lift = fly && typeof fly === 'object' ? (fly.lift || 0) : 0;
     var dx = to.x - from.x, dz = to.z - from.z, d = Math.sqrt(dx * dx + dz * dz), dy = to.y - from.y, g = -GRAV, v2 = speed * speed;
     var disc = v2 * v2 - g * (g * d * d + 2 * dy * v2); if (disc < 0 || d < 0.01) return null;
-    return { yaw: Math.atan2(dx, -dz), elev: Math.atan2(v2 - Math.sqrt(disc), g * d), dist: d };
+    var r = { yaw: Math.atan2(dx, -dz), elev: Math.atan2(v2 - Math.sqrt(disc), g * d), dist: d };
+    if (drag || lift) {                                   /* with air drag (the ammo's fly.drag): two secant steps on the elevation, using the same stepping as the physics */
+      var e0 = r.elev, e1 = e0 + 0.01, f0 = trajY(speed, e0, drag, d, lift), f1 = trajY(speed, e1, drag, d, lift), i;
+      for (i = 0; i < 6 && f0 !== null && f1 !== null; i++) { var e2 = e1 - (f1 - dy) * (e1 - e0) / ((f1 - f0) || 1e-9); e0 = e1; f0 = f1; e1 = e2; f1 = trajY(speed, e1, drag, d, lift); if (f1 !== null && Math.abs(f1 - dy) < 0.002) break; }
+      if (f1 !== null) r.elev = e1;
+    }
+    return r;
+  }
+  /* where a shot will be after each of the next n steps, from its start p and velocity v (the aim line, B3): the physics' own stepping, gravity then position (with Rapier's linear damping of 0.02),
+     then the lift and drag of the ammo's fly settings. Spread (the small random part of every shot) is not in it. Stabilisation turns the body and does not move its centre, so it is not in it either. */
+  function predict(kind, p, v, n) {
+    var F = KINDS[kind].fly || {}, x = p.x, y = p.y, z = p.z, vx = v.x, vy = v.y, vz = v.z, out = [], i, k, sp, damp = 1 / (1 + 0.02 * DT);
+    for (i = 0; i < n; i++) {
+      vy += GRAV * DT; vx *= damp; vy *= damp; vz *= damp; x += vx * DT; y += vy * DT; z += vz * DT; out.push({ x: x, y: y, z: z });
+      if (F.lift) vy += F.lift * (vx * vx + vz * vz) * DT;
+      if (F.drag) { sp = Math.sqrt(vx * vx + vy * vy + vz * vz); k = 1 - F.drag * sp * DT; vx *= k; vy *= k; vz *= k; }
+    }
+    return out;
+  }
+  /* the launch velocity of a shot from the aim (no spread): what the aim line is drawn from */
+  function launchV(kind, yaw, elev, power) { var K = KINDS[kind], sp = K.speed * (0.45 + 0.55 * TR.clamp(power === undefined ? 1 : power, 0, 1)), ce = Math.cos(elev); return { x: Math.sin(yaw) * ce * sp, y: Math.sin(elev) * sp, z: -Math.cos(yaw) * ce * sp }; }
+  /* height of a shot (from the muzzle, no wind) when it has gone dist metres along the ground: the physics' own order, gravity into the velocity, the position, then the drag */
+  function trajY(speed, elev, drag, dist, lift) {
+    var vx = speed * Math.cos(elev), vy = speed * Math.sin(elev), x = 0, y = 0, i, px, py, k;
+    for (i = 0; i < 1200; i++) {
+      px = x; py = y; vy += GRAV * DT; x += vx * DT; y += vy * DT; if (lift) vy += lift * vx * vx * DT; k = 1 - drag * Math.sqrt(vx * vx + vy * vy) * DT; vx *= k; vy *= k;
+      if (x >= dist) return py + (y - py) * (dist - px) / (x - px);
+    }
+    return null;
   }
 
   /* a fixed scene and a fixed volley, to compare two machines: the hash must be equal on every device (same Rapier build) */
@@ -431,6 +520,6 @@
     for (k = 0; k < 200; k++) s.step();
     h = s.sim.hash(); s.sim.dispose(); return h;
   }
-  var API = { grandCode: grandCode, fortCode: fortCode, buildFort: buildFort, settleUnit: settleUnit, BELL_DROP: BELL_DROP, MOVED: MOVED, rubbleCount: rubbleCount, FORT: FORT, determinismCode: determinismCode, KINDS: KINDS, AMMO: AMMO, DT: DT, GRAV: GRAV, RHOW: RHOW, makeSim: makeSim, buildScene: buildScene, makeSession: makeSession, aimAt: aimAt, rng: rng, qFromTo: qFromTo, qRandom: qRandom, qYaw: qYaw, volOf: volOf, nowMs: nowMs };
+  var API = { ammoStrength: ammoStrength, STRONG_J: STRONG_J, KEEP_RULES: KEEP_RULES, keepStars: keepStars, grandCode: grandCode, fortCode: fortCode, buildFort: buildFort, settleUnit: settleUnit, BELL_DROP: BELL_DROP, MOVED: MOVED, rubbleCount: rubbleCount, FORT: FORT, determinismCode: determinismCode, KINDS: KINDS, AMMO: AMMO, DT: DT, GRAV: GRAV, RHOW: RHOW, makeSim: makeSim, buildScene: buildScene, makeSession: makeSession, aimAt: aimAt, trajY: trajY, predict: predict, launchV: launchV, rng: rng, qFromTo: qFromTo, qRandom: qRandom, qYaw: qYaw, volOf: volOf, nowMs: nowMs };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.RSim = API;
 })(typeof window !== 'undefined' ? window : globalThis);

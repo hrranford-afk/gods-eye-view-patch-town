@@ -39,6 +39,14 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
 #rep{width:100%;height:36vh;font:12px ui-monospace,Menlo,Consolas,monospace;background:#1b140d;color:#ffeccc;border:1px solid var(--line);border-radius:8px;-webkit-user-select:text;user-select:text}
 #hint{position:fixed;left:50%;bottom:150px;transform:translateX(-50%);font-size:13px;opacity:.9;pointer-events:none;text-shadow:0 1px 4px #000;text-align:center}
 #fatal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:#2b2218;z-index:20;padding:20px;text-align:center;font-size:16px}
+#keepBox{display:none;margin-top:6px;font-size:12px}
+#keepBox .big2{font-size:15px;font-weight:800}
+#keepEnd{position:fixed;left:50%;top:22%;transform:translateX(-50%);display:none;text-align:center;z-index:8;max-width:min(420px,88vw);padding:14px 16px;pointer-events:auto}
+#keepEnd h2{margin:0 0 6px;font-size:22px}
+#keepEnd .stars{font-size:34px;letter-spacing:4px;color:var(--accent)}
+#ammoNote{position:fixed;left:8px;bottom:112px;max-width:min(300px,44vw);font-size:12px;display:none;pointer-events:none}
+#ammo .am .tag{display:none;font-weight:800;font-size:11px}
+body.keepmode #ammo .am .tag{display:block}
 @media (max-width:700px){#title div{display:none}#side{width:min(250px,48vw);font-size:12px}#perf{font-size:11px;min-width:170px}}
 </style>
 </head><body>
@@ -50,7 +58,10 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
 <div id="score" class="card"></div>
 <div id="hint">Tap or click the ground to aim. Hold Fire. Drag to turn the camera, wheel or pinch to zoom.</div>
 <div id="side">
-  <div class="card"><label>Fort pieces: <span id="piecesV"></span><input id="pieces" type="range" min="0" max="15" step="1" value="8"></label>
+  <div class="card"><div class="row" id="modeRow"><button class="btn on" id="modeTopple">Topple the bell</button><button class="btn" id="modeKeep">Keep the bell</button></div>
+    <div id="keepBox"><div>Knock out as much of the base as you can and leave the bell standing on its perch. Shots: <span id="shotsV"></span><input id="shots" type="range" min="6" max="40" step="1" value="12" style="width:100%;min-height:28px"></div>
+      <div class="row" style="margin-top:6px"><button class="btn" id="keepDone">Done</button></div><div id="keepBest" style="margin-top:4px;opacity:.85"></div></div>
+    <label style="margin-top:6px">Fort pieces: <span id="piecesV"></span><input id="pieces" type="range" min="0" max="15" step="1" value="8"></label>
     <div class="row" style="margin-top:6px"><select id="shape"><option value="grand">Grand fort</option><option value="castle">Castle</option><option value="tower">Tower</option><option value="wall">Wall</option></select><button class="btn" id="rubbleSw">Rubble field: off</button></div>
     <div class="row" style="margin-top:6px"><button class="btn big" id="buildFort" style="font-size:16px;min-width:0;flex:1">Build fort</button></div>
     <div class="row" style="margin-top:6px"><select id="tier"><option value="ipad">iPad preset</option><option value="radeon">Radeon preset</option></select></div>
@@ -63,9 +74,14 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
     <div class="row" style="margin-top:4px"><button class="btn" id="look">Look: Pretty</button></div></div>
   <div class="card"><div class="row"><button class="btn" id="replay">Replay slow</button><button class="btn" id="bench">Bench...</button></div>
     <div style="margin-top:6px;opacity:.85">Slow motion is only the replay: it rebuilds the same scene and plays your shots again at one quarter speed.</div></div>
+  <div class="card"><div class="row"><button class="btn" id="boltHead">Bolt head: pointed</button><button class="btn on" id="trails">Trails: on</button></div><div style="margin-top:4px;opacity:.85;font-size:12px">The Bolt flies point first. The head shape is only for looks.</div></div>
+  <div class="card"><div id="pbox"><div style="font-weight:700;font-size:12px">Power</div><div id="pbar" style="height:12px;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#2a2016"><i style="display:block;height:100%;width:100%;background:linear-gradient(90deg,#8fc46a,#e8a33d,#d9552b)"></i></div></div>
+    <div class="row" style="margin-top:6px"><button class="btn on" id="aimHelp">Aim line: on</button></div></div>
   <div class="card" id="aimbox"></div>
 </div>
 <div id="ammo"></div>
+<div id="ammoNote" class="card"></div>
+<div id="keepEnd" class="card"></div>
 <div id="modal"><div class="in card">
   <h2>Bench: find the knee</h2>
   <div class="warn" id="warnBox">This test adds more and more pieces until the page runs slowly. It can freeze or crash this tab for a few seconds, and on a tablet it can get warm. Save your work in other tabs first. It stops by itself when the frame time stays over 100 ms for 5 frames in a row. Nothing is sent anywhere.</div>
@@ -229,13 +245,20 @@ function applyLook(on) {
 var CAP = {}, IM = {}, free = {}, nextSlot = {};
 function lathe(pts, seg) { return new THREE.LatheGeometry(pts.map(function (p) { return new THREE.Vector2(p[0], p[1]); }), seg || 12); }
 function capsuleGeo(hh, r) { var pts = [], n = 5, i, a; pts.push([0.0001, -hh - r]); for (i = 1; i <= n; i++) { a = -Math.PI / 2 + i / n * Math.PI / 2; pts.push([Math.cos(a) * r, -hh + Math.sin(a) * r]); } for (i = 0; i < n; i++) { a = i / n * Math.PI / 2; pts.push([Math.cos(a) * r, hh + Math.sin(a) * r]); } pts.push([0.0001, hh + r]); return lathe(pts, 10); }
+var boltPointed = true;
+/* the Bolt, along its y axis (the long axis the physics steers): a flat tail, a plain shaft and a head, pointed (a cone) or blunt (a rounded cap). Looks only: the collider is the same capsule either way. */
+function boltGeo(K, pointed) {
+  var hh = K.hh + K.r, r = K.r, pts = [[0.0001, -hh], [r * 0.8, -hh], [r, -hh + 0.03], [r, hh - (pointed ? 0.22 : 0.08)]], i, a;
+  if (pointed) { pts.push([r * 0.5, hh - 0.07]); pts.push([0.0001, hh]); } else { for (i = 1; i <= 4; i++) { a = i / 4 * Math.PI / 2; pts.push([Math.cos(a) * r, hh - 0.08 + Math.sin(a) * 0.08]); } pts.push([0.0001, hh]); }
+  return lathe(pts, 10);
+}
 function geoFor(K) {
   switch (K.shape) {
     case 'ball': return new THREE.SphereGeometry(K.r, 12, 8);
     case 'box': return new THREE.BoxGeometry(K.hx * 2, K.hy * 2, K.hz * 2);
     case 'bell': return lathe([[0.0001, -0.1], [0.11, -0.1], [0.108, -0.085], [0.09, -0.04], [0.072, 0.02], [0.058, 0.07], [0.03, 0.098], [0.012, 0.1], [0.0001, 0.1]], 16);
     case 'cyl': return new THREE.CylinderGeometry(K.r, K.r, K.hh * 2, 18);
-    case 'capsule': return capsuleGeo(K.hh, K.r);
+    case 'capsule': return K.fly ? boltGeo(K, boltPointed) : capsuleGeo(K.hh, K.r);
     case 'bottle': return lathe([[0.0001, -0.1], [0.036, -0.098], [0.045, -0.085], [0.045, 0.06], [0.038, 0.1], [0.022, 0.13], [0.02, 0.2], [0.0001, 0.2]], 14);
   }
 }
@@ -247,6 +270,30 @@ Object.keys(KINDS).forEach(function (k) {
   m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(CAP[k] * 3), 3); scene.add(m); IM[k] = m;
 });
 var zeroM = new Float32Array(16);
+/* shot trails (Pretty look only): one LineSegments for every shot in the air, a short fading streak of its last ten positions in the ammo's colour. One draw call, no triangles.
+   Looks only: it reads the positions the physics already has and never touches a body. */
+var trailsOn = true, TRN = 10, TRMAX = 400;
+var trailGeo = new THREE.BufferGeometry(), trailPos = new Float32Array(TRMAX * TRN * 6), trailCol = new Float32Array(TRMAX * TRN * 6);
+trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3).setUsage(THREE.DynamicDrawUsage)); trailGeo.setAttribute('color', new THREE.BufferAttribute(trailCol, 3).setUsage(THREE.DynamicDrawUsage)); trailGeo.setDrawRange(0, 0);
+var trailLines = new THREE.LineSegments(trailGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+trailLines.frustumCulled = false; trailLines.visible = false; scene.add(trailLines);
+function updateTrails(sim) {
+  if (!pretty || !trailsOn) { trailLines.visible = false; return; }
+  var q = sim.ammoQ, i, j, r, tr, nseg = 0, c, K, f, moving, rr, gg, bb, n;
+  for (i = 0; i < q.length && nseg < TRMAX * (TRN - 1); i++) {
+    r = q[i]; if (r.dead || r.cx === undefined) { continue; }
+    tr = r.tr || (r.tr = []);
+    moving = r.actStep >= sim.steps - 2 && r.px !== undefined && Math.abs(r.cx - r.px) + Math.abs(r.cy - r.py) + Math.abs(r.cz - r.pz) > 0.05;
+    if (moving) { if (!tr.length || tr[tr.length - 3] !== r.cx || tr[tr.length - 2] !== r.cy || tr[tr.length - 1] !== r.cz) { tr.push(r.cx, r.cy, r.cz); if (tr.length > TRN * 3) tr.splice(0, 3); } } else if (tr.length) tr.splice(0, 3);
+    n = tr.length / 3; if (n < 2) continue;
+    c = r.K.col; rr = ((c >> 16) & 255) / 255; gg = ((c >> 8) & 255) / 255; bb = (c & 255) / 255;
+    for (j = 0; j < n - 1 && nseg < TRMAX * (TRN - 1); j++) {
+      trailPos.set([tr[j * 3], tr[j * 3 + 1], tr[j * 3 + 2], tr[j * 3 + 3], tr[j * 3 + 4], tr[j * 3 + 5]], nseg * 6);
+      f = (j + 0.5) / (n - 1) * 0.55; trailCol.set([rr * f * 0.5, gg * f * 0.5, bb * f * 0.5, rr * (f + 0.08), gg * (f + 0.08), bb * (f + 0.08)], nseg * 6); nseg++;
+    }
+  }
+  trailGeo.setDrawRange(0, nseg * 2); trailGeo.attributes.position.needsUpdate = true; trailGeo.attributes.color.needsUpdate = true; trailLines.visible = nseg > 0;
+}
 var hooks = {
   add: function (rec) {
     var k = rec.kind, s = free[k].length ? free[k].pop() : nextSlot[k]++; if (s >= CAP[k]) { rec.slot = -1; return; }
@@ -282,28 +329,37 @@ function box(w, h, d, m, x, y, z, p) { var o = new THREE.Mesh(new THREE.BoxGeome
 box(1.1, 0.12, 1.5, dark, 0, 0.06, 0); box(0.1, 0.8, 0.1, wood, -0.45, 0.5, 0); box(0.1, 0.8, 0.1, wood, 0.45, 0.5, 0); box(1.0, 0.08, 0.08, wood, 0, 0.88, 0);
 armPivot.position.set(0, 0.88, 0); launcher.add(armPivot); box(0.1, 0.1, 1.6, wood, 0, 0, -0.55, armPivot); var cup = box(0.3, 0.1, 0.3, dark, 0, 0.06, -1.35, armPivot);
 var L0 = site.layout.launcher; launcher.position.set(L0.x, site.H(L0.x, L0.z), L0.z); scene.add(launcher);
-var arcLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(new Array(40).fill(0).map(function () { return new THREE.Vector3(); })), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })); arcLine.frustumCulled = false; scene.add(arcLine);
+var arcLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(new Array(40).fill(0).map(function () { return new THREE.Vector3(); })), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 })); arcLine.frustumCulled = false; scene.add(arcLine);
 var ring = new THREE.Mesh(new THREE.RingGeometry(0.25, 0.4, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.9, depthTest: false })); ring.renderOrder = 5; scene.add(ring);
 
 /* ---------- session ---------- */
 var amp = 1.1, tideNow = 0, autoTide = false, groundMode = -1, ammoKind = 'marble', power = 1;
 var aim = { yaw: 0, elev: 0.3, target: null };
 var pieces = 250, ses = null, loading = false, shape = ['grand', 'tower', 'wall'].indexOf(Q.get('shape')) >= 0 ? Q.get('shape') : 'castle', rubble = Q.get('rubble') === '1', fortSeed = +(Q.get('seed') || 1) || 1, builtKey = '';
-var cfgBase = function () { return { pieces: pieces, seed: fortSeed, ammoCap: ammoCapFor(), tide: tideNow, ground: groundMode, track: true, hooks: hooks, fort: shape, rubble: rubble, defer: true, tight: false }; };
+var cfgBase = function () { return { pieces: pieces, seed: fortSeed, ammoCap: ammoCapFor(), tide: tideNow, ground: groundMode, track: true, hooks: hooks, fort: shape, rubble: rubble, defer: true, tight: false, keep: keepMode }; };
 var settleT0 = 0, readyAt = 0, fortSun = 24, flyRound = false;
-function keyNow() { return shape + '|' + piecesFromSlider(+$('pieces').value) + '|' + rubble; }
+/* ---------- Keep the bell: mode, round, best score ---------- */
+var keepMode = Q.get('mode') === 'keep', shotsMax = Math.max(SIM.KEEP_RULES.shotsMin, Math.min(SIM.KEEP_RULES.shotsMax, +(Q.get('shots') || SIM.KEEP_RULES.shotsDef) || SIM.KEEP_RULES.shotsDef)), keepDone = false, roundOver = null, newBest = false;
+function bestKey() { return 'rubble.keep.best.' + shape + '.' + pieces; }
+function bestGet() { try { var v = localStorage.getItem(bestKey()); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+function bestPut(r) { try { localStorage.setItem(bestKey(), JSON.stringify(r)); return true; } catch (e) { return false; } }
+function starText(n) { return '\u2605\u2605\u2605'.slice(0, n) + '\u2606\u2606\u2606'.slice(0, 3 - n); }
+function bestUI() { var b = bestGet(); $('keepBest').textContent = 'Best here (' + shape + ', ' + pieces + ' pieces): ' + (b ? b.pct.toFixed(0) + ' percent, ' + starText(b.stars) : 'none yet'); }
+function roundReset() { keepDone = false; roundOver = null; newBest = false; $('keepEnd').style.display = 'none'; }
+function keyNow() { return shape + '|' + wantPieces(piecesFromSlider(+$('pieces').value)) + '|' + rubble + '|' + keepMode; }
+function wantPieces(n) { return keepMode ? Math.max(n, RFORT.KEEPMIN) : n; }
 function build(p, again) {
-  pieces = p; loading = true; $('status').style.display = 'block'; $('status').textContent = 'Building ' + p + ' pieces...';
+  p = wantPieces(p); pieces = p; loading = true; roundReset(); $('status').style.display = 'block'; $('status').textContent = 'Building ' + p + ' pieces...';
   return new Promise(function (res) { setTimeout(function () {
     var t0 = performance.now();
     if (!ses) ses = SIM.makeSession(RAPIER, site, cfgBase()); else if (again) ses.rebuild({}); else ses.rebuild(cfgBase());
-    ses.buildMs = performance.now() - t0; settleT0 = performance.now(); builtKey = shape + '|' + p + '|' + rubble; colTide = 99;
+    ses.buildMs = performance.now() - t0; settleT0 = performance.now(); builtKey = shape + '|' + p + '|' + rubble + '|' + keepMode; colTide = 99;
     /* the settle phase: a slice of it every frame so the page stays alive; shots wait for 'Ready' */
     (function slice() {
       var done = ses.settleChunk(25);
       if (!done) { var st = ses.settling; settleText(st); return setTimeout(slice, 0); }
       loading = false; ses.settleMs = performance.now() - settleT0; frameFort(); aimAtBell(); fortUI();
-      var f = ses.sim.fort; status('Ready' + (ses.settleNote ? ': ' + ses.settleNote : ''), 1800);
+      bestUI(); var f = ses.sim.fort; status('Ready' + (ses.settleNote ? ': ' + ses.settleNote : ''), 1800);
       $('buildFort').classList.remove('on'); res();
     })();
   }, 30); });
@@ -328,7 +384,7 @@ function frameFort() {                                  /* the camera looks at t
   sun.target.position.set(d.cx, d.baseY, d.cz); sun.target.updateMatrixWorld(); sun.position.set(d.cx + (pretty ? -16 : -14) * sd / 24, d.baseY + (pretty ? 16 : 22) * sd / 24, d.cz + (pretty ? 2 : 10) * sd / 24);
   sh.camera.left = -sd; sh.camera.right = sd; sh.camera.top = sd; sh.camera.bottom = -sd; sh.camera.far = 40 + sd * 2.4; sh.camera.updateProjectionMatrix(); fortSun = sd;
 }
-function aimAtBell() { var f = ses && ses.sim.fort; if (!f) return; aim.target = { x: f.design.bell.x, y: f.bellHome, z: f.design.bell.z }; aimUpdate(); }
+function aimAtBell() { var f = ses && ses.sim.fort; if (!f) return; if (f.design.keep) { var dd = f.design; aim.target = { x: dd.cx, y: dd.baseY + 0.5, z: dd.cz + dd.half.z * 0.9 }; aimUpdate(); return; } aim.target = { x: f.design.bell.x, y: f.bellHome, z: f.design.bell.z }; aimUpdate(); }
 function fortUI() {
   var f = ses && ses.sim.fort; if (!f) { $('fortInfo').textContent = ''; return; }
   var d = f.design, sc = 'full size (0.30 m)';
@@ -337,10 +393,32 @@ function fortUI() {
     '. Settled in ' + f.settleSteps + ' steps, drift ' + (f.settleMax * 100).toFixed(1) + ' cm' + (ses.settleNote ? '. ' + ses.settleNote : '') + '.';
 }
 var scoreT = 0;
+/* the Keep HUD and the end of the round. The round is decided by sim_terrain's keepState (the same one the Node test uses); the page only shows it and keeps the first answer. */
+function keepUI(sc) {
+  var el = $('score'), st = ses.replay ? null : ses.keepState(shotsMax, keepDone), left = Math.max(0, shotsMax - sc.shots), pct = sc.keep.percent;
+  el.style.display = 'block'; el.classList.toggle('down', sc.bellDown);
+  el.innerHTML = 'Knocked out: <b>' + pct.toFixed(0) + ' percent</b> &nbsp; ' + starText(SIM.keepStars(pct, !sc.bellDown)) + '<br>' + (sc.bellDown ? '<span style="font-size:20px">Bell down</span>' : 'Bell: <b>standing</b>') + ' &nbsp; Shots left: <b>' + left + '</b> of ' + shotsMax;
+  if (st && st.over && !roundOver && !loading && !ses.settling) endRound(st);
+}
+function endRound(st) {
+  roundOver = st; var e = $('keepEnd'), best, txt;
+  if (st.over === 'bell') { txt = '<h2>Bell down, try again</h2><div>The bell came tumbling off its perch. No harm done: bricks are for rebuilding.</div>'; }
+  else {
+    best = bestGet(); newBest = !best || st.percent > best.pct; if (newBest) bestPut({ pct: st.percent, stars: st.stars });
+    txt = '<h2>The bell is still standing!</h2><div class="stars">' + starText(st.stars) + '</div><div>Knocked out <b>' + st.percent.toFixed(0) + ' percent</b> of the base with ' + st.shots + ' of ' + shotsMax + ' shots.</div>' +
+      '<div style="opacity:.85;margin-top:4px">' + (newBest ? 'A new best for this fort.' : 'Best so far here: ' + best.pct.toFixed(0) + ' percent.') + ' Three stars need the bell standing and over ' + SIM.KEEP_RULES.three + ' percent.</div>';
+    bestUI();
+  }
+  e.innerHTML = txt + '<div class="row" style="justify-content:center;margin-top:10px"><button class="btn big" id="keepAgain" style="font-size:16px;min-width:0">Rebuild</button><button class="btn" id="keepLook">Look around</button></div>';
+  e.style.display = 'block'; firing = false; burstLeft = 0;
+  $('keepAgain').addEventListener('click', function () { if (loading || (ses && ses.replay)) return; build(pieces, true); });
+  $('keepLook').addEventListener('click', function () { e.style.display = 'none'; });
+}
 function scoreUI(force) {
   if (!ses || loading) return;
   var sc = ses.score(), el = $('score');
   if (!sc) { el.style.display = 'none'; return; }
+  if (sc.keep) { keepUI(sc); return; }
   el.style.display = 'block'; el.classList.toggle('down', sc.bellDown);
   el.innerHTML = (sc.bells > 1 ? (sc.bellDown ? '<span style="font-size:22px">Every bell is down!</span><br>' : '') + 'Bells down: <b>' + sc.bellsDown + '</b> of ' + sc.bells + ' (a bell is down at 32 cm)<br>' :
     sc.bellDown ? '<span style="font-size:22px">Bell down!</span> (fell ' + (sc.bellDrop * 100).toFixed(0) + ' cm)<br>' : 'Bell: ' + (ses.settling ? 'settling' : 'still up') + ' (down at 32 cm)<br>') +
@@ -357,14 +435,17 @@ function groundRay(o, d) {                              /* where a ray meets the
 function aimUpdate() {
   if (!ses) return;
   var K = KINDS[ammoKind], m = ses.muzzle(), sp = K.speed * (0.45 + 0.55 * power);
-  if (aim.target) { var a = SIM.aimAt(m, aim.target, sp); if (a) { aim.yaw = a.yaw; aim.elev = a.elev; aim.reach = true; } else { aim.yaw = Math.atan2(aim.target.x - m.x, -(aim.target.z - m.z)); aim.elev = 0.7; aim.reach = false; } }
-  var pts = [], i, vx = Math.sin(aim.yaw) * Math.cos(aim.elev) * sp, vy = Math.sin(aim.elev) * sp, vz = -Math.cos(aim.yaw) * Math.cos(aim.elev) * sp, t, step = 0.045;
-  for (i = 0; i < 40; i++) { t = i * step; pts.push(new THREE.Vector3(m.x + vx * t, m.y + vy * t - 0.5 * 9.81 * t * t, m.z + vz * t)); }
-  arcLine.geometry.setFromPoints(pts);
+  if (aim.target) { var a = SIM.aimAt(m, aim.target, sp, K.fly); if (a) { aim.yaw = a.yaw; aim.elev = a.elev; aim.reach = true; } else { aim.yaw = Math.atan2(aim.target.x - m.x, -(aim.target.z - m.z)); aim.elev = 0.7; aim.reach = false; } }
+  /* the aim line: the first 0.67 s of the flight as the physics will fly it (sim_terrain's predict: gravity, drag, lift; the shot's small random spread is not drawn) */
+  var pts = [new THREE.Vector3(m.x, m.y, m.z)], i, pr = SIM.predict(ammoKind, m, SIM.launchV(ammoKind, aim.yaw, aim.elev, power), 40);
+  for (i = 0; i < 39; i++) pts.push(new THREE.Vector3(pr[i].x, pr[i].y, pr[i].z));
+  arcLine.geometry.setFromPoints(pts); arcLine.visible = aimHelp;
+  $('pbar').firstChild.style.width = Math.round(power * 100) + '%'; $('pbox').style.display = aimHelp ? 'block' : 'none';
   armPivot.rotation.x = aim.elev + 0.6; launcher.rotation.y = -aim.yaw;
   if (aim.target) { ring.position.set(aim.target.x, aim.target.y + 0.05, aim.target.z); ring.visible = true; } else ring.visible = false;
   $('aimbox').textContent = 'Aim  yaw ' + (aim.yaw * 57.296).toFixed(1) + ' deg   up ' + (aim.elev * 57.296).toFixed(1) + ' deg\nPower ' + Math.round(power * 100) + '%   speed ' + sp.toFixed(1) + ' m/s' + (aim.target && aim.reach === false ? '\nTarget out of reach: aiming high' : '') + '\nMass ' + (ammoMass(ammoKind)).toFixed(2) + ' kg   ' + K.note;
 }
+var aimHelp = true;
 var massCache = {};
 function ammoMass(k) { if (massCache[k]) return massCache[k]; var K = KINDS[k]; massCache[k] = K.dens * SIM.volOf(K); return massCache[k]; }
 /* quick aims: Gate, Tower and Keep turn the launcher to the gatehouse bell, a front corner tower bell (it alternates left and right) and the keep bell; on the other shapes the nearest equivalent */
@@ -384,11 +465,11 @@ var firing = false, fireCool = 0, burstLeft = 0, burstGap = 0;
 (function () {
   var box = $('ammo');
   SIM.AMMO.forEach(function (k) {
-    var K = KINDS[k], b = document.createElement('button'); b.className = 'btn am'; b.dataset.k = k; b.innerHTML = '<i style="background:#' + ('000000' + K.col.toString(16)).slice(-6) + '"></i>' + K.name.replace(/ \(.*\)/, '') + '<br><span style="opacity:.75">' + K.rate + '/s</span>';
+    var K = KINDS[k], b = document.createElement('button'); b.className = 'btn am'; b.dataset.k = k; b.innerHTML = '<i style="background:#' + ('000000' + K.col.toString(16)).slice(-6) + '"></i>' + K.name.replace(/ \(.*\)/, '') + '<br><span style="opacity:.75">' + K.rate + '/s</span><span class="tag">' + SIM.ammoStrength(k).label + '</span>';
     b.addEventListener('click', function () { ammoKind = k; syncAmmo(); aimUpdate(); }); box.appendChild(b);
   });
   var f = document.createElement('button'); f.className = 'btn big'; f.id = 'fire'; f.textContent = 'FIRE'; box.appendChild(f);
-  var br = document.createElement('button'); br.className = 'btn'; br.id = 'bigrod'; br.textContent = 'Big rod'; br.style.cssText = 'min-height:48px;font-size:16px'; box.appendChild(br);
+  var br = document.createElement('button'); br.className = 'btn'; br.id = 'bigrod'; br.textContent = 'Big bolt'; br.style.cssText = 'min-height:48px;font-size:16px'; box.appendChild(br);
   var bu = document.createElement('button'); bu.className = 'btn'; bu.id = 'burst'; bu.textContent = 'Burst'; bu.style.cssText = 'min-height:48px;font-size:16px'; box.appendChild(bu);
   var rb = document.createElement('button'); rb.className = 'btn'; rb.id = 'rebuild'; rb.textContent = 'Rebuild'; rb.style.cssText = 'min-height:48px;font-size:16px'; box.appendChild(rb);
   br.addEventListener('click', function () { ammoKind = 'rod'; syncAmmo(); aimUpdate(); fireNow(); });
@@ -401,9 +482,15 @@ var firing = false, fireCool = 0, burstLeft = 0, burstGap = 0;
   addEventListener('keydown', function (e) { if (e.code === 'Space') { firing = true; e.preventDefault(); } if (e.code === 'ArrowLeft') nudge(-0.01, 0); if (e.code === 'ArrowRight') nudge(0.01, 0); if (e.code === 'ArrowUp') nudge(0, 0.01); if (e.code === 'ArrowDown') nudge(0, -0.01); });
   addEventListener('keyup', function (e) { if (e.code === 'Space') firing = false; });
 })();
-function syncAmmo() { document.querySelectorAll('#ammo .am').forEach(function (b) { b.classList.toggle('on', b.dataset.k === ammoKind); }); }
+var AMMO_NOTE = { strong: 'Strong: this one breaks walls. Keep it away from the perch, a hit there can shake the bell down.', gentle: 'Gentle: this one nudges bricks and is kind to the perch. Good for picking at the walls near the bell.' };
+function ammoNoteUI() { var n = $('ammoNote'); if (!keepMode) { n.style.display = 'none'; return; } var s = SIM.ammoStrength(ammoKind); n.style.display = 'block'; n.innerHTML = '<b>' + KINDS[ammoKind].name.replace(/ \(.*\)/, '') + ' (' + s.label + ')</b><br>' + AMMO_NOTE[s.label]; }
+function syncAmmo() { ammoNoteUI(); document.querySelectorAll('#ammo .am').forEach(function (b) { b.classList.toggle('on', b.dataset.k === ammoKind); }); }
 var armAnim = 0;
-function fireNow() { if (!ses || ses.replay || loading || ses.settling) return; ses.fire(ammoKind, aim.yaw, aim.elev, power); armAnim = 1; }
+function shotsFired() { var c = 0, i; for (i = 0; i < ses.events.length; i++) if (ses.events[i].t === 'shot') c++; return c; }
+function fireNow() {
+  if (!ses || ses.replay || loading || ses.settling) return;
+  if (keepMode) { if (roundOver || keepDone) return; if (shotsFired() >= shotsMax) { status('No shots left: tap Done to see how you did.', 1500); return; } }
+  ses.fire(ammoKind, aim.yaw, aim.elev, power); armAnim = 1; }
 
 /* ---------- camera ---------- */
 var orb = { az: 0.0, el: 0.55, dist: 19, tx: 0, ty: 0.7, tz: 1.5 };
@@ -429,8 +516,18 @@ addEventListener('resize', function () { renderer.setSize(innerWidth, innerHeigh
 cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix();
 
 /* ---------- controls ---------- */
-function setPiecesLabel() { var n = piecesFromSlider(+$('pieces').value); $('piecesV').textContent = n + (n > 4000 ? ' (past the 4,000 the iPad ran fine: untested)' : '') + (shape === 'grand' && n < RFORT.grandMin() ? ' (too few for a Grand fort: a castle is built)' : ''); $('buildFort').classList.toggle('on', !!ses && keyNow() !== builtKey); }
+function setPiecesLabel() { var n = piecesFromSlider(+$('pieces').value); $('piecesV').textContent = (keepMode && n < RFORT.KEEPMIN ? RFORT.KEEPMIN + ' (Keep the bell needs room for the perch: raised from ' + n + ')' : n) + (n > 4000 ? ' (past the 4,000 the iPad ran fine: untested)' : '') + (shape === 'grand' && n < RFORT.grandMin() ? ' (too few for a Grand fort: a castle is built)' : ''); $('buildFort').classList.toggle('on', !!ses && keyNow() !== builtKey); }
 $('pieces').addEventListener('input', setPiecesLabel); $('pieces').addEventListener('change', setPiecesLabel);
+function setMode(k) {
+  if (loading || (ses && ses.replay)) return; keepMode = k; document.body.classList.toggle('keepmode', k);
+  $('modeTopple').classList.toggle('on', !k); $('modeKeep').classList.toggle('on', k); $('keepBox').style.display = k ? 'block' : 'none';
+  $('qKeep').style.display = k ? 'none' : ''; $('qGate').textContent = k ? 'Wall' : 'Gate'; $('qTower').style.display = k ? 'none' : '';
+  setPiecesLabel(); ammoNoteUI(); build(piecesFromSlider(+$('pieces').value));
+}
+$('modeTopple').addEventListener('click', function () { if (keepMode) setMode(false); }); $('modeKeep').addEventListener('click', function () { if (!keepMode) setMode(true); });
+function setShotsLabel() { shotsMax = +$('shots').value; $('shotsV').textContent = shotsMax; }
+$('shots').addEventListener('input', function () { setShotsLabel(); if (ses) scoreUI(); });
+$('keepDone').addEventListener('click', function () { if (!keepMode || loading || (ses && ses.replay) || roundOver) return; keepDone = true; firing = false; burstLeft = 0; status('Done: letting the bricks settle...', 1800); });
 $('shape').addEventListener('change', function () { shape = this.value; setPiecesLabel(); });
 $('rubbleSw').addEventListener('click', function () { rubble = !rubble; this.textContent = 'Rubble field: ' + (rubble ? 'on' : 'off'); this.classList.toggle('on', rubble); setPiecesLabel(); });
 $('buildFort').addEventListener('click', function () { if (loading || (ses && ses.replay)) return; build(piecesFromSlider(+$('pieces').value)); });
@@ -443,6 +540,9 @@ $('shadows').addEventListener('click', function () { shadowsOn = !shadowsOn; ren
 $('shadows').textContent = 'Shadows: ' + (shadowsOn ? 'on' : 'off');
 $('qGate').addEventListener('click', function () { quickAim('gate'); }); $('qTower').addEventListener('click', function () { quickAim('tower'); }); $('qKeep').addEventListener('click', function () { quickAim('keep'); });
 $('fly').addEventListener('click', function () { flyRound = !flyRound; this.textContent = 'Fly round: ' + (flyRound ? 'on' : 'off'); this.classList.toggle('on', flyRound); });
+$('boltHead').addEventListener('click', function () { boltPointed = !boltPointed; this.textContent = 'Bolt head: ' + (boltPointed ? 'pointed' : 'blunt'); var old = IM.rod.geometry; IM.rod.geometry = boltGeo(KINDS.rod, boltPointed); old.dispose(); });
+$('trails').addEventListener('click', function () { trailsOn = !trailsOn; this.textContent = 'Trails: ' + (trailsOn ? 'on' : 'off'); this.classList.toggle('on', trailsOn); });
+$('aimHelp').addEventListener('click', function () { aimHelp = !aimHelp; this.textContent = 'Aim line: ' + (aimHelp ? 'on' : 'off'); this.classList.toggle('on', aimHelp); aimUpdate(); });
 $('look').addEventListener('click', function () { applyLook(!pretty); this.textContent = 'Look: ' + (pretty ? 'Pretty' : 'Plain'); this.classList.toggle('on', pretty); });
 
 /* ---------- slow-motion replay (deliberate only) ---------- */
@@ -452,9 +552,9 @@ $('replay').addEventListener('click', function () {
   if (ses.replay) { ff = true; status('Skipping to the end of the replay...'); return; }
   if (!ses.events.length) { status('Nothing to replay yet: fire a few shots first.', 2000); return; }
   ses.startReplay(); acc = 0; $('replay').textContent = 'Stop replay'; $('replay').classList.add('on'); status('REPLAY at 1/4 speed (same scene, same shots)');
-  ['fire', 'rebuild', 'ground', 'tide', 'pieces'].forEach(function (id) { var e = $(id); if (e) e.disabled = true; });
+  ['fire', 'rebuild', 'ground', 'tide', 'pieces', 'modeTopple', 'modeKeep', 'keepDone'].forEach(function (id) { var e = $(id); if (e) e.disabled = true; });
 });
-function replayEnded() { $('replay').textContent = 'Replay slow'; $('replay').classList.remove('on'); ff = false; ['fire', 'rebuild', 'ground', 'tide', 'pieces'].forEach(function (id) { var e = $(id); if (e) e.disabled = false; }); status('Replay finished: back to live (same state as before)', 2500); }
+function replayEnded() { $('replay').textContent = 'Replay slow'; $('replay').classList.remove('on'); ff = false; ['fire', 'rebuild', 'ground', 'tide', 'pieces', 'modeTopple', 'modeKeep', 'keepDone'].forEach(function (id) { var e = $(id); if (e) e.disabled = false; }); status('Replay finished: back to live (same state as before)', 2500); }
 
 /* ---------- performance panel ---------- */
 var P = { frame: [], phys: [], steps: [], tris: 0, calls: 0 };
@@ -497,7 +597,7 @@ function frame(now) {
     if (pretty) { var tt = now / 1000; seaPretty.uniforms.time.value = tt; skyMesh.position.copy(cam.position); waveCloth(flagCloth, tt); mill.userData.sails.rotation.z = -tt * 0.5; }
     armAnim = Math.max(0, armAnim - dt * 5); armPivot.rotation.x = aim.elev + 0.6 - armAnim * 0.9;
     if (flyRound && !drag) orb.az += Math.min(dtms / 1000, 0.5) * 0.22;
-    drawBodies(sim, ses.replay ? acc / DT : Math.min(1, acc / DT)); placeCam();
+    drawBodies(sim, ses.replay ? acc / DT : Math.min(1, acc / DT)); updateTrails(sim); placeCam();
     scoreT += dtms; if (scoreT > 250) { scoreT = 0; scoreUI(); }
     renderer.render(scene, cam);
     pushStat(P.frame, dtms); pushStat(P.phys, physMs); pushStat(P.steps, n);
@@ -594,10 +694,11 @@ fetch('test_fort_results.json').then(function (r) { return r.json(); }).then(fun
 var start = +(Q.get('pieces') || 0) || 400;
 setTideUI(+(Q.get('tide') || 0)); syncAmmo();
 $('pieces').value = sliderFromPieces(start); $('shape').value = shape; if (rubble) { $('rubbleSw').textContent = 'Rubble field: on'; $('rubbleSw').classList.add('on'); }
+$('shots').value = shotsMax; setShotsLabel(); document.body.classList.toggle('keepmode', keepMode); $('keepBox').style.display = keepMode ? 'block' : 'none'; $('modeTopple').classList.toggle('on', !keepMode); $('modeKeep').classList.toggle('on', keepMode); $('qKeep').style.display = keepMode ? 'none' : ''; $('qGate').textContent = keepMode ? 'Wall' : 'Gate'; $('qTower').style.display = keepMode ? 'none' : '';
 await build(start); setPiecesLabel();
 applyLook(pretty); $('look').textContent = 'Look: ' + (pretty ? 'Pretty' : 'Plain'); $('look').classList.toggle('on', pretty);
 recolor(tideNow, groundMode); placeCam(); requestAnimationFrame(frame);
-window.__rubble = { orb: orb, cam: cam, get ses() { return ses; }, site: site, THREE: THREE, P: P, build: build, fire: function (k, n) { ammoKind = k; for (var i = 0; i < (n || 1); i++) fireNow(); }, aim: aim, aimUpdate: aimUpdate, setAmmo: function (k) { ammoKind = k; syncAmmo(); aimUpdate(); }, perfText: perfText, renderer: renderer, applyLook: applyLook, look: function () { return pretty; }, benchRun: benchRun, tier: function () { return tier; }, quickAim: quickAim, fly: function () { return flyRound; } };
+window.__rubble = { orb: orb, cam: cam, get ses() { return ses; }, site: site, THREE: THREE, P: P, build: build, fire: function (k, n) { ammoKind = k; for (var i = 0; i < (n || 1); i++) fireNow(); }, aim: aim, aimUpdate: aimUpdate, setAmmo: function (k) { ammoKind = k; syncAmmo(); aimUpdate(); }, perfText: perfText, renderer: renderer, applyLook: applyLook, look: function () { return pretty; }, benchRun: benchRun, tier: function () { return tier; }, quickAim: quickAim, fly: function () { return flyRound; }, aimLine: function () { return { on: aimHelp, visible: arcLine.visible, pts: arcLine.geometry.attributes.position.count, meter: document.getElementById('pbox').style.display, fill: document.getElementById('pbar').firstChild.style.width }; }, trails: function () { return { on: trailsOn, visible: trailLines.visible, drawn: trailGeo.drawRange.count }; }, keep: function () { return { on: keepMode, shotsMax: shotsMax, over: roundOver, best: bestGet() }; }, setMode: setMode, done: function () { $('keepDone').click(); } };
 })();
 </script>
 </body></html>
