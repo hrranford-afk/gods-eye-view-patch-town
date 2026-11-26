@@ -1,5 +1,5 @@
 {
- "when": "2026-11-26T10:29:24.451Z",
+ "when": "2026-11-26T10:46:55.003Z",
  "results": [
   {
    "name": "page loads the island ground (not the procedural stand-in)",
@@ -39,7 +39,7 @@
   {
    "name": "the bell comes down to big rods and the page says Bell down, with moved, standing and shots",
    "ok": true,
-   "detail": "Bell down! (fell 78 cm) | pieces moved 14   standing 236   shots 8"
+   "detail": "Bell down! (fell 83 cm) | pieces moved 15   standing 235   shots 8"
   },
   {
    "name": "Rebuild: the same fort is back, 250 pieces, bell up, score back to zero",
@@ -49,7 +49,7 @@
   {
    "name": "all seven ammo kinds fired and were logged",
    "ok": true,
-   "detail": "{\"n\":259,\"awake\":230,\"ammo\":9,\"ev\":14}"
+   "detail": "{\"n\":259,\"awake\":231,\"ammo\":9,\"ev\":14}"
   },
   {
    "name": "ground override and tide reach the physics (all rock, tide +0.80)",
@@ -79,7 +79,7 @@
   {
    "name": "the page states the tested range from measured numbers and says they are not iPad numbers",
    "ok": true,
-   "detail": "Tested up to: 1000 pieces settle and sleep in Node, software only, one cloud core. These are not iPad numbers. iPad preset: the owner ran 4,000 pieces fine (a r"
+   "detail": "Tested up to: 20000 pieces settle and sleep in Node, software only, one cloud core (4000: 1.469 ms/step asleep, 15.63 ms/step while awake after a hit). These ar"
   },
   {
    "name": "Grand fort at 5000: exactly 5000 pieces, six bells, the page shows Settling... then Ready, and the score says Bells down: 0 of 6",
@@ -99,12 +99,37 @@
   {
    "name": "Gate then Big rod brings the gatehouse bell down and the score reads Bells down: 1 of 6 or more",
    "ok": true,
-   "detail": "{\"flags\":[false,true,false,false,false,false],\"down\":1,\"text\":\"Bells down: 1 of 6 (a bell is down at 32 cm) | pieces moved 20   standing 4980   shots 10\",\"rods\":10}"
+   "detail": "{\"flags\":[false,true,false,false,false,false],\"down\":1,\"text\":\"Bells down: 1 of 6 (a bell is down at 32 cm) | pieces moved 14   standing 4986   shots 9\",\"rods\":9}"
   },
   {
    "name": "Fly round turns the camera round the fort while on and stops when off",
    "ok": true,
-   "detail": "0.00 -> 0.54, off: 1.225 / 1.225"
+   "detail": "0.00 -> 0.54, off: 1.280 / 1.280"
+  },
+  {
+   "name": "Grand 10000: exactly 10000 pieces in the page; settled with Settling... then Ready",
+   "ok": true,
+   "detail": "settled in 66828 ms (page, software GL, shared CPU); {\"brick\":9916,\"beam\":78,\"bell\":6}"
+  },
+  {
+   "name": "when settling takes over 10 s of real time the page shows a progress line (steps and seconds) and asks the player to wait for Ready (settle took 66828 ms)",
+   "ok": true,
+   "detail": "Settling... 90 of at most 600 steps, 67 s so far. A big fort needs a moment to get comfy: please wait for Ready before the first shot."
+  },
+  {
+   "name": "Grand 10000 Pretty look: one draw per material (InstancedMesh) and a sane triangle count: 135030 triangles, 13 draw calls (Plain: 134314 / 7)",
+   "ok": true,
+   "detail": "{\"pretty\":{\"tris\":135030,\"calls\":13},\"plain\":{\"tris\":134314,\"calls\":7}}"
+  },
+  {
+   "name": "the page in Chromium gives the same GRAND fort replay code as Node (3000-piece fort, fixed volley at the gate)",
+   "ok": true,
+   "detail": "page 33227fdb, node 33227fdb"
+  },
+  {
+   "name": "INFO grand 10000 Pretty render cost (software GL, counts only)",
+   "ok": true,
+   "detail": "{\"pretty\":{\"tris\":135030,\"calls\":13},\"plain\":{\"tris\":134314,\"calls\":7},\"kinds\":{\"brick\":9916,\"beam\":78,\"bell\":6}}"
   },
   {
    "name": "replay started after pressing Replay slow (it may already be over on a slow machine)",
@@ -114,17 +139,17 @@
   {
    "name": "after the replay the scene has the same hash at the same step as before it",
    "ok": true,
-   "detail": "3ab3bbf8 before, 3ab3bbf8 after, at step 31"
+   "detail": "4184e56a before, 4184e56a after, at step 21"
   },
   {
    "name": "bench ran every level and wrote a report with a knee line and the highest level reached",
    "ok": true,
-   "detail": "knee (30 fps or better: avg 33 ms or less, p95 50 ms or less) up to: none of the levels | ran every level | WARNING: this is SOFTWARE graphics: the frame times say nothing about a real GPU."
+   "detail": "knee (30 fps or better: avg 33 ms or less, p95 50 ms or less) up to: 59 pieces | ran every level | WARNING: this is SOFTWARE graphics: the frame times say nothing about a real GPU."
   },
   {
    "name": "the knee finder stops by itself when frames are slow (software GL trips the 100 ms rule)",
    "ok": true,
-   "detail": "   128         6       98.6      183.3      183.3   10           0.65          2.8           8  16554     11        0   <- stopped here | highest level reached: 40 pieces (frame rule not tripped); stopped at 120 pieces | stopped early: frame time over 100 ms for 5 frames at 128 pieces"
+   "detail": "ran every level"
   },
   {
    "name": "procedural fallback loads and says so",

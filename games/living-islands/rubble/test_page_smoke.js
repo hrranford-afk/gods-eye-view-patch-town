@@ -111,6 +111,23 @@ async function main() {
   var az0 = await page.evaluate(function () { return window.__rubble.orb.az; }); await page.click('#fly'); await settle(1500); var az1 = await page.evaluate(function () { return { az: window.__rubble.orb.az, on: window.__rubble.fly() }; });
   await page.click('#fly'); var az2 = await page.evaluate(function () { return window.__rubble.orb.az; }); await settle(800); var az3 = await page.evaluate(function () { return window.__rubble.orb.az; });
   check('Fly round turns the camera round the fort while on and stops when off', az1.on && Math.abs(az1.az - az0) > 0.04 && Math.abs(az3 - az2) < 1e-6, az0.toFixed(2) + ' -> ' + az1.az.toFixed(2) + ', off: ' + az2.toFixed(3) + ' / ' + az3.toFixed(3));
+  /* 5c. 10,000 pieces Grand: draw calls and triangles for the Pretty look (InstancedMesh per kind), and the progress line when settling takes over 10 s */
+  await page.goto(base + '?tier=radeon&shape=grand&pieces=10000', { waitUntil: 'load' }); await ready();
+  await page.waitForFunction('window.__rubble.ses.sim.fort && !window.__rubble.ses.settling && /Ready/.test(window.__stat.join("|"))', null, { timeout: 600000 }); await settle(2000);
+  var g10 = await page.evaluate(async function () {
+    var r = window.__rubble, out = {}, wait = function (ms) { return new Promise(function (x) { setTimeout(x, ms); }); }, ims = r.THREE ? 0 : 0;
+    out.n = r.ses.sim.bodies.length; out.settleMs = Math.round(r.ses.settleMs); out.stat = window.__stat.slice(); out.pretty0 = r.look();
+    await wait(1200); out.pretty = { tris: r.renderer.info.render.triangles, calls: r.renderer.info.render.calls };
+    r.applyLook(false); await wait(1200); out.plain = { tris: r.renderer.info.render.triangles, calls: r.renderer.info.render.calls }; r.applyLook(true); await wait(600);
+    var kinds = {}; r.ses.sim.bodies.forEach(function (b) { kinds[b.kind] = (kinds[b.kind] || 0) + 1; }); out.kinds = kinds; return out;
+  });
+  check('Grand 10000: exactly 10000 pieces in the page; settled with Settling... then Ready', g10.n === 10000 && g10.stat.some(function (t) { return /^Settling/.test(t); }) && g10.stat.some(function (t) { return /Ready/.test(t); }), 'settled in ' + g10.settleMs + ' ms (page, software GL, shared CPU); ' + JSON.stringify(g10.kinds));
+  check('when settling takes over 10 s of real time the page shows a progress line (steps and seconds) and asks the player to wait for Ready (settle took ' + g10.settleMs + ' ms)', g10.settleMs < 10000 || g10.stat.some(function (t) { return /so far/.test(t) && /Ready/.test(t); }), g10.stat.filter(function (t) { return /so far/.test(t); }).slice(-1)[0] || 'under 10 s: no line needed');
+  check('Grand 10000 Pretty look: one draw per material (InstancedMesh) and a sane triangle count: ' + g10.pretty.tris + ' triangles, ' + g10.pretty.calls + ' draw calls (Plain: ' + g10.plain.tris + ' / ' + g10.plain.calls + ')', g10.pretty.calls < 40 && g10.pretty.tris < 600000, JSON.stringify({ pretty: g10.pretty, plain: g10.plain }));
+  var gcode = await page.evaluate(function () { return window.RSim.grandCode(window.__rubble.ses.R, window.__rubble.site); }), nodeG = JSON.parse(fs.readFileSync(path.join(__dirname, 'test_grand_results.json'), 'utf8')).numbers.grandCode;
+  check('the page in Chromium gives the same GRAND fort replay code as Node (3000-piece fort, fixed volley at the gate)', gcode === nodeG, 'page ' + gcode + ', node ' + nodeG);
+  results.push({ name: 'INFO grand 10000 Pretty render cost (software GL, counts only)', ok: true, detail: JSON.stringify({ pretty: g10.pretty, plain: g10.plain, kinds: g10.kinds }) });
+  await page.screenshot({ path: path.join(shots, 'rubble-13-grand-10000.png') });
   /* 6. replay */
   await page.evaluate(function () { var p = document.getElementById('pieces'); p.value = 0; p.dispatchEvent(new Event('input')); }); await page.click('#buildFort'); await page.waitForFunction('window.__rubble.ses.sim.bodies.length === 40 && !window.__rubble.ses.settling', null, { timeout: 240000 }); await settle(1500);
   await page.evaluate(function () { var r = window.__rubble; r.fire('rod', 2); r.fire('coconut', 2); }); await settle(3500);
