@@ -104,4 +104,12 @@ const env = (seed, small) => ({ seed, H, half: 64, step: .8, tableR: 60, hw: A.S
   const tone = JSON.stringify(T); ok(!/robot|AI\b|helper|owe|pay back|mistake|punish/i.test(tone.replace(/robots/g, '')), 'tone: no helper, no debt, no punishment in the words');
 }
 
+/* ---- 5. cheap props ---- */
+{
+  const K = globalThis.LI_GIFT.core;
+  ok(K.PROPS.length === 4 && K.PROPS.reduce((a, q) => a + q.tris, 0) <= K.PROP_TRIS_MAX, 'four props, ' + K.PROPS.reduce((a, q) => a + q.tris, 0) + ' triangles in all (bound ' + K.PROP_TRIS_MAX + ')');
+  ok(K.PROPS.every(q => q.name && q.use.length > 30 && K.propInfo('prop_' + q.id) === q), 'each prop has a name and a plain sentence on what it is');
+  const bad = /\b(ai|robot|helper|london|paris|ikea|bose|sonos|google|apple)\b/i; ok(!K.PROPS.some(q => bad.test(q.name + ' ' + q.use)), 'no brands, places or helper words in the prop text');
+  ok(K.propInfo('prop_nope') === null && K.propInfo('crate0') === null, 'unknown ids give nothing');
+}
 console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);

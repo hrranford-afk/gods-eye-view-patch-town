@@ -27,6 +27,17 @@ for (const [label, qs, w, h] of [['desktop 1280x720', '', 1280, 720], ['ipad 834
     const nb = await p.evaluate(() => { const c = document.querySelector('#gd-layer .gd-card'); return c ? c.textContent : ''; });
     ok(/The brass key/.test(nb) && /no second key/.test(nb), label + ': the notebook lists the one key');
   }
+  if (want(5)) {
+    const pr = await p.evaluate(() => ({ list: __gift.props(), tris: __gift.propsTris(), total: __li.stats().tris, calls: __li.stats().calls }));
+    ok(pr.list.length === 4 && pr.list.every(q => q.visible), label + ': four props are placed (' + pr.list.map(q => q.id).join(', ') + ')');
+    ok(pr.tris >= 100 && pr.tris <= 160, label + ': the props draw ' + pr.tris + ' triangles (bound 160); the page total is ' + pr.total + ' with ' + pr.calls + ' draw calls');
+    if (w === 834) ok(pr.total < 175000 && pr.calls <= 200, label + ': the ipad stays near 150k and 160 calls (' + pr.total + ', ' + pr.calls + ')');
+    const above = await p.evaluate(() => __gift.props().every(q => q.y > .6)); ok(above, label + ': every prop stands clear of the sea (above 0.6 m)');
+    const T = await p.evaluate(() => __gift.targetsNow().filter(t => /^prop_/.test(t.id)).map(t => t.id)); ok(T.length >= 2, label + ': ' + T.length + ' props are targets on screen now (' + T.join(', ') + ')');
+    let said = 0; for (const q of ['box', 'hatch', 'rock', 'speaker']) { await p.evaluate(id => __gift.act(id), 'prop_' + q); await p.waitForTimeout(250); const t = await p.evaluate(() => __gift.toast()); if (t && t.length > 40) said++; const i = await p.evaluate(id => { const info = window.__gift.inspectInfo ? window.__gift.inspectInfo(id) : null; return info; }, 'prop_' + q); }
+    ok(said === 4, label + ': a first tap on each prop says what it is (' + said + ' of 4)');
+    const ins = await p.evaluate(() => { const t = __gift.targetsNow().find(q => /^prop_/.test(q.id)); return t ? __gift.inspect(t.id) : null; }); ok(ins && ins.name && ins.use.length > 30, label + ': the inspect card names it: ' + (ins && ins.name));
+  }
   ok(errs.length === 0, label + ': no console errors' + (errs[0] ? ' ' + errs[0] : '')); await p.close();
 }
 
