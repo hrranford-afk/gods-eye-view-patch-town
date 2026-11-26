@@ -127,7 +127,7 @@
     };
   }
   const mixc = (c, t, a) => { c[0] = lerp(c[0], t[0], a); c[1] = lerp(c[1], t[1], a); c[2] = lerp(c[2], t[2], a); };
-  const WOODS = [[.50, .38, .27], [.44, .33, .24], [.56, .45, .32], [.36, .28, .21]], SILVER = [.64, .61, .55];
+  const WOODS = [[.62, .48, .34], [.55, .43, .31], [.68, .55, .40], [.46, .36, .27]], SILVER = [.74, .71, .65];
 
   /* ---------------------------------------------------------------- the recipes ---------------------------------------------------------------- */
   /* a sawn board along X. brk = -1/0/1 which end is broken, crack = a long split, paint = pale painted end, holes = nail holes (dark rings) */

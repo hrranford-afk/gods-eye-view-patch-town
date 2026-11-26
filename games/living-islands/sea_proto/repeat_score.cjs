@@ -2,7 +2,7 @@
    node repeat_score.cjs <outdir> <name> <query> [js to run after load]   e.g.  node repeat_score.cjs ../research/sea_proto_shots open "tier=ipad&type=calm&s=0.3&t=20&salv=600"
    Takes the same picture with variation on (rep=1) and off (rep=0), saves both, and prints two numbers for each:
    DATA  = the share of drawn instances whose signature (kind, variant, scale, heading, tint, wear) was already seen (from the page, salvage.stats().repetition);
-   PATCH = the share of textured 16 px patches (std over 0.07, so smooth sea and sky are skipped) whose nearest other patch (8 x 8 normalised grey plus mean colour, at least 32 px away) is closer than 0.30.
+   PATCH = the share of textured 16 px patches (std over 0.07, so smooth sea and sky are skipped) whose nearest other patch (8 x 8 normalised grey plus mean colour, at least 32 px away) is closer than 0.30 (THR env overrides).
    Lower is less samey. Software GL: the picture shows the look, not the speed. */
 'use strict';
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -35,7 +35,7 @@ const SCORE = `(async (b64, thr) => {
     await page.goto(base + '?freeze=1&ui=0&rep=' + rep + '&' + q, { waitUntil: 'load' }); await page.waitForFunction('window.__sea&&window.__sea.ready', { timeout: 120000 });
     await new Promise(r => setTimeout(r, +(process.env.WAIT || 3500))); if (js) { await page.evaluate(js); await new Promise(r => setTimeout(r, 1500)); }
     const buf = await page.screenshot({ type: 'png' }); fs.writeFileSync(path.join(out, name + '_rep' + rep + '.png'), buf);
-    const st = await page.evaluate('window.__sea.salvage().stats()'); const sc = await page.evaluate(SCORE + '(' + JSON.stringify(buf.toString('base64')) + ', 0.30)');
+    const st = await page.evaluate('window.__sea.salvage().stats()'); const sc = await page.evaluate(SCORE + '(' + JSON.stringify(buf.toString('base64')) + ', ' + (process.env.THR || 0.30) + ')');
     res[rep] = { data: st.repetition, drawn: st.drawn, patches: sc.patches, patch: sc.score };
     console.log(name, 'variation ' + (rep ? 'ON ' : 'OFF'), 'drawn ' + st.drawn, 'DATA ' + (st.repetition * 100).toFixed(1) + ' percent', 'PATCH ' + (sc.score * 100).toFixed(1) + ' percent of ' + sc.patches + ' textured patches');
   }

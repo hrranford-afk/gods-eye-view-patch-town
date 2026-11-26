@@ -689,7 +689,7 @@ function ui(){const sel=document.getElementById('type');for(const k in TYPES){co
    They replace the debris and flotsam points (those come back only while the bench runs, so the bench numbers stay comparable). URL: &salv=0..2000 &rep=0..1 (variation) &size=0.6..3 &points=1 (old debris points). Spray stays as points. */
 const SALV={w:null,on:Q.get('salv')!=='0'&&!!(window.LI_SALVAGE&&window.LI_SALVAGE.makeWorld),n:Q.get('salv')!==null?parseInt(Q.get('salv'),10):null,rep:Q.get('rep')!==null?parseFloat(Q.get('rep')):1,size:Q.get('size')!==null?parseFloat(Q.get('size')):1.35,kit:null,mats:null,key:'',settled:false};
 const SALV_N={ipad:400,radeon:800,max:1200};
-function salvEnv(){return {seaH:(x,z,t)=>seaHeight(state.W,x,z,t,state.P),ground:groundAt,tide:tideAt,shadow:(x,z)=>(state.islandsOn&&WF.ready)?wfShadow(x,z):0,wind:()=>state.P.wind*Math.PI/180,storm:()=>sm((state.P.wsKA-.03)/.12),
+function salvEnv(){return {seaH:(x,z,t)=>seaHeight(state.W,x,z,t,state.P),ground:groundAt,gclass:(x,z)=>(state.islandsOn&&WF.ready)?groundClass(x,z):0,tide:tideAt,shadow:(x,z)=>(state.islandsOn&&WF.ready)?wfShadow(x,z):0,wind:()=>state.P.wind*Math.PI/180,storm:()=>sm((state.P.wsKA-.03)/.12),
   vort:()=>state.P.vort>.05?{x:VORT[0],z:VORT[1],R:VORT[2],k:state.P.vort}:null,islands:()=>state.islandsOn&&WF.ready,isl:ISLS,time:()=>state.tFix!==null?state.tFix:(state.t||0)};}
 function salvBuild(){if(!SALV.on)return;const S=window.LI_SALVAGE;if(!SALV.kit){SALV.kit=S.makeKit(THREE);SALV.mats=S.makeMaterials(THREE);}
   if(SALV.w){SALV.w.dispose();SALV.w=null;}if(bench.running||!state.P)return;

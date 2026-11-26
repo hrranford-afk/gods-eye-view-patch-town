@@ -84,7 +84,7 @@
     function findBand(R, near) {
       for (let k = 0; k < 160; k++) {
         const I = env.isl[R() * env.isl.length | 0], x = near ? 30 + (R() - .5) * 60 : I.cx + (R() - .5) * 190, z = near ? 30 + (R() - .5) * 60 : I.cz + (R() - .5) * 190, h = env.ground(x, z);
-        if (h > .12 && h < 1.5) { const g = grad(x, z), gl = Math.hypot(g[0], g[1]); if (gl > .02 && gl < .8) return { x, z, g, gl, h }; }
+        if (h > .1 && h < 1.0 && (!env.gclass || env.gclass(x, z) !== 3 && env.gclass(x, z) !== 4)) { const g = grad(x, z), gl = Math.hypot(g[0], g[1]); if (gl > .02 && gl < .8) return { x, z, g, gl, h }; }
       }
       return null;
     }
@@ -101,7 +101,7 @@
         for (let i = 0; i < size && out.length < budget; i++) {
           let tot = 0; for (const e of st) tot += e[1]; let r = R() * tot, kind = 'pebble'; for (const e of st) { r -= e[1]; if (r <= 0) { kind = e[0]; break; } }
           const small = kind === 'shell' || kind === 'pebble', t = (R() - .5) * 2 * len * (small ? 1.2 : 1), s = (R() - .5) * 2 * (small ? 2.4 : 1.1) + .2;
-          const x = c.x + tx * t + gx * s, z = c.z + tz * t + gz * s, h = env.ground(x, z); if (h < .08 || h > 2.2) { i--; if (R() < .5) continue; else continue; }
+          const x = c.x + tx * t + gx * s, z = c.z + tz * t + gz * s, h = env.ground(x, z); if (h < .06 || h > 1.5 || (env.gclass && env.gclass(x, z) >= 3)) continue;
           const gg = grad(x, z), it = mk(kind, R, { x, z, state: 1, beach: true, bury: small ? .1 + R() * .3 : R() * (kind === 'crate' || kind === 'barrel' ? .3 : .45) });
           it.ul = small ? 1.9 : 1; it.yaw = yawL + (R() < .2 ? R() * Math.PI : (R() - .5) * (small ? 6 : .9)); it.g = gg;
           const cy = Math.cos(it.yaw), sy = Math.sin(it.yaw); it.pitch = Math.atan(gg[0] * cy + gg[1] * sy); it.roll = Math.atan(-gg[0] * sy + gg[1] * cy); it.gh = h;
@@ -205,7 +205,7 @@
     };
     W.updateLights = function (P, sunDir) {
       const h = P.hor, z = P.zen; lights.hemi.color.setRGB((h[0] + z[0]) * .5 + .25, (h[1] + z[1]) * .5 + .25, (h[2] + z[2]) * .5 + .25); lights.hemi.groundColor.setRGB(.2, .24, .24);
-      lights.hemi.intensity = .5 + .25 * clamp(P.sunI, 0, 1.5); lights.sun.intensity = clamp(.25 + .75 * P.sunI, .15, 1.6); lights.sun.position.copy(sunDir).multiplyScalar(60); lights.sun.color.setRGB(1, .93 - .1 * (1 - clamp(P.sunEl / 40, 0, 1)), .82 - .25 * (1 - clamp(P.sunEl / 40, 0, 1)));
+      lights.hemi.intensity = .85 + .2 * clamp(P.sunI, 0, 1.5); lights.sun.intensity = clamp(.35 + .8 * P.sunI, .3, 1.7); lights.sun.position.copy(sunDir).multiplyScalar(60); lights.sun.color.setRGB(1, .93 - .1 * (1 - clamp(P.sunEl / 40, 0, 1)), .82 - .25 * (1 - clamp(P.sunEl / 40, 0, 1)));
       if (!o.scene.fog) o.scene.fog = new T.FogExp2(0xaabbcc, .001); o.scene.fog.color.setRGB(P.fogC[0], P.fogC[1], P.fogC[2]); o.scene.fog.density = P.fog;
     };
     W.setCount = function (n) { n = clamp(Math.round(n), 0, 2000); if (n === W.count && set) return; W.count = n; regen(); };
