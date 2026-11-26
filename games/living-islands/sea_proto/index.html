@@ -315,6 +315,24 @@ function camEvents(){const el=canvas,ptr=new Map();let lastPinch=0,lastMid=null;
   document.getElementById('bFollow').onclick=()=>{if(state.free)camSetFree(false);state.user=true;state.follow=!state.follow;syncCamButtons();};
   document.getElementById('bFree').onclick=()=>camSetFree(!state.free);}
 
+/* ------------------------------------------------------------ GPU readout: EXT_disjoint_timer_query_webgl2 around the render call, else a sampled gl.finish() ------------------------------------------------------------
+   The timer gives the time the GPU spent on one frame's commands. It is not available in every browser (some switch it off for privacy), so the page says so and falls back to a sampled finish() time,
+   which is rougher. "GPU busy" = GPU ms / 16.7 ms: an ESTIMATE of how much of a 60 Hz frame the GPU was working. */
+const gl=renderer.getContext();
+const GPU={ext:null,kind:'none',ms:0,n:0,pending:[],free:[],disjoint:0,frameBudget:1000/60,hist:[]};
+try{if(isGL2){GPU.ext=gl.getExtension('EXT_disjoint_timer_query_webgl2');if(GPU.ext)GPU.kind='timer';}}catch(e){}
+if(!GPU.ext)GPU.kind='finish';
+function gpuBegin(){if(GPU.kind!=='timer'||GPU.pending.length>6||GPU.cur)return;const q=GPU.free.pop()||gl.createQuery();gl.beginQuery(GPU.ext.TIME_ELAPSED_EXT,q);GPU.cur=q;}
+function gpuEnd(frameNo){if(GPU.kind==='timer'){if(GPU.cur){gl.endQuery(GPU.ext.TIME_ELAPSED_EXT);GPU.pending.push(GPU.cur);GPU.cur=null;}}
+  else if(frameNo%6===0){const t0=performance.now();gl.finish();gpuPush(performance.now()-t0);}}
+function gpuPush(ms){GPU.n++;GPU.ms=GPU.n===1?ms:GPU.ms*.85+ms*.15;GPU.hist.push(ms);if(GPU.hist.length>240)GPU.hist.shift();}
+function gpuPoll(){if(GPU.kind!=='timer')return;
+  while(GPU.pending.length){const q=GPU.pending[0];let ok=false;try{ok=gl.getQueryParameter(q,gl.QUERY_RESULT_AVAILABLE);}catch(e){}if(!ok)break;
+    GPU.pending.shift();let dis=false;try{dis=gl.getParameter(GPU.ext.GPU_DISJOINT_EXT);}catch(e){}
+    if(!dis){const ns=gl.getQueryParameter(q,gl.QUERY_RESULT);if(ns>=0&&isFinite(ns))gpuPush(ns/1e6);}else GPU.disjoint++;GPU.free.push(q);}}
+function gpuMean(n){const a=GPU.hist.slice(-(n||60));if(!a.length)return 0;let s=0;for(const v of a)s+=v;return s/a.length;}
+function gpuSrcLabel(){return GPU.kind==='timer'?'GPU timer query':'sampled finish() (rough)';}
+
 /* ------------------------------------------------------------ frame ------------------------------------------------------------ */
 let last=performance.now(),ema=0,frames=0;
 function frame(now){
@@ -328,18 +346,28 @@ function frame(now){
   updateCamera(dt/1000,t,P);
   U.uCam.value.copy(camera.position);
   skyMesh.position.copy(camera.position);
-  renderer.render(scene,camera);
+  gpuBegin();renderer.render(scene,camera);gpuEnd(frames);gpuPoll();
   const inf=renderer.info.render;state.tris=inf.triangles;state.calls=inf.calls;state.ms=ema;
   if(frames%10===0)updateStats();
   requestAnimationFrame(frame);
 }
 let glName='';try{const e=renderer.getContext().getExtension('WEBGL_debug_renderer_info');if(e)glName=renderer.getContext().getParameter(e.UNMASKED_RENDERER_WEBGL);}catch(e){}
 const soft=/swiftshader|llvmpipe|software/i.test(glName);
+function busyLine(frameMs){
+  if(!GPU.n)return 'GPU busy: waiting for the first timer result';
+  const g=GPU.ms,pct=g/GPU.frameBudget*100,hz=frameMs<=GPU.frameBudget*1.12;let v;
+  if(hz&&pct<75)v='limited by the 60 Hz display, the GPU has room';else if(pct>=85||g>=frameMs*.85)v='GPU-bound: the card is the limit';else v='not the GPU alone (CPU, driver or browser)';
+  return (pct>100?'GPU needs about '+(pct/100).toFixed(1)+' x a 16.7 ms frame (over 100 percent: cannot hold 60 fps)':'GPU busy about '+Math.round(pct)+' percent of a 16.7 ms frame')+' (estimate from the GPU time)\n=> '+v;}
 function updateStats(){const T=TIERS[state.tier],P=state.P;
+  const cv=renderer.domElement,pr=renderer.getPixelRatio();
   const lines=[T.name+'  |  '+TYPES[state.type].label,'waves '+state.W.length+' (swell '+T.nSw+', wind sea '+T.nWs+', chop '+T.nCh+' + '+T.rip+' pixel ripples)',
    'mesh '+T.rings+' x '+T.segs+'  spray '+T.spray+'  debris '+(P.vort>.05?T.debris:0)+' (points)',
-   'triangles '+state.tris.toLocaleString()+'   draw calls '+state.calls,'frame '+state.ms.toFixed(1)+' ms'+(soft?'  (SOFTWARE GL, not a real GPU)':''),
-   'renderer '+glName+(isGL2?'  WebGL2':'  WEBGL1!')];
+   'triangles '+state.tris.toLocaleString()+'   draw calls '+state.calls,
+   'frame '+state.ms.toFixed(1)+' ms  ('+(1000/Math.max(state.ms,.01)).toFixed(0)+' fps)'+(soft?'  (SOFTWARE GL, not a real GPU)':''),
+   'GPU '+(GPU.n?GPU.ms.toFixed(2)+' ms':'not available')+'  ['+gpuSrcLabel()+(GPU.disjoint?', '+GPU.disjoint+' discarded':'')+']',
+   busyLine(state.ms),
+   'resolution '+cv.width+' x '+cv.height+' px  (page '+window.innerWidth+' x '+window.innerHeight+', pixel ratio '+pr.toFixed(2)+')',
+   'renderer '+(glName||'unknown (browser hides it)')+(isGL2?'  WebGL2':'  WEBGL1!')];
   document.getElementById('stats').textContent=lines.join('\n');document.getElementById('sv').textContent=state.s.toFixed(2);}
 function ui(){const sel=document.getElementById('type');for(const k in TYPES){const o=document.createElement('option');o.value=k;o.textContent=TYPES[k].label;sel.appendChild(o);}
   sel.value=state.type;sel.onchange=()=>{state.type=sel.value;};
@@ -349,7 +377,7 @@ function ui(){const sel=document.getElementById('type');for(const k in TYPES){co
   bI.onclick=()=>setTier('ipad');bR.onclick=()=>setTier('radeon');setTier(state.tier);
   if(Q.get('ui')==='0')document.getElementById('ui').style.display='none';}
 ui();buildBoat();camEvents();resize();requestAnimationFrame(frame);
-window.__sea={state,TYPES,TIERS,cam,camPose,camKeys,camFloor:(x,z)=>camFloor(x,z,state.t),camera,seaHeight:(x,z,t)=>seaHeight(state.W,x,z,t===undefined?state.t:t,state.P),ready:true};
+window.__sea={state,GPU,gpuMean,busyLine,updateStats,glName:()=>glName,TYPES,TIERS,cam,camPose,camKeys,camFloor:(x,z)=>camFloor(x,z,state.t),camera,seaHeight:(x,z,t)=>seaHeight(state.W,x,z,t===undefined?state.t:t,state.P),ready:true};
 })();
 </script>
 </body>

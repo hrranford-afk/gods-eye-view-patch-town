@@ -48,6 +48,14 @@ const server = http.createServer((req, res) => { const f = path.join(ROOT, decod
     await page.click('#bFollow'); await sleep(200); check('Follow boat toggle on', await page.evaluate(() => window.__sea.state.follow));
     check('camera test: no console errors', errs.length === 0, errs.join(' | '));
   }
+  if (which === 'readout' || which === 'all') {
+    await open('?tier=ipad&type=calm&s=0.3'); await sleep(2500);
+    const txt = await page.evaluate(() => { window.__sea.updateStats(); return document.getElementById('stats').textContent; });
+    check('readout shows frame ms, GPU line, busy line, resolution, renderer, triangles, draw calls', /frame [\d.]+ ms/.test(txt) && /GPU /.test(txt) && /GPU busy|GPU needs|waiting/.test(txt) && /resolution \d+ x \d+ px/.test(txt) && /renderer /.test(txt) && /triangles [\d,]+/.test(txt) && /draw calls \d+/.test(txt), txt.replace(/\n/g, ' / '));
+    check('readout says honestly when the GPU timer is not available (or shows its source)', /not available|GPU timer query|sampled finish/.test(txt));
+    check('busy line says it is an estimate', /estimate/.test(txt) || /waiting/.test(txt));
+    check('readout test: no console errors', errs.length === 0, errs.join(' | '));
+  }
   await page.close(); await browser.close(); server.close();
   console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(2); });
