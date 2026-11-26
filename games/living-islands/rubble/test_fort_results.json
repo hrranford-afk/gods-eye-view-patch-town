@@ -1,5 +1,5 @@
 {
- "when": "2026-11-26T07:56:57.304Z",
+ "when": "2026-11-26T07:58:28.957Z",
  "node": "v22.22.0",
  "checks": [
   {
@@ -201,6 +201,56 @@
    "name": "castle 1000: after 5 more seconds untouched it is still the same (no creep)",
    "ok": true,
    "detail": ""
+  },
+  {
+   "name": "the bell rule: down means 0.32 m (Castle Sound's number, its bricks are the same 0.30 m ones so its units are metres); a piece moved means 0.20 m (a brick width)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the bell is in reach of a big rod (an arc exists)",
+   "ok": true,
+   "detail": "elev 34.6 deg, dist 17.0 m"
+  },
+  {
+   "name": "a big rod volley aimed at the bell drops it (Bell down after 1 rods)",
+   "ok": true,
+   "detail": "{\"count\":250,\"moved\":10,\"standing\":240,\"shots\":1,\"bellDrop\":0.9747577905654907,\"bellDown\":true,\"bellDownAtStep\":114}"
+  },
+  {
+   "name": "the score counts shots, moved and standing, and they add up",
+   "ok": true,
+   "detail": "{\"count\":250,\"moved\":10,\"standing\":240,\"shots\":1,\"bellDrop\":0.9747577905654907,\"bellDown\":true,\"bellDownAtStep\":114}"
+  },
+  {
+   "name": "replay: the same fort rebuilt and the same shots fed again give the same hash at the same step, and the bell falls again",
+   "ok": true,
+   "detail": "{\"ok\":true,\"expected\":\"058956cf\",\"got\":\"058956cf\",\"steps\":150}"
+  },
+  {
+   "name": "replay keeps the event log (1 events)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "Rebuild: the same fort comes back deterministically (hash equal over two rebuilds, and equal to the first build)",
+   "ok": true,
+   "detail": "51dbb5aa / 51dbb5aa / 51dbb5aa"
+  },
+  {
+   "name": "Rebuild resets the score (0 moved, bell up, no shots)",
+   "ok": true,
+   "detail": "{\"count\":250,\"moved\":0,\"standing\":250,\"shots\":0,\"bellDrop\":0,\"bellDown\":false,\"bellDownAtStep\":-1}"
+  },
+  {
+   "name": "the same three rods give the same hash and the same moved count in two fresh sessions",
+   "ok": true,
+   "detail": "55666628:21 / 55666628:21"
+  },
+  {
+   "name": "fort replay code (250-piece castle, fixed volley) is repeatable: 1c1238b8",
+   "ok": true,
+   "detail": ""
   }
  ],
  "numbers": {
@@ -229,7 +279,7 @@
     "settleSteps": 70,
     "driftCm": 1.1,
     "tiltMax": 0.0011,
-    "ms": 315
+    "ms": 267
    },
    {
     "shape": "wall",
@@ -240,7 +290,7 @@
     "settleSteps": 90,
     "driftCm": 4.1,
     "tiltMax": 0.0828,
-    "ms": 880
+    "ms": 726
    },
    {
     "shape": "wall",
@@ -251,7 +301,7 @@
     "settleSteps": 60,
     "driftCm": 2.3,
     "tiltMax": 0.0002,
-    "ms": 1152
+    "ms": 1084
    },
    {
     "shape": "tower",
@@ -262,7 +312,7 @@
     "settleSteps": 100,
     "driftCm": 5.5,
     "tiltMax": 0.0001,
-    "ms": 259
+    "ms": 198
    },
    {
     "shape": "tower",
@@ -273,7 +323,7 @@
     "settleSteps": 130,
     "driftCm": 5.8,
     "tiltMax": 0.0002,
-    "ms": 926
+    "ms": 1023
    },
    {
     "shape": "tower",
@@ -284,7 +334,7 @@
     "settleSteps": 110,
     "driftCm": 7.7,
     "tiltMax": 0.0002,
-    "ms": 2048
+    "ms": 1975
    },
    {
     "shape": "castle",
@@ -295,7 +345,7 @@
     "settleSteps": 70,
     "driftCm": 1.3,
     "tiltMax": 0.0012,
-    "ms": 117
+    "ms": 178
    },
    {
     "shape": "castle",
@@ -306,7 +356,7 @@
     "settleSteps": 100,
     "driftCm": 5.5,
     "tiltMax": 0.0021,
-    "ms": 550
+    "ms": 561
    },
    {
     "shape": "castle",
@@ -317,8 +367,16 @@
     "settleSteps": 120,
     "driftCm": 5.7,
     "tiltMax": 0.0103,
-    "ms": 1574
+    "ms": 1790
    }
-  ]
+  ],
+  "bellHit": {
+   "rods": 1,
+   "moved": 10,
+   "standing": 240,
+   "bellDropCm": 97
+  },
+  "fortCode": "1c1238b8",
+  "determinismCode": "8ab9af4f"
  }
 }

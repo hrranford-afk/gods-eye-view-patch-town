@@ -48,6 +48,36 @@ async function main() {
     results.numbers.settle.push({ shape: sh, pieces: n, brickScale: f.design.scale, courses: f.design.courses, heightM: +f2(f.design.height), settleSteps: f.settleSteps, driftCm: +(f.settleMax * 100).toFixed(1), tiltMax: +tilt.toFixed(4), ms: Date.now() - t0 });
     sim.dispose();
   }
+  /* ---------- 3. the bell rule, the score, Rebuild and the replay code ---------- */
+  (function () {
+    var ses = SIM.makeSession(R, lee, { pieces: 250, seed: 1, fort: 'castle', ammoCap: 60 }), sim = ses.sim, f = sim.fort, i, k, a, sc, hash0 = sim.hash();
+    check('the bell rule: down means 0.32 m (Castle Sound\'s number, its bricks are the same 0.30 m ones so its units are metres); a piece moved means 0.20 m (a brick width)', SIM.BELL_DROP === 0.32 && SIM.MOVED === 0.20, '');
+    /* a single marble at the front wall does not drop the bell; big rods aimed at the bell do */
+    var shots = 0; a = SIM.aimAt(ses.muzzle(), { x: 0, y: f.bellHome, z: lee.layout.wall.z }, SIM.KINDS.rod.speed);
+    check('the bell is in reach of a big rod (an arc exists)', !!a, a ? 'elev ' + (a.elev * 57.3).toFixed(1) + ' deg, dist ' + a.dist.toFixed(1) + ' m' : '');
+    for (i = 0; i < 20 && !ses.bellDown; i++) { ses.fire('rod', a.yaw, a.elev, 1); shots++; for (k = 0; k < 150; k++) ses.step(); }
+    sc = ses.score();
+    check('a big rod volley aimed at the bell drops it (Bell down after ' + shots + ' rods)', sc.bellDown && sc.bellDrop > 0.32, JSON.stringify(sc));
+    check('the score counts shots, moved and standing, and they add up', sc.shots === shots && sc.moved > 0 && sc.moved + sc.standing === sc.count && sc.count === 250, JSON.stringify(sc));
+    results.numbers.bellHit = { rods: shots, moved: sc.moved, standing: sc.standing, bellDropCm: +(sc.bellDrop * 100).toFixed(0) };
+    var steps = sim.steps, hashEnd = sim.hash(), nev = ses.events.length;
+    ses.startReplay(); ses.finishReplay();
+    check('replay: the same fort rebuilt and the same shots fed again give the same hash at the same step, and the bell falls again', ses.lastReplay && ses.lastReplay.ok && ses.sim.steps === steps && ses.score().bellDown, JSON.stringify(ses.lastReplay));
+    check('replay keeps the event log (' + nev + ' events)', ses.events.length === nev, '');
+    /* Rebuild: the same seed gives the same fort and the same settled hash, also after the bell fell */
+    ses.rebuild({}); var h1 = ses.sim.hash(), s1 = ses.score(); ses.rebuild({}); var h2 = ses.sim.hash();
+    check('Rebuild: the same fort comes back deterministically (hash equal over two rebuilds, and equal to the first build)', h1 === h2 && h1 === hash0, hash0 + ' / ' + h1 + ' / ' + h2);
+    check('Rebuild resets the score (0 moved, bell up, no shots)', s1.moved === 0 && !s1.bellDown && s1.shots === 0 && ses.events.length === 0, JSON.stringify(s1));
+    /* the same volley after a Rebuild gives the same result (so a shared shot list means the same thing) */
+    function volley() { var q = SIM.makeSession(R, lee, { pieces: 250, seed: 1, fort: 'castle' }), j; for (j = 0; j < 3; j++) { q.fire('rod', a.yaw, a.elev, 1); for (var t = 0; t < 120; t++) q.step(); } var h = q.sim.hash(), sc2 = q.score(); q.sim.dispose(); return h + ':' + sc2.moved; }
+    var v1 = volley(), v2 = volley();
+    check('the same three rods give the same hash and the same moved count in two fresh sessions', v1 === v2, v1 + ' / ' + v2);
+    results.numbers.fortCode = SIM.fortCode(R, lee); results.numbers.determinismCode = SIM.determinismCode(R, lee);
+    check('fort replay code (250-piece castle, fixed volley) is repeatable: ' + results.numbers.fortCode, SIM.fortCode(R, lee) === results.numbers.fortCode, '');
+    console.log('INFO  codes the page prints: loose ' + results.numbers.determinismCode + ', fort ' + results.numbers.fortCode);
+    ses.sim.dispose();
+  })();
+
   fs.writeFileSync(path.join(__dirname, 'test_fort_results.json'), JSON.stringify(results, null, 1));
   console.log('\n' + (fails ? fails + ' FAILED' : 'ALL PASSED') + ' (' + results.checks.length + ' checks)'); process.exit(fails ? 1 : 0);
 }
