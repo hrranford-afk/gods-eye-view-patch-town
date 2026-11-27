@@ -36,3 +36,17 @@ export function bandRuns(img, x0, y0, w, h) {
   return { meanRun: runs.reduce((a, b) => a + b, 0) / runs.length, maxRun };
 }
 export { decodePng };
+/* Streak metric: the picture rows y0..y0+h cut into column chunks; for each chunk the row-mean luma (over w columns) minus a quadratic fit down the rows.
+   A smooth sky gives residuals near the 8-bit noise floor; long straight streaks (clouds stretched along one direction) give large residuals that
+   repeat across chunks. Returns the standard deviation of the residual in 8-bit levels (mean over chunks) and the worst single-row residual. */
+export function streakiness(img, x0, y0, w, h, chunk = 250) {
+  let sds = [], worst = 0;
+  for (let cx = x0; cx + chunk <= x0 + w; cx += chunk) {
+    const m = []; for (let y = y0; y < y0 + h; y++) { let s = 0; for (let x = cx; x < cx + chunk; x++) s += luma(img, x, y); m.push(s / chunk); }
+    const n = m.length; let S = [0, 0, 0, 0, 0], T = [0, 0, 0]; for (let i = 0; i < n; i++) { const t = i / n; for (let k = 0; k < 5; k++) S[k] += t ** k; for (let k = 0; k < 3; k++) T[k] += m[i] * t ** k; }
+    const A = [[S[0], S[1], S[2]], [S[1], S[2], S[3]], [S[2], S[3], S[4]]]; const det = M => M[0][0] * (M[1][1] * M[2][2] - M[1][2] * M[2][1]) - M[0][1] * (M[1][0] * M[2][2] - M[1][2] * M[2][0]) + M[0][2] * (M[1][0] * M[2][1] - M[1][1] * M[2][0]);
+    const D = det(A), co = [0, 1, 2].map(c => { const B = A.map((r, i) => r.map((v, j) => j === c ? T[i] : v)); return det(B) / D; });
+    let s2 = 0; for (let i = 0; i < n; i++) { const t = i / n, r = m[i] - (co[0] + co[1] * t + co[2] * t * t); s2 += r * r; if (Math.abs(r) > worst) worst = Math.abs(r); } sds.push(Math.sqrt(s2 / n));
+  }
+  return { sd: sds.reduce((a, b) => a + b, 0) / sds.length, worst };
+}

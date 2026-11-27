@@ -2193,7 +2193,7 @@ function buildPost(){
     float l2=dot(c,vec3(0.3,0.59,0.11));c=mix(vec3(l2),c,1.16);
     c*=mix(vec3(0.96,0.99,1.04),vec3(1.05,1.0,0.93),smoothstep(0.1,0.8,l2));
     vec2 q=(uv-0.5)*vec2(uRes.x/uRes.y,1.0);float v=1.0-uVig*smoothstep(0.42,1.05,length(q));c*=v;
-    c+=(hash(uPxS>1.01?floor(gl_FragCoord.xy/uPxS):floor(gl_FragCoord.xy))-0.5)*uGr/255.0;   /* grain on whole buffer pixels; uGr fades it out where the browser stretches the canvas by a non-integer factor (T1a item 2) */
+    {vec2 gp=uPxS>1.01?floor(gl_FragCoord.xy/uPxS):floor(gl_FragCoord.xy);c+=(hash(gp)+hash(gp+vec2(37.0,91.0))-1.0)*(0.55+0.45*uGr)/255.0;}   /* T1a items 2 and 3: triangular dither of one 8-bit level (two hashes) on whole buffer pixels so the gradients in the half-float target do not band when rounded to 8 bits; its strength drops to about half (still enough to break the steps) where the browser stretches the canvas by a non-integer factor, which is where a full-strength pattern would beat (uGr) */
     gl_FragColor=vec4(c,1.0);}`});
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute([-1,-1,0,3,-1,0,-1,3,0],3));g.setAttribute('uv',new THREE.Float32BufferAttribute([0,0,2,0,0,2],2));
   if(WXR)WXR.attachPost(postMat);
@@ -2871,12 +2871,12 @@ function mdBuild(){
       fragmentShader:`precision highp float;varying vec3 vD;uniform vec3 uSun,uCurt,uRayC,uM0,uM1;uniform vec4 uRb,uCell;uniform vec2 uRay;uniform float uAur,uTime,uMp,uMv,uSup;${MD_NOISE}
       void main(){vec3 r=normalize(vD);float y=r.y;vec3 add=vec3(0.0);float al=0.0;float sky=smoothstep(-0.01,0.02,y);
         float az=atan(r.x,-r.z);float dA=abs(atan(sin(az-uCell.x),cos(az-uCell.x)));
-        /* the rain curtain: a dark blue-grey shaft under a ragged squall base, soft streaks, widest in the middle */
+        /* the rain curtain: a dark blue-grey shaft under a ragged squall base, soft streaks, widest in the middle (T1a item 3: the streak coordinate is warped with 2D noise so the streaks wander and break instead of running as ruled lines) */
         float rm=0.0;
         if(uCell.z>0.001){float hw=uCell.y;rm=1.0-smoothstep(hw*0.95,hw*1.8,dA);
           float g=exp(-pow(dA/(hw*0.75),2.0));float baseY=0.10+0.03*mvn(az*6.0+1.0);float topY=baseY+0.22+0.06*mvn(az*8.0+7.0);
           float mass=g*smoothstep(baseY-0.04,baseY+0.05,y)*(1.0-smoothstep(topY-0.2,topY,y));
-          float sl=az+y*0.35;float st=0.22+0.78*smoothstep(0.25,0.8,mvn(sl*150.0)*0.5+mvn(sl*44.0+3.0)*0.35+mvn(sl*13.0+5.0)*0.3);
+          float sl=az+y*0.35+(mvn2(vec2(az*9.0,y*38.0))-0.5)*0.05;float st=0.22+0.78*smoothstep(0.25,0.8,mvn(sl*150.0)*0.5+mvn(sl*44.0+3.0)*0.35+mvn(sl*13.0+5.0)*0.3);
           float fl=g*st*(1.0-smoothstep(baseY*0.6,baseY+0.04,y))*(0.30+0.70*smoothstep(0.0,baseY,y))*smoothstep(0.0,0.012,y);
           float veil=g*(1.0-smoothstep(0.0,0.34,y))*0.22;float a=clamp(mass*0.92+fl*0.8+veil,0.0,0.94)*uCell.z*uCell.w*sky;float lt=smoothstep(1.05,0.2,acos(clamp(dot(r,uSun),-1.0,1.0)));vec3 tint=mix(uCurt,uRayC*0.85,lt*lt);add+=tint*a*(1.0+0.6*fl);al+=a*(1.0-0.55*lt);}
         /* the bows, centred on the antisolar point, only where the rain is */

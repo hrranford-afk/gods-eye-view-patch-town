@@ -3,8 +3,9 @@
 import fs from 'node:fs';
 import { launch, ROOT } from './shoot.js';
 import { checkPng, worldShot, decodePng } from './pixel-check.js';
-import { grainSpectrum } from './t1a-metrics.js';
+import { grainSpectrum, bandRuns, streakiness } from './t1a-metrics.js';
 const arg = k => (process.argv.find(a => a.startsWith(k + '=')) || '').split('=')[1];
+const PAGE = arg('file') || 'islands_look.html';   /* file=_before.html measures an older copy of the page for the before numbers */
 const only = (arg('only') || '1,2,3,4').split(',').map(Number), want = n => only.includes(n);
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 const { browser, ctx } = await launch(); launch.browser = browser; const NOISE = /GL Driver|GPU stall|ReadPixels/;
@@ -40,14 +41,38 @@ if (want(2)) {
   /* the bare table surround (top left, 64 px square) is a smooth gradient: all that is left after a high-pass is grain. q=high renders at pixel ratio 1.5 at most. */
   const a = await sea(1.5, 700, 450), s1 = grainSpectrum(a.img, 5, 5, 64), e1 = grainSpectrum(a.img, 5, 5, 64, true);
   ok(a.g && a.g.gr === 1 && Math.abs(a.g.stretch - 1) < .01, 'grain: device pixel ratio 1.5 = buffer pixel ratio 1.5, stretch ' + (a.g && a.g.stretch.toFixed(2)) + ', grain on (uGr ' + (a.g && a.g.gr) + ')');
-  ok(s1.sd > .25 && s1.sd < .6, 'grain: still there at the old strength (high-pass sd ' + s1.sd.toFixed(2) + ' levels, the old sin hash measured 0.36)');
+  ok(s1.sd > .25 && s1.sd < .6, 'grain: still there at about the old strength (high-pass sd ' + s1.sd.toFixed(2) + ' levels; the old sin hash measured 0.36; the output dither is now triangular, one level)');
   ok(s1.peak < 20 && e1.peak < 100, 'grain: no beat or lattice: strongest spectral line ' + s1.peak.toFixed(1) + 'x the noise floor (white noise 8 to 15; interleaved gradient noise measured 131), energy spectrum line ' + e1.peak.toFixed(0) + ' (before 39 to 62)');
   const b = await sea(2, 700, 450), s2 = grainSpectrum(b.img, 5, 5, 64);
-  ok(b.g && b.g.gr === 0 && Math.abs(b.g.stretch - 4 / 3) < .01, 'grain: the canvas is stretched 1.33x on an iPad-like screen (dpr 2, render 1.5): stretch ' + (b.g && b.g.stretch.toFixed(2)) + ', no grain added (uGr ' + (b.g && b.g.gr) + ')');
+  ok(b.g && b.g.gr === 0 && Math.abs(b.g.stretch - 4 / 3) < .01, 'grain: the canvas is stretched 1.33x on an iPad-like screen (dpr 2, render 1.5): stretch ' + (b.g && b.g.stretch.toFixed(2)) + ', grain strength down to the half-level dither (uGr ' + (b.g && b.g.gr) + ')');
   ok(s2.amp < .2, 'grain: no periodic component in the stretched picture above 0.2 levels (' + s2.amp.toFixed(3) + ')');
   const c = await sea(3, 480, 320);
   ok(c.g && c.g.gr === 1 && Math.abs(c.g.stretch - 2) < .01, 'grain: an exact 2x stretch (dpr 3, render 1.5) keeps the grain, it lands on whole device pixels (stretch ' + (c.g && c.g.stretch.toFixed(2)) + ')');
   ok(a.errs.length + b.errs.length + c.errs.length === 0, 'grain pages: 0 console errors');
+}
+/* ===== 3. sky: dithered gradients (no 8-bit steps), broken cirrus streaks ===== */
+async function skyShot(dsf) {
+  const c = await launch.browser.newContext({ viewport: { width: 1000, height: 625 }, deviceScaleFactor: dsf });
+  if (fs.existsSync('/tmp/three.js')) await c.route('**/three.min.js', r => r.fulfill({ path: '/tmp/three.js', contentType: 'application/javascript' }));
+  const p = await c.newPage(); p.setDefaultTimeout(300000); const errs = []; p.on('console', m => { if (m.type() === 'error' && !NOISE.test(m.text())) errs.push(m.text()); }); p.on('pageerror', e => errs.push('pageerror ' + e.message));
+  await p.goto('file://' + ROOT + '/' + PAGE + '?game=gift&q=high&device=desktop&dev=1&glide=0&weather=clear');   /* weather=clear: a fixed state with cirrus 0.8 */
+  await p.waitForFunction(() => window.__li && window.__li.ready && window.__liFrames > 2, null, { timeout: 900000 }); await p.waitForFunction(() => window.__gift && window.__gift.spots(), null, { timeout: 300000 }); await p.waitForTimeout(3000);
+  await p.evaluate(v => __li.setView(v), { tx: 0, tz: 0, dist: 200, phi: .05, theta: .6 }); await p.waitForTimeout(8000); await p.evaluate(v => __li.setView(v), { tx: 0, tz: 0, dist: 200, phi: .05, theta: .6 }); await p.waitForTimeout(8000);   /* the camera eases at one frame a second in software GL: ask twice */
+  const buf = await worldShot(p, null); await c.close(); return { img: decodePng(buf), buf, errs };
+}
+if (want(3)) {
+  for (const dsf of [1.5, 2]) {
+    const s = await skyShot(dsf), k = dsf, px = v => Math.round(v * k);
+    const band = bandRuns(s.img, px(5), px(150), px(40), px(110)), res = streakiness(s.img, px(5), px(150), px(40), px(110), px(40)), st = streakiness(s.img, 0, 0, px(1000), px(140), px(250));
+    fs.writeFileSync('/tmp/t1a-sky-' + PAGE.replace(/\W/g, '') + '-' + dsf + '.png', s.buf);
+    console.log('INFO ' + PAGE + ' dsf ' + dsf + ' sky strip: run ' + band.meanRun.toFixed(3) + ' max ' + band.maxRun + ', step residual sd ' + res.sd.toFixed(3) + ', streak sd ' + st.sd.toFixed(3) + ' worst ' + st.worst.toFixed(2));
+    if (PAGE === 'islands_look.html') {
+      ok(st.sd < .5 && st.worst < 2.4, 'sky dsf ' + dsf + ': cirrus streaks broken: streak residual sd ' + st.sd.toFixed(3) + ' levels, worst row ' + st.worst.toFixed(2) + ' (before 0.57 and 2.60)');
+      const lim = dsf === 2 ? 3.2 : 1.5, was = dsf === 2 ? 5.23 : 1.60;
+      ok(band.meanRun < lim, 'sky dsf ' + dsf + ': gradient strip has short flat runs: mean ' + band.meanRun.toFixed(2) + ' rows (before ' + was + '; limit ' + lim + ')');
+      ok(s.errs.length === 0, 'sky dsf ' + dsf + ': 0 console errors');
+    }
+  }
 }
 if (want(4)) {
   const { p, errs } = await open('?ui=0&q=high&seed=1122');
