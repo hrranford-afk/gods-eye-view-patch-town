@@ -51,7 +51,7 @@ All setters clamp, ignore NaN and non-numbers, and never throw. Before the gestu
 Robot timing: base interval per kind (hauler 1.6 s, sorter 0.45 s, stacker 2.4 s). Interval = base * (1 + 2.2 * (1 - battery)^2) so clicks space out as the battery falls; `wear` lowers pitch up to 12 percent and adds a small random jitter. A scheduler runs from one 50 ms setInterval with a look-ahead of 120 ms; the game never schedules per frame.
 
 ## 3. CPU and battery budget
-- Voice cap 24 total, per-name caps (robot voices 6, thunder 2, key 2, ui 4). Over the cap the oldest voice of that name is dropped, never a bed.
+- Voice cap 24 total, per-name caps (robot voices 6, thunder 2, key 2, ui 4). Over the cap a new event is refused (playEvent returns false); beds are never affected.
 - Beds: 6 persistent chains built once, never rebuilt. Looped noise buffers (2 shared buffers: white and brown, 4 s each) built once, shared by every bed and event.
 - No per-frame allocation: setters do no work except `setTargetAtTime`; events create short-lived nodes that disconnect on `ended`. Each source is stopped and released after its envelope.
 - Beds with gain below 0.002 are paused by ramping to zero and stopping the LFO sources lazily (checked every 2 s).
