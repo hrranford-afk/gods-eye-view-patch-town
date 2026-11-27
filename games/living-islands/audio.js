@@ -238,6 +238,7 @@
     setMusicVolume: function (v) { S.vol.music = clamp01(v, S.vol.music); applyVols(); return S.vol.music; },
     mute: function (b) { S.muted = !!b; applyVols(); return S.muted; }, isMuted: function () { return S.muted; },
     voices: voiceCount,
+    robotInterval: function (kind, battery, state) { var b = clamp01(battery, 1); return (BASE[kind] || 1.5) * (1 + 2.2 * (1 - b) * (1 - b)) * (state === 'wet' ? 1.25 : 1); },
     events: function () { return Object.keys(E).concat(Object.keys(ALIAS)); },
     analyser: function (fft) { if (!S.ctx) return null; if (!S.an) { S.an = S.ctx.createAnalyser(); S.an.fftSize = fft || 128; S.an.smoothingTimeConstant = 0.7; S.post.connect(S.an); } return S.an; },
     stats: function () { return { voices: voiceCount(), cap: VOICE_CAP, running: API.isRunning(), state: S.ctx ? S.ctx.state : 'none', sampleRate: S.ctx ? S.ctx.sampleRate : 0, robots: Object.keys(S.robots).length, params: { sea: S.p.sea, wind: S.p.wind, rain: S.p.rain, night: S.p.night }, master: S.vol.master, fx: S.vol.fx, music: S.vol.music, muted: S.muted }; },
