@@ -212,7 +212,7 @@
       while (r.next < now + 0.12) { play(r.kind, { state: r.state, wear: r.wear }, r.next); r.next += interval(r); } }
     if (p.night < 0.6 && now > S.nextGull) { S.nextGull = now + (8 + rnd() * 17) / (0.4 + 0.6 * (1 - p.wind)); if (rnd() < 0.8 && S.vol.fx > 0) play('gull', {}); }
     if (p.night > 0.4 && now > S.nextCricket) { S.nextCricket = now + 0.5 + rnd() * 2.5 / p.night; play('cricket', {}); }
-    if (S.vol.music > 0.01 && now > S.nextChord) { S.nextChord = now + 12; S.chordN = (S.chordN || 0) + 1; play('chord', { n: S.chordN }); }
+    if (S.vol.music > 0.01 && !S.noChord && now > S.nextChord) { S.nextChord = now + 12; S.chordN = (S.chordN || 0) + 1; play('chord', { n: S.chordN }); }
   }
   function startTimer() { if (!S.timer) S.timer = setInterval(tick, 50); }
   if (root.document && root.document.addEventListener) root.document.addEventListener('visibilitychange', function () {
@@ -237,6 +237,9 @@
     setEffectsVolume: function (v) { S.vol.fx = clamp01(v, S.vol.fx); applyVols(); return S.vol.fx; },
     setMusicVolume: function (v) { S.vol.music = clamp01(v, S.vol.music); applyVols(); return S.vol.music; },
     mute: function (b) { S.muted = !!b; applyVols(); return S.muted; }, isMuted: function () { return S.muted; },
+    /* additive hooks for audio_song.js: the live context and music bus; chordBed(false) silences the plain chord bed so the song can take over */
+    hook: function () { return { ctx: S.ctx, bus: S.mus, running: API.isRunning() }; },
+    chordBed: function (on) { S.noChord = !on; },
     voices: voiceCount,
     robotInterval: function (kind, battery, state) { var b = clamp01(battery, 1); return (BASE[kind] || 1.5) * (1 + 2.2 * (1 - b) * (1 - b)) * (state === 'wet' ? 1.25 : 1); },
     events: function () { return Object.keys(E).concat(Object.keys(ALIAS)); },
