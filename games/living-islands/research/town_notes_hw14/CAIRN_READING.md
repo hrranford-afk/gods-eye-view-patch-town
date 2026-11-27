@@ -19,3 +19,8 @@ Read in full: gemma4 (r1), qwen3.8 (r1), Town Brain (r1). Skimmed: command-r, mi
 - aya-expanse has robots that dance and form cliques; command-r has festivals and a robot picnic; these lean against 'old plain machines, no written feelings' and the cosy-but-sober tone. mistral-nemo invents a named lighthouse woman who lost her family (people are counted not tracked; also sad).
 - The Town Brain's file has thinking text before the note (hardware said it was removed; it is not).
 - Agreement is not proof: round 2 residents echo qwen3.8 and gemma4.
+
+## Add-on (the last two round-2 notes, read in part)
+- gpt-oss round 2 (read the first half): a humming rock whose pitch changes before a storm (fits idea 3 and the sound idea), a tide-teller gauge, a weekly seed-drop from gulls. Flag: it has a bird drop 'a small brass key'. The story has ONE brass key that cannot be duplicated; any other key breaks that rule. It also adds a tradeable 'tide-token', which would need checking against 'credit buys deliveries only, only cash buys land'.
+- aya-expanse round 2 (read the first half): generic; robots from other islands visiting to offer 'companionship' leans against the robot rules; a crafting system and a hidden treasure are off-spine.
+- Not yet read: the second half of both, and round 2 of the other six.
