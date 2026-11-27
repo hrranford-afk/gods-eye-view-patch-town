@@ -2176,11 +2176,11 @@ function rpUseHero(body,CFG){const root=RP.hero.scene.clone(true);root.traverse(
 /* ============ post ============ */
 function buildPost(){
   postCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);postScene=new THREE.Scene();
-  postMat=new THREE.ShaderMaterial({depthTest:false,depthWrite:false,defines:{TAPS:QL().taps},uniforms:{tD:{value:null},uRes:{value:new THREE.Vector2(1,1)},uFocus:{value:.45},uBand:{value:.16},uBlur:{value:6},uExp:{value:LAND?.88:1.0},uTilt:{value:LAND?0:1},uVig:{value:LAND?.14:.42},uPxS:{value:1}},
+  postMat=new THREE.ShaderMaterial({depthTest:false,depthWrite:false,defines:{TAPS:QL().taps},uniforms:{tD:{value:null},uRes:{value:new THREE.Vector2(1,1)},uFocus:{value:.45},uBand:{value:.16},uBlur:{value:6},uExp:{value:LAND?.88:1.0},uTilt:{value:LAND?0:1},uVig:{value:LAND?.14:.42},uPxS:{value:1},uGr:{value:1}},
   vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.0,1.0);}`,
-  fragmentShader:`precision highp float;varying vec2 vUv;uniform sampler2D tD;uniform vec2 uRes;uniform float uFocus,uBand,uBlur,uExp,uTilt,uVig;uniform float uPxS;
+  fragmentShader:`precision highp float;varying vec2 vUv;uniform sampler2D tD;uniform vec2 uRes;uniform float uFocus,uBand,uBlur,uExp,uTilt,uVig;uniform float uPxS,uGr;
   vec3 aces(vec3 x){return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);}
-  float hash(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
+  float hash(vec2 p){vec3 p3=fract(vec3(p.xyx)*0.1031);p3+=dot(p3,p3.yzx+33.33);return fract((p3.x+p3.y)*p3.z);}   /* Hoskins hash without sin (T1a item 2): fract, dot and multiply only. The old sin hash needs a precise sin at arguments near 1e5, which mobile GPUs do not give. Interleaved gradient noise was tried and measured: strong spectral lines (peak 131 against 11 for white noise), so it is not used */
   void main(){vec2 uv=vUv;float d=abs(uv.y-uFocus);float b=smoothstep(uBand,uBand+0.34,d)*uTilt;float rad=b*uBlur;
     vec3 c=texture2D(tD,uv).rgb;float ws=1.0;
     if(rad>0.7){for(int i=0;i<TAPS;i++){float fi=float(i);float r=sqrt((fi+0.5)/float(TAPS));float a=fi*2.39996;vec2 o=vec2(cos(a),sin(a))*r*rad/uRes;
@@ -2193,7 +2193,7 @@ function buildPost(){
     float l2=dot(c,vec3(0.3,0.59,0.11));c=mix(vec3(l2),c,1.16);
     c*=mix(vec3(0.96,0.99,1.04),vec3(1.05,1.0,0.93),smoothstep(0.1,0.8,l2));
     vec2 q=(uv-0.5)*vec2(uRes.x/uRes.y,1.0);float v=1.0-uVig*smoothstep(0.42,1.05,length(q));c*=v;
-    c+=(hash(uPxS>1.01?floor(gl_FragCoord.xy/uPxS)+0.5:gl_FragCoord.xy)-0.5)/255.0;
+    c+=(hash(uPxS>1.01?floor(gl_FragCoord.xy/uPxS):floor(gl_FragCoord.xy))-0.5)*uGr/255.0;   /* grain on whole buffer pixels; uGr fades it out where the browser stretches the canvas by a non-integer factor (T1a item 2) */
     gl_FragColor=vec4(c,1.0);}`});
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute([-1,-1,0,3,-1,0,-1,3,0],3));g.setAttribute('uv',new THREE.Float32BufferAttribute([0,0,2,0,0,2],2));
   if(WXR)WXR.attachPost(postMat);
@@ -2274,6 +2274,7 @@ function size(){const dpr=COSTK===1?Math.min(window.devicePixelRatio||1,QL().pr)
   let cw=w,ch=h;if(ULT.on&&NOPOST){const k=Math.max(.25,Math.min(ULT.scale,Math.sqrt(ULO.maxpx/(w*h))));cw=Math.round(w*k);ch=Math.round(h*k);ULT.scaleReal=cw/w;}   /* no post chain: the canvas itself is the big target, the browser scales it down */
   renderer.setPixelRatio(1);renderer.setSize(cw,ch,false);const cv=renderer.domElement;cv.style.width='100%';cv.style.height='100%';
   camera.aspect=w/h;camera.updateProjectionMatrix();if(!NOPOST)makeRT(w,h);
+  if(postMat&&postMat.uniforms.uGr){const st=(window.devicePixelRatio||1)/(w/Math.max(1,innerWidth)),fr=Math.abs(st-Math.round(st));postMat.uniforms.uGr.value=1-Math.min(1,Math.max(0,(fr-.02)/.1));postMat.userData.stretch=st;}   /* stretch = device pixels per buffer pixel; the film grain only where that is a whole number (T1a item 2) */
   if(smoke)smoke.material.uniforms.uScale.value=(ULT.on&&rtBig?rtBig.height:ch)/(2*Math.tan(camera.fov*Math.PI/360));}
 let COSTK=1;   /* the cost ladder (&cost=1, cost_ladder.js) multiplies the render size by this; 1 = nothing changes */
 const clock={t:0,last:0,frames:0,fps:60,acc:0};
@@ -3046,7 +3047,7 @@ function init(){
   if(Q.get('auto')==='1'){tideAuto=true;el.auto.classList.add('on');}
   requestAnimationFrame(frame);updateInfo();
   setTimeout(()=>{const b=document.getElementById('boot');b.style.opacity=0;setTimeout(()=>b.remove(),700);},300);
-  window.__li={ready:true,seed:SEED,sea:{force:(n,v)=>{WVS.force=n?[n,v===undefined?1:v]:null;},spray:()=>WVS.spray?{n:WVS.T.spray,visible:WVS.spray.visible}:null,on:()=>WVS.on,tier:()=>WVS.tier,name:()=>WVS.name,s:()=>WVS.s,hs:()=>WVS.on?WVS.W.hs:0,h:wvH,n:wvN,tris:()=>WVS.tris,nw:()=>WVS.on?WVS.W.length:0,failed:()=>WVS.failed,freeze:v=>{WVS.frozen=!!v;},params:()=>WVS.params,cur:()=>JSON.parse(JSON.stringify(WVS.cur||{})),waterTris:()=>waterMesh&&waterMesh.geometry.index?waterMesh.geometry.index.count/3:0},hash:stateHash,hashStatic:()=>stateHash(true),landArea,stats:()=>({...stats,tris:sceneTris(),fps:clock.fps,quality:tierName(),renderTris:renderer.info.render.triangles,calls:renderer.info.render.calls}),
+  window.__li={ready:true,grain:()=>postMat&&postMat.uniforms.uGr?{gr:postMat.uniforms.uGr.value,stretch:postMat.userData.stretch}:null,seed:SEED,sea:{force:(n,v)=>{WVS.force=n?[n,v===undefined?1:v]:null;},spray:()=>WVS.spray?{n:WVS.T.spray,visible:WVS.spray.visible}:null,on:()=>WVS.on,tier:()=>WVS.tier,name:()=>WVS.name,s:()=>WVS.s,hs:()=>WVS.on?WVS.W.hs:0,h:wvH,n:wvN,tris:()=>WVS.tris,nw:()=>WVS.on?WVS.W.length:0,failed:()=>WVS.failed,freeze:v=>{WVS.frozen=!!v;},params:()=>WVS.params,cur:()=>JSON.parse(JSON.stringify(WVS.cur||{})),waterTris:()=>waterMesh&&waterMesh.geometry.index?waterMesh.geometry.index.count/3:0},hash:stateHash,hashStatic:()=>stateHash(true),landArea,stats:()=>({...stats,tris:sceneTris(),fps:clock.fps,quality:tierName(),renderTris:renderer.info.render.triangles,calls:renderer.info.render.calls}),
     setTide:v=>{MC.tideTouched=true;tideAuto=false;tideManual=v;el.tide.value=v;},setTideDir:d=>{FL.tideDir=d>0?1:-1;},setQuality,flow:FLOW?{params:()=>JSON.parse(JSON.stringify(FL.F)),dump:()=>JSON.stringify(FL.F),at:(x,z,T)=>flowAt(x,z,T),pure:(x,z,T)=>{const o=[0,0];flowRaw(FL.F,x,z,T,o,true);return o;},time:()=>flowTime(),tideAt:flowTideAt,positions:T=>flotPositions(T),counts:flotCounts,hAt:(x,z)=>hAt(x,z),boat:()=>FL.boat,arrows:on=>{FL.arrows=on;if(!on)flowArrowClear();},meshCounts:()=>FL.meshes.map(m=>m.count),N:()=>FL.sim.N}:null,flowAt:FLOW?(x,z,t)=>flowAt(x,z,t):null,
     depthAt:SB?(x,z)=>-H(x,z):null,bathy:SB?()=>SB.bathy():null,
     seabed:SB?{params:()=>JSON.parse(JSON.stringify(SB.P)),measures:()=>{const M=SB.measures();delete M._lists;return JSON.parse(JSON.stringify(M));},lists:()=>{const M=SB.measures(),o=M._lists;return JSON.parse(JSON.stringify({sills:o.sills,landing:o.landing,hauls:o.hauls,coves:o.coves,throats:o.throats}));},
