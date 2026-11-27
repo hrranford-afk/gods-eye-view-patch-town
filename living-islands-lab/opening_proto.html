@@ -7,7 +7,7 @@
 <link rel="icon" href="data:,">
 <!-- Living Islands: the OPENING FILM prototype (research/OPENING_BUILD_PLAN.md). STANDALONE: three.js r128 from the repo's vendor copy; the wave code (sea_waves.js), the film engine (opening.js), the seed 9001 island
      (sea_proto/island_9001.js), the salvage kit (sea_proto/salvage.js, salvage_world.js) and the tier table (tiers.js). It plays the whole 90 s: night watch, first light, working quay, long swell, the Great Wash,
-     wrack line, arrival, first repair. Quay, bays, robots, hulk, boat, people and hands are PLACEHOLDER shapes (listed in the panel). No sound: the film only NAMES its cues (the cue log shows them).
+     wrack line, arrival, first repair. Jetty, bays, hut, camp props, hulk, robots, battery and gloved hands come from the detail kit (details.js); the boat, bow, lighthouse, trees and people are still simple shapes (listed in the panel). No sound: the film only NAMES its cues (the cue log shows them).
      URL: ?tier=ipad|desktop|radeon|max  &t=seconds  &freeze=1 (do not play)  &ui=0 (no panel)  &debug=1 (debug camera)  &captions=1  &salv=N (background salvage count)  &clouds=0  &speed=1 -->
 <style>
 :root{--bg:#10131a;--ink:#ece6da;--panel:rgba(18,22,30,.88);--line:#3b4352;--accent:#e0a458}
@@ -40,7 +40,7 @@ canvas{display:block;width:100%;height:100%}
   <div class="sec">Frame</div><div id="stats"></div>
   <div class="sec">Cues fired</div><div id="cues">none yet</div>
   <div class="sec">Placeholders (not final models)</div>
-  <div id="ph">PLACEHOLDER: quay deck, four bays, shed, washing line, lanterns, jetty, robots (all six), crate, boat, boat bow, hulk, people (flat silhouettes), gloved hands, battery, lighthouse, trees, fire. Real: sea, waves, crest, whirlpool, sky, islands (seed 9001), drifting salvage models.</div>
+  <div id="ph">PLACEHOLDER (still blocks): boat, boat bow, the crate on the robot arm, lighthouse, trees, people (simple figures). From the DETAIL KIT (details.js): jetty (planks, piles, braces, crane, broken stubs), four stock bays, camp hut with rusty roof, lanterns, washing line, fire pit, barrels, the hulk, six robots, battery, gloved hands. Real: sea, waves, crest, whirlpool, sky, islands (seed 9001), drifting salvage models.</div>
 </div>
 <div id="bar">
   <button id="bPlay">Play</button><button id="bPrev" title="Previous shot ([)">|&lt;</button><button id="bSkip" title="Skip to next shot (])">Skip &gt;|</button>
@@ -57,12 +57,13 @@ canvas{display:block;width:100%;height:100%}
 <script src="sea_proto/island_9001.js"></script>
 <script src="sea_proto/salvage.js"></script>
 <script src="sea_proto/salvage_world.js"></script>
+<script src="details.js"></script>
 <script src="opening.js"></script>
 <script>
 (function(){
 'use strict';
 const Q=new URLSearchParams(location.search);
-const S=window.LI_SEA_WAVES,O=window.LI_OPENING,SV=window.LI_SALVAGE,TAU=Math.PI*2,DEG=Math.PI/180;
+const S=window.LI_SEA_WAVES,O=window.LI_OPENING,SV=window.LI_SALVAGE,D=window.LI_DETAILS,TAU=Math.PI*2,DEG=Math.PI/180;
 const clamp=(v,a,b)=>v<a?a:v>b?b:v,lerp=(a,b,t)=>a+(b-a)*t,sm=t=>{t=clamp(t,0,1);return t*t*(3-2*t);};
 const hash=O.hash;
 const UI=Q.get('ui')!=='0',FREEZE=Q.get('freeze')==='1';
@@ -262,72 +263,50 @@ function buildStatics(){
     for(let i=0;i<5;i++){const r0=2.5-i*.2;M.add(GC,L.x,y0+i*2.6+1.3,L.z,r0-.1,2.6,r0-.1,0,band[i],0,0,.02);}
     M.cyl(L.x,y0+13.1,L.z,2.5,.35,[.2,.2,.2]);M.cyl(L.x,y0+14.9,L.z,1.3,2.2,[.15,.15,.16]);M.cone(L.x,y0+16.6,L.z,1.9,1.5,[.25,.12,.10]);
     Gl.cyl(L.x,y0+14.3,L.z,1.1,1.0,[1,.82,.5]);}
-  /* camp: the jetty (to u=12 fixed; 12 to 24 breaks up in the wash; 24 to 38 is the loose section), piles, apron, bays, shed, washing line, lanterns, fire */
-  jbox(M,5,0,DECK-.14,14,.28,3.2,WOOD);jbox(M,5,3.1,DECK-.14,14,.28,6.0,WOODL);   /* deck u -2..12 and the apron on the land side */
-  for(let u=-1.5;u<=12;u+=1.0)jbox(M,u,0,DECK+.0,.06,.02,3.2,WOODD);
-  for(const w of [-1.55,1.55])jbox(M,5,w,DECK+.55,14,.1,.1,WOODD);
-  for(let u=-1;u<=12;u+=3)for(const w of [-1.6,1.6]){jcyl(M,u,w,DECK-1.2,.2,4.8,WOODD);jcyl(M,u,w,DECK+.2,.22,.5,WOOD);M.add(GC,jw(u,w)[0],DECK+.1,jw(u,w)[1],.24,.08,.24,0,ROPEC);}
-  /* the four stock bays on the apron: planks, rope, glass, metal */
-  for(let b=0;b<4;b++){const u=1.6+b*3.1,w=5.4;jbox(M,u,w,DECK+.35,2.6,.7,1.7,WOODD);jbox(M,u,w,DECK+.4,2.4,.6,1.5,[.12,.09,.06]);
-    if(b===0)for(let i=0;i<6;i++)jbox(M,u,w-.5+.2*(i%5),DECK+.74+.06*(i%3),2.2,.09,.17,WOODL);
-    if(b===1)for(let i=0;i<3;i++){const p=jw(u-.6+i*.62,w+(i%2)*.2-.1);M.add(GC,p[0],DECK+.82,p[1],.38,.22,.38,0,ROPEC);}
-    if(b===2)for(let i=0;i<5;i++){const p=jw(u-.8+i*.4,w+(i%2)*.3-.15);M.cyl(p[0],DECK+.95,p[1],.14,.5,[.2,.55,.32]);M.sph(p[0],DECK+1.2,p[1],.14,[.22,.58,.34]);}
-    if(b===3){jbox(M,u-.4,w,DECK+.78,1.2,.07,.9,[.46,.28,.2],.1);jbox(M,u+.3,w,DECK+.84,1.0,.06,.8,METAL,-.2);const p=jw(u+.7,w+.3);M.add(GC,p[0],DECK+.95,p[1],.3,.07,.3,0,[.35,.27,.2],Math.PI/2);}}
-  /* the loose-section parts that stay behind: nothing. The shed, the washing line, the fire, the people stand on the island. */
-  {const sp=jw(-3,15),sg=FIELD.groundAt(sp[0],sp[1]);M.box(sp[0],sg+1.7,sp[1],9,3.4,6,JYAW,[.55,.5,.44]);M.box(sp[0],sg+3.5,sp[1],9.6,.3,6.8,JYAW,RUST,0,.18);M.box(sp[0],sg+3.5,sp[1],9.6,.3,6.8,JYAW,RUST,0,-.18);
-    for(let i=0;i<3;i++){const q=jw(-3-2.8+i*2.8,12.05);Gl.box(q[0],sg+1.6,q[1],1.1,1.0,.12,JYAW,[1,.72,.35]);}}
-  for(const side of [0,1]){const q=jw(side?8:-2,9.5),g=FIELD.groundAt(q[0],q[1]);M.cyl(q[0],g+1.7,q[1],.08,3.4,WOODD);}
-  {const a=jw(-2,9.5),b=jw(8,9.5),ga=FIELD.groundAt(a[0],a[1]);for(let i=0;i<9;i++){const u=-2+i*1.15,q=jw(u,9.5),y=ga+3.3-.18*Math.sin((i+.5)/9*Math.PI)*1.0;M.box(q[0],y-.28,q[1],.45,.55,.04,JYAW,i%3===0?[.85,.85,.8]:i%3===1?[.4,.5,.65]:[.7,.7,.72]);}}
-  {const q=jw(-4,7.2),g=FIELD.groundAt(q[0],q[1]);for(let i=0;i<7;i++){const a=i/7*TAU;M.sph(q[0]+Math.cos(a)*.8,g+.2,q[1]+Math.sin(a)*.8,.28,[.4,.4,.4],.8);}Gl.cone(q[0],g+.5,q[1],.45,1.0,[1,.55,.15]);}
-  /* lanterns on the piles (glow) */
-  for(let u=2;u<=11;u+=3)for(const w of [-1.6,1.6]){const p=jw(u,w);Gl.sph(p[0],DECK+.95,p[1],.14,[1,.72,.35]);}
   G.static=M.mesh(LAMB);scene.add(G.static);G.glow=Gl.mesh(GLOWM);scene.add(G.glow);
-  /* the breakable middle of the jetty (u 12 to 24, deck and rails) and the tall piles beyond u 12; after the wash only snapped stubs stand */
-  const B=new Merger();jbox(B,18,0,DECK-.14,12,.28,3.2,WOOD);for(let u=12.5;u<24;u+=1.0)jbox(B,u,0,DECK+.0,.06,.02,3.2,WOODD);for(const w of [-1.55,1.55])jbox(B,18,w,DECK+.55,12,.1,.1,WOODD);
-  for(let u=14;u<=23;u+=3)for(const w of [-1.6,1.6]){jcyl(B,u,w,DECK-1.2,.2,4.8,WOODD);jcyl(B,u,w,DECK+.2,.22,.5,WOOD);}
-  G.deckB=B.mesh(LAMB);scene.add(G.deckB);
-  const P=new Merger();for(let u=26;u<=38;u+=3)for(const w of [-1.6,1.6]){jcyl(P,u,w,DECK-1.2,.2,4.8,WOODD);jcyl(P,u,w,DECK+.2,.22,.5,WOOD);}G.pilesTail=P.mesh(LAMB);scene.add(G.pilesTail);
-  for(const side of [0,1]){const S2=new Merger();for(let u=14;u<=38;u+=3){const w=side?1.6:-1.6,p=jw(u,w),g=hash(u*3,side)*.9;S2.cyl(p[0],DECK-1.9+g*.5,p[1],.2,3.1+g,WOODD,0,.08*(hash(u,7)-.5)*2,.08*(hash(u,8)-.5)*2);S2.add(GC,p[0],DECK-.3+g*.5,p[1],.17,.35,.17,0,[.55,.45,.33]);}
-    G['stubs'+side]=S2.mesh(LAMB);scene.add(G['stubs'+side]);}
-  /* the hulk: stranded bow in on the east shore bank (PLACEHOLDER) */
-  {const H=LAYOUT.hulk,Mh=new Merger(),c=Math.cos(H.yaw),s=Math.sin(H.yaw),hp=(l,w)=>[H.x+c*l-s*w,H.z+s*l+c*w],rust=[.42,.24,.17],pale=[.62,.58,.52];
-    const g=FIELD.groundAt(H.x,H.z),y0=Math.max(g,-.2)+1.4;
-    Mh.box(H.x,y0,H.z,H.len,2.9,4.6,-H.yaw,rust,0,.1);   /* hull */
-    {const b=hp(H.len/2+1.2,0);Mh.box(b[0],y0+.1,b[1],3.2,2.7,3.6,-H.yaw,rust,0,.05,.0);}
-    {const b=hp(-H.len/2+2.2,0);Mh.box(b[0],y0+2.6,b[1],4.2,2.3,3.4,-H.yaw,pale,0,.1);const f=hp(-H.len/2+2.3,0);Mh.box(f[0],y0+4.3,f[1],3.0,1.1,2.6,-H.yaw,pale,0,.1);
-      for(let i=0;i<4;i++){const w=hp(-H.len/2+.4+i*.9,2.0);Mh.box(w[0],y0+2.8,w[1],.5,.45,.1,-H.yaw,[.1,.1,.12]);}}
-    {const m=hp(-H.len/2+5.5,0);Mh.cyl(m[0],y0+5.5,m[1],.12,8,[.2,.15,.12],0,0,.2);}
-    for(let i=0;i<7;i++){const r=hp(-H.len/2+1.5+i*2.0,2.35);Mh.box(r[0],y0+1.6,r[1],.18,2.6,.12,-H.yaw,[.2,.15,.12],0,.0);}
-    G.hulk=Mh.mesh(LAMB);G.hulk.rotation.set(0,0,0);scene.add(G.hulk);}
-  /* the mooring rope's bollard and the section are dynamic below */
-  /* the breaking section (u 24 to 38): deck, rails, bollard, lantern. Its pose is O.sectionPose. */
-  {const Sx=new Merger(),cu=31;const lb=(u,w,y,su,sy,sw,col,dy)=>Sx.box(u-cu,y,w,su,sy,sw,dy||0,col);   /* local frame: x along the jetty, z across, y world minus 0 */
-    lb(cu,0,DECK-.14,14,.28,3.2,WOOD);lb(cu,0,DECK-.14,14,.28,3.2,WOOD);for(let u=24.5;u<38;u+=1)lb(u,0,DECK+.0,.06,.02,3.2,WOODD);for(const w of [-1.55,1.55])lb(cu,w,DECK+.55,14,.1,.1,WOODD);
-    for(let u=25;u<=37;u+=3){Sx.cyl(u-cu,DECK-.5,-1.6,.2,1.4,WOODD);Sx.cyl(u-cu,DECK-.5,1.6,.2,1.4,WOODD);}
-    Sx.cyl(7,DECK+.35,-1.4,.22,.7,[.2,.18,.16]);
-    G.section=new THREE.Group();const sm0=Sx.mesh(LAMB);G.section.add(sm0);const lg=new Merger();lg.sph(7,DECK+1.0,1.45,.16,[1,.72,.35]);G.sectionGlow=lg.mesh(GLOWM);G.section.add(G.sectionGlow);scene.add(G.section);}
+  buildDetails();
 }
-/* ---- robots (PLACEHOLDER): tracked box, ochre body, a box head with a lamp eye (no mouth), a gripper arm ---- */
-const lensMats=[];
-function makeRobot(scale){const g=new THREE.Group(),M=new Merger(),k=scale||1;
-  M.box(0,.28,.0,1.0,.28,.62,0,[.18,.17,.16]);M.box(0,.4,.34,1.0,.2,.18,0,[.14,.13,.12]);M.box(0,.4,-.34,1.0,.2,.18,0,[.14,.13,.12]);
-  M.box(0,.78,0,.78,.6,.58,0,[.80,.56,.14]);M.box(0,1.05,-.0,.4,.12,.3,0,[.5,.38,.12]);M.box(0,1.33,0,.46,.38,.5,0,[.82,.58,.14]);
-  M.box(.34,.86,.0,.24,.2,.5,0,[.55,.40,.12],0,0,.3);   /* shoulder */
-  M.box(.62,.76,.28,.62,.1,.1,0,[.7,.5,.12],0,0,-.45);M.box(.9,.6,.28,.14,.2,.1,0,[.3,.28,.26]);M.box(.9,.5,.34,.14,.07,.14,0,[.3,.28,.26]);
-  const m=M.mesh(LAMB);g.add(m);
-  const lens=new THREE.Mesh(new THREE.CylinderGeometry(.11,.11,.1,10),new THREE.MeshBasicMaterial({color:0xffcc77,fog:false}));lens.rotation.z=Math.PI/2;lens.position.set(.27,1.35,0);g.add(lens);lensMats.push(lens.material);
-  g.userData.lens=lens;g.scale.setScalar(k);scene.add(g);return g;}
+/* ---- the DETAIL KIT (details.js): jetty, bays, hut, washing line, fire, barrels, lanterns, hulk and robots are real pieces now ---- */
+const KIT=D.makeKit(THREE),DL=TIERN==='ipad'?1:0,HERO=0;   /* detail level of the props: lod 1 on the iPad tier (TUNING, unmeasured), lod 0 elsewhere; hero pieces always lod 0 */
+const HYAW=.55;
+const CAMPU={hut:[12.5,19.5],fire:[7,13.6],wash:[0.5,15.8],barrels:[11,13.2],people:[5.5,13.0]};
+function jframe(obj,u,w,y,dyaw){const p=jw(u,w);obj.position.set(p[0],y,p[1]);obj.rotation.y=JYAW+(dyaw||0);return obj;}
+function buildDetails(){
+  const jet=(u0,u1,o)=>D.build(KIT,'jetty',Object.assign({seed:11,wear:.55,lod:DL,u0,u1,deckY:DECK},o));
+  const keep=obj=>{scene.add(obj);return obj;};
+  G.jettyFixed=keep(jframe(jet(-2,12,{apron:true,crane:9.5,bollards:[4]}),0,0,0));
+  G.deckB=keep(jframe(jet(12,24,{apron:false,bollards:[]}),0,0,0));
+  G.pilesTail=keep(jframe(jet(24,38,{planks:false,rails:false,braces:false,bollards:[],loose:0}),0,0,0));
+  for(const side of [0,1])G['stubs'+side]=keep(jframe(jet(12,38,{planks:false,rails:false,braces:false,bollards:[],snap:1,broken:1,loose:side?0:9,side:side?1:-1,seed:23+side}),0,0,0));
+  /* the loose section (u 24 to 38): deck, rails and cross beams, local x = u - 31; its pose is O.sectionPose */
+  {const sec=jet(24,38,{piles:false,braces:true,bollards:[37.4],seed:19});sec.position.set(-31,0,0);G.section=new THREE.Group();G.section.add(sec);scene.add(G.section);
+   G.sectionLamp=D.build(KIT,'lantern',{seed:5,lod:DL,halo:false,lit:0});G.sectionLamp.position.set(7,DECK+.95,1.45);G.section.add(G.sectionLamp);}
+  /* four stock bays on the apron, the open (low) side toward the jetty */
+  G.bays=['bay_planks','bay_rope','bay_glass','bay_metal'].map((k,b)=>keep(jframe(D.build(KIT,k,{seed:31+b,wear:.55,lod:DL,stack:[.85,.7,.6,.8][b]}),1.6+b*3.1,5.4,DECK)));
+  /* lanterns on the piles (the film's halo points give the glow), the hut with its own lanterns, washing line, fire, barrels */
+  G.lanterns=[];for(const u of [2,8])for(const w of [-1.6,1.6]){const l=D.build(KIT,'lantern',{seed:u*3+(w>0?1:0),lod:DL,halo:false,lit:.8});jframe(l,u,w,DECK+1.05);scene.add(l);G.lanterns.push(l);}
+  {const q=jw(CAMPU.hut[0],CAMPU.hut[1]),g=FIELD.groundAt(q[0],q[1]);G.hut=keep(jframe(D.build(KIT,'hut',{seed:3,wear:.6,lod:DL,lit:.8}),CAMPU.hut[0],CAMPU.hut[1],g-.35));}
+  {const a=jw(CAMPU.wash[0],CAMPU.wash[1]),b=jw(CAMPU.wash[0]+10,CAMPU.wash[1]),g=Math.min(FIELD.groundAt(a[0],a[1]),FIELD.groundAt(b[0],b[1]));G.wash=keep(jframe(D.build(KIT,'washline',{seed:4,lod:DL,len:10,cloths:7}),CAMPU.wash[0],CAMPU.wash[1],g-.05));}
+  {const q=jw(CAMPU.fire[0],CAMPU.fire[1]);G.fire=keep(jframe(D.build(KIT,'firepit',{seed:6,wear:.6,lod:DL,lit:1}),CAMPU.fire[0],CAMPU.fire[1],FIELD.groundAt(q[0],q[1])-.02));}
+  {const q=jw(CAMPU.barrels[0],CAMPU.barrels[1]);G.barrels=keep(jframe(D.build(KIT,'barrels',{seed:8,wear:.6,lod:DL}),CAMPU.barrels[0],CAMPU.barrels[1],FIELD.groundAt(q[0],q[1])-.02,.4));}
+  /* the hulk: a rusted trawler aground, listing toward the sea, keel buried */
+  {const H=LAYOUT.hulk,pl=D.build(KIT,'hulk',{seed:5,wear:.7,lod:DL}),g=FIELD.groundAt(H.x,H.z);G.hulkTilt=new THREE.Group();G.hulkTilt.rotation.x=-.3;G.hulkTilt.add(pl);G.hulk=new THREE.Group();G.hulk.add(G.hulkTilt);G.hulk.position.set(H.x,Math.max(g,.2)-1.0,H.z);G.hulk.rotation.y=JYAW+HYAW;scene.add(G.hulk);}
+}
+/* ---- robots: the detail kit's three old machines (hauler, sorter, stacker), lamp brightness set per frame with userData.setLens ---- */
+const mkRobot=(kind,seed,scale,hero)=>{const g=D.build(KIT,kind,{seed,wear:.62,lod:hero?HERO:DL,lens:1,hatch:0});g.scale.setScalar(scale||1);scene.add(g);return g;};
 let robots={};
 function buildActors(){
-  robots.carry=makeRobot();robots.idle=makeRobot();robots.park=makeRobot();robots.still1=makeRobot();robots.still2=makeRobot();robots.still3=makeRobot();robots.repair=makeRobot(1.35);
+  robots.carry=mkRobot('robot_hauler',1);robots.idle=mkRobot('robot_sorter',2);robots.park=mkRobot('robot_stacker',3);robots.still1=mkRobot('robot_hauler',4);robots.still2=mkRobot('robot_sorter',5);robots.still3=mkRobot('robot_stacker',6);robots.repair=mkRobot('robot_hauler',7,1.35,true);
   /* a crate (placeholder) on the carrying robot's arm; the loose crate on the section is a salvage-kit crate */
   const cm=new Merger();cm.box(0,0,0,.7,.7,.7,0,[.74,.40,.14]);cm.box(0,0,0,.72,.1,.72,0,[.5,.28,.1]);robots.crate=cm.mesh(LAMB);scene.add(robots.crate);
   /* people: three flat dark silhouettes (PLACEHOLDER), counted not tracked */
-  const pm=new Merger();for(const [dx,dz,h] of [[0,0,1.7],[2.4,.6,1.65],[-2.2,1.2,1.2]]){pm.cyl(dx,h*.4,dz,.22,h*.8,[.08,.08,.1]);pm.sph(dx,h*.9,dz,.17,[.08,.08,.1]);}
-  const pw=jw(-2.6,11),pg=FIELD.groundAt(pw[0],pw[1]);robots.people=pm.mesh(new THREE.MeshBasicMaterial({vertexColors:true}));robots.people.position.set(pw[0],pg,pw[1]);scene.add(robots.people);
-  /* the repair: battery and two gloved hands (boxes) */
-  const bat=new Merger();bat.box(0,0,0,.34,.16,.14,0,[.36,.38,.40]);bat.box(.1,0,0,.07,.17,.15,0,[.9,.62,.14]);bat.box(-.1,0,0,.07,.17,.15,0,[.9,.62,.14]);robots.battery=bat.mesh(LAMB);scene.add(robots.battery);
-  const hn=new Merger();hn.box(0,0,0,.16,.07,.1,0,[.42,.32,.2]);hn.box(-.2,.02,0,.28,.09,.1,0,[.34,.30,.22]);hn.box(-.48,.03,0,.34,.14,.14,0,[.36,.34,.3]);robots.handA=hn.mesh(LAMB);robots.handB=hn.mesh(LAMB);scene.add(robots.handA,robots.handB);
+  /* people: three simple figures (legs, coat, head, arms, cap), flat colours, standing by the fire (still simple, but not silhouettes) */
+  const pm=new Merger();[[0,0,1.7,[.30,.38,.52],[.86,.82,.72]],[2.3,.5,1.6,[.52,.28,.24],[.74,.64,.46]],[-2.0,1.1,1.25,[.36,.46,.34],[.80,.78,.70]]].forEach(([dx,dz,h,coat,cap],i)=>{const sk=[.80,.60,.46];
+    pm.cyl(dx-.1,h*.24,dz,.075,h*.48,[.22,.2,.22]);pm.cyl(dx+.1,h*.24,dz,.075,h*.48,[.22,.2,.22]);pm.box(dx,h*.62,dz,.42,h*.38,.26,0.2*i,coat);pm.sph(dx,h*.9,dz,.115,sk);pm.cyl(dx,h*.96,dz,.13,.06,cap);
+    pm.box(dx-.26,h*.6,dz,.1,h*.34,.1,0,coat,0,0,.1);pm.box(dx+.26,h*.6,dz,.1,h*.34,.1,0,coat,0,0,-.1);});
+  const pw=jw(CAMPU.people[0],CAMPU.people[1]),pg=FIELD.groundAt(pw[0],pw[1]);robots.people=pm.mesh(LAMB);robots.people.position.set(pw[0],pg,pw[1]);scene.add(robots.people);
+  /* the repair: two gloved hands from the kit, children of the repair robot (robot frame: forward +x, hatch side +z); the robot's own battery slides in */
+  robots.hands=D.build(KIT,'hands',{seed:9,wear:.6,lod:HERO,curl:.5});robots.repair.add(robots.hands);
 }
 /* the arrival boat's bow (PLACEHOLDER), a child of the camera for shot 7 */
 function buildBow(){const M=new Merger();
@@ -354,7 +333,7 @@ function buildHalo(){const c=document.createElement('canvas');c.width=c.height=6
   const add=(x,y,z,s,r,g,b,key)=>haloList.push({x,y,z,s,c:[r,g,b],key});
   add(L.x,L.baseY+14.3,L.z,26,1,.8,.5,'beam');
   for(let u=2;u<=11;u+=3)for(const w of [-1.6,1.6]){const p=jw(u,w);add(p[0],DECK+.95,p[1],2.2,1,.7,.35,'windows');}
-  {const sp=jw(-3,15),sg=FIELD.groundAt(sp[0],sp[1]);for(let i=0;i<3;i++){const q=jw(-5.8+i*2.8,12.05);add(q[0],sg+1.6,q[1],3.2,1,.7,.35,'windows');}const f=jw(-4,7.2);add(f[0],FIELD.groundAt(f[0],f[1])+.8,f[1],6,1,.55,.2,'fire');}
+  {const f=jw(CAMPU.fire[0],CAMPU.fire[1]);add(f[0],FIELD.groundAt(f[0],f[1])+.9,f[1],6,1,.55,.2,'fire');}
   add(0,0,0,14,1,.8,.5,'boat');add(0,0,0,3,1,.7,.35,'sectionLamp');
   const n=haloList.length,pos=new Float32Array(n*3),col=new Float32Array(n*3),siz=new Float32Array(n);
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('color',new THREE.BufferAttribute(col,3));g.setAttribute('size',new THREE.BufferAttribute(siz,1));
@@ -445,27 +424,29 @@ function stagedFrame(t,st){
 function drawWrack(t){let n=0;for(const w of WRACK){if(t<w.tw)continue;const K=SV.KIND[w.kind],lod=0,wet=.7;const g=FIELD.groundAt(w.x,w.z);addInst(w.kind,w.variant,lod,w.x,g+K.h*w.size*(.5-w.bury),w.z,w.yaw,0,0,w.size,wet,9000+w.n);n++;}return n;}
 
 /* ------------------------------------------------------------ the actors at time t ------------------------------------------------------------ */
-function putRobot(r,x,z,yaw,lensK,bob){const g=FIELD.groundAt(x,z);r.position.set(x,Math.max(g,DECK<g?g:g),z);r.rotation.y=-yaw;r.userData.lens.material.color.setRGB(1.0*lensK,.8*lensK,.45*lensK);r.visible=true;void bob;}
+const lensOf=(r,k)=>r.userData.setLens(k);
 function actors(t,st){
   const dk=(u,w,y)=>{const p=jw(u,w);return [p[0],y,p[1]];};
   /* carrying robot along the jetty */
   const R1=robots.carry,u1=t<20?3:t<35.2?3+1.5*(t-20):t<46?Math.max(6,26.3-2.0*(t-36)):6;
   {const p=jw(u1,.4);R1.position.set(p[0],DECK+.0,p[1]);if(t>=46.5){const q=jw(11,4.4);R1.position.set(q[0],DECK+.0,q[1]);}R1.rotation.y=JYAW+(t>=36&&t<46.5?Math.PI:0);R1.visible=t<80;
-   R1.userData.lens.material.color.setRGB(1,.8,.45);}
+   lensOf(R1,1);}
   /* the crate: on the arm until set down at 35.2, then on the section deck; the section crate is the salvage crate after that (this box hides) */
   {const c=robots.crate;if(t<35.2){const a=jw(u1+.85,.4);c.position.set(a[0],DECK+.55+.05*Math.sin(t*3),a[1]);c.rotation.y=JYAW;c.visible=true;}else c.visible=false;}
   /* the idle robot at the tip, lamp on, then back inland */
-  {const R2=robots.idle,u2=t<36?34.5:Math.max(8,34.5-2.0*(t-36));const p=jw(u2,-.9);R2.position.set(p[0],DECK,p[1]);R2.rotation.y=JYAW+Math.PI;R2.visible=t<46.5;R2.userData.lens.material.color.setRGB(1,.8,.45);}
+  {const R2=robots.idle,u2=t<36?34.5:Math.max(8,34.5-2.0*(t-36));const p=jw(u2,-.9);R2.position.set(p[0],DECK,p[1]);R2.rotation.y=JYAW+Math.PI;R2.visible=t<46.5;lensOf(R2,1);}
   /* the parked robot on the apron during the storm */
-  {const R3=robots.park,q=jw(4,4.6),g=FIELD.groundAt(q[0],q[1]);R3.position.set(q[0],Math.max(DECK,g),q[1]);R3.rotation.y=JYAW-Math.PI/2;R3.visible=t>=46&&t<80;R3.userData.lens.material.color.setRGB(.5,.4,.2);}
+  {const R3=robots.park,q=jw(4,4.6),g=FIELD.groundAt(q[0],q[1]);R3.position.set(q[0],Math.max(DECK,g),q[1]);R3.rotation.y=JYAW-Math.PI/2;R3.visible=t>=46&&t<80;lensOf(R3,.45);}
   /* still robots on the beach after the wash (lamps dark) */
-  const stills=[[robots.still1,-119.5,73.5,.4],[robots.still2,-113,70,2.4],[robots.still3,-124,71,1.1]];
-  for(const [r,x,z,yw] of stills){const g=FIELD.groundAt(x,z);r.position.set(x,g,z);r.rotation.y=yw;r.rotation.z=.05;r.visible=t>=59&&t<70.5;r.userData.lens.material.color.setRGB(.12,.1,.08);}
-  /* the repair robot and the hands (shot 8): the battery slides into the socket on the robot's +z side at 85.4 s, the hands withdraw from 86.4 s */
-  {const R=LAYOUT.repair,r=robots.repair,sc=R.scale;r.position.set(R.x,DECK,R.z);r.rotation.y=R.theta;r.visible=t>=80.9;const lk=st.lens;r.userData.lens.material.color.setRGB(.12+.88*lk,.1+.7*lk,.08+.37*lk);
-    const seat=sm((t-85.0)/.4),wd=sm((t-86.4)/1.6),off=(1-seat)*.34*sc,bx=R.x+R.side[0]*(.40*sc+off),bz=R.z+R.side[1]*(.40*sc+off),by=DECK+.80*sc+.06*(1-seat);
-    const bs=robots.battery;bs.visible=t>=80.9;bs.position.set(bx,by,bz);bs.rotation.y=R.theta;
-    for(const [h,dl] of [[robots.handA,.16],[robots.handB,-.16]]){h.visible=t>=80.9&&wd<1;const out=.10*sc+wd*.55;h.position.set(bx+R.side[0]*out+R.f[0]*dl*sc,by-.30*wd,bz+R.side[1]*out+R.f[1]*dl*sc);h.rotation.y=R.theta+Math.PI/2;}}
+  const sp=(u,w)=>{const p=jw(u,w);return [p[0],p[1]];},s1=sp(14.4,13.4),s2=sp(17.6,12.4),s3=sp(15.6,15.2);
+  const stills=[[robots.still1,s1[0],s1[1],JYAW+2.3],[robots.still2,s2[0],s2[1],JYAW+.5],[robots.still3,s3[0],s3[1],JYAW+3.6]];
+  for(const [r,x,z,yw] of stills){const g=FIELD.groundAt(x,z);r.position.set(x,Math.max(g,.15)-.02,z);r.rotation.y=yw;r.visible=t>=59&&t<70.5;lensOf(r,.04);}
+  /* the repair robot (shot 8): the hatch is open from 81 s, the battery slides in at 85.4 s with the hands on it, the lens lights at 86.4 s with the relay cue; the hands let go only after the shot's last stills */
+  {const R=LAYOUT.repair,r=robots.repair,sc=R.scale,ud=r.userData;r.position.set(R.x,DECK,R.z);r.rotation.y=R.theta;r.visible=t>=80.9;lensOf(r,st.lens);ud.setHatch(1);
+    const seat=sm((t-84.6)/.8),wd=sm((t-88.7)/1.3),out=1-seat;ud.setBattery(out);
+    const bz=ud.plan.meta.bd/2-.07+out*.4,by=ud.plan.meta.by,hands=robots.hands;hands.visible=t>=80.9&&wd<1;
+    const hl=hands.getObjectByName('handL'),hr=hands.getObjectByName('handR');
+    hl.position.set(-.2,by-.03,bz+.32+wd*.6);hl.rotation.set(.0,Math.PI/2,.35);hr.position.set(.22,by-.03,bz+.32+wd*.6);hr.rotation.set(.0,Math.PI/2,.35);}
   /* people: scenery silhouettes at the camp during the working quay */
   robots.people.visible=t>=19&&t<47;
   /* the boat of the night watch (rides the sea), hidden once the day comes; the buoy at the end of the mooring rope */
@@ -474,7 +455,7 @@ function actors(t,st){
    const a=[jw(38,-1.4)[0],DECK+.35,jw(38,-1.4)[1]],b=[bu[0],h+.4,bu[1]];if(t>=19&&t<O.STAGE.tb){const taut=t>=35.4?.05:.5+.6*(1-sm((t-20)/10));ropes.moor.userData.set(a,b,taut*1.2);}else ropes.moor.visible=false;}
   /* the broken jetty: the middle (u 12 to 24) and the tail piles vanish at the break; stubs stand after. The section is placed by stagedFrame. */
   const broken=t>=O.STAGE.tb+.4;G.deckB.visible=!broken;G.pilesTail.visible=!broken;G.stubs0.visible=broken;G.stubs1.visible=broken;
-  {const sl=sm((t-74.5)/3.5);G.stubs0.position.set(jpp[0]*-sl*2.2,0,jpp[1]*-sl*2.2);G.stubs1.position.set(jpp[0]*sl*2.2,0,jpp[1]*sl*2.2);}
+  {const sl=sm((t-74.5)/3.5),b=jw(0,0);G.stubs0.position.set(b[0]+jpp[0]*-sl*2.2,0,b[1]+jpp[1]*-sl*2.2);G.stubs1.position.set(b[0]+jpp[0]*sl*2.2,0,b[1]+jpp[1]*sl*2.2);}
   G.hulk.visible=t>=57.5;
   G.bow.visible=G.bowLamp.visible=(t>=70&&t<81);
   G.bowLamp.material.color.setRGB(1,.8,.45);
@@ -517,6 +498,7 @@ function renderAt(t,dt){
     scene.fog.color.setRGB(fogTone[0],fogTone[1],fogTone[2]);scene.fog.density=Look.fog;}
   /* actors, staged raft, wrack, salvage */
   actors(t,st);
+  KIT.update(t);{const wk=st.windows;G.lanterns.forEach(l=>l.userData.setLit(wk));G.hut.userData.setLit(wk*.9);G.sectionLamp.userData.setLit((t>=19&&t<=70)?.8:0);G.fire.userData.setLit(t>=19?1:.7);}
   if(SALV.set){SALV.set.begin();const fr=stagedFrame(t,st);drawWrack(t);const e=SALV.set.end();lastStats.staged=e;void fr;}
   if(SALV.w){const settleJump=Math.abs(t-(renderAt.prevT===undefined?t:renderAt.prevT));if(settleJump>2){SALV.w.settle(t,20);}else if(dt>0&&!FREEZE_STEP)SALV.w.step(Math.min(dt,.1),t);SALV.w.render(t,cam);lastStats.salv=SALV.w.stats();}
   renderAt.prevT=t;

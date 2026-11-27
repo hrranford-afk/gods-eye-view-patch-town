@@ -315,7 +315,7 @@
     const pos = [
       /* 1 night watch */ k(0, [40, 3.4, 150]), k(4.5, [50, 3.4, 116]), k(9, [58, 3.6, 92]),
       /* 2 first light (cut: a dissolve) */ k(9, [34, 3.9, 148], c()), k(13.5, [14, 20, 178]), k(20, [0, 58, 232]),
-      /* 3 and 4: one run, the rope pan hides the shot change */ k(20, up(jp(-7, 4, 4.4), 0.9), c()), k(27, up(jp(5, -1.6, 3.9), .9)), k(34, up(jp(24, -2.2, 3.7), .9)), k(38.5, up(jp(40, -2.6, 3.8), .9)), k(42.5, up(jp(52, -3, 3.9), .9)), k(46.99, up(jp(62, -3.4, 4.1), .9)),
+      /* 3: from the land beside the quay: bays, hut, fire and the deck with its robots in one frame (a slow dolly), then a cut to 4, which follows the rope out */ k(20, up(jp(3, 13.2, 6.0), 1.6), c()), k(28, up(jp(5.5, 13.0, 5.9), 1.6)), k(35.99, up(jp(8, 12.8, 5.8), 1.6)), k(36, up(jp(24, -2.2, 3.7), .9), c()), k(38.5, up(jp(40, -2.6, 3.8), .9)), k(42.5, up(jp(52, -3, 3.9), .9)), k(46.99, up(jp(62, -3.4, 4.1), .9)),
       /* 5 great wash */ k(47, [30, 24, 40], c()), k(52, [10, 19, 38]), k(55.5, [-28, 13, 26]), k(58.99, [-50, 11, 28]),
       /* 6 wrack line */ k(59, up(camp.a, 1.2), c()), k(64.5, up(camp.b, 1.2)), k(69.99, up(camp.c, 1.2)),
       /* 7 arrival */ k(70, up(jp(34, -22, 2.5), 0.5), c()), k(75.5, up(jp(18, -14, 2.5), 0.5)), k(80.99, up(jp(5, -7, 2.6), 0.5)),
@@ -324,13 +324,13 @@
     const tgt = [
       k(0, lampTop), k(4.5, [LH.x - 12, 12, LH.z + 30]), k(9, lampTop),
       k(9, lampTop, c()), k(13.5, [40, 6, -30]), k(20, [0, 0, -20]),
-      k(20, jp(10, 2, 2.6), c()), k(27, jp(14, -1, 2.8)), k(34, jp(36, -3, 2.2)), k(38.5, jp(58, -4, 1.8)), k(42.5, [LH.x - 20, 2.2, LH.z + 40]), k(46.99, [LH.x - 10, 4, LH.z + 20]),
+      k(20, jp(7.5, 3.4, 1.9), c()), k(28, jp(10, 3.0, 1.9)), k(35.99, jp(13, 2.6, 1.9)), k(36, jp(36, -3, 2.2), c()), k(38.5, jp(58, -4, 1.8)), k(42.5, [LH.x - 20, 2.2, LH.z + 40]), k(46.99, [LH.x - 10, 4, LH.z + 20]),
       k(47, [-20, 2, 18], c()), k(52, [-58, 3, 42]), k(55.5, at3(55.5, 1.4)), k(58.99, at3(58.99, 1.2)),
-      k(59, [hulk.x, 4.5, hulk.z], c()), k(64.5, [hulk.x + 2, 4.2, hulk.z - 2]), k(69.99, [hulk.x + 6, 3.8, hulk.z - 6]),
+      k(59, [hulk.x - d[0] * 1.5, 3.3, hulk.z - d[1] * 1.5], c()), k(64.5, [hulk.x + d[0] * 1.5, 3.4, hulk.z + d[1] * 1.5]), k(69.99, [hulk.x + d[0] * 3.5, 3.4, hulk.z + d[1] * 3.5]),
       k(70, jp(2, 0, 3), c()), k(75.5, jp(1, 1, 3.3)), k(80.99, jp(0, 2, 3.4)),
       k(81, RP.tgt, c()), k(90, RP.tgt)
     ];
-    const fov = [k(0, 50), k(9, 50), k(9, 52, c()), k(20, 44), k(20, 56, c()), k(36, 54), k(46.99, 50), k(47, 46, c()), k(59, 46), k(59, 52, c()), k(70, 50), k(70, 48, c()), k(81, 50), k(81, 40, c()), k(90, 36)];
+    const fov = [k(0, 50), k(9, 50), k(9, 52, c()), k(20, 44), k(20, 66, c()), k(35.99, 62), k(36, 54, c()), k(46.99, 50), k(47, 46, c()), k(59, 46), k(59, 46, c()), k(70, 46), k(70, 48, c()), k(81, 50), k(81, 40, c()), k(90, 36)];
     const T = {
       seaSwell: [k(0, .10), k(30, .10), k(37, .35), k(44, .85), k(49, .3), k(53, 0), k(90, 0)],
       seaStorm: [k(0, 0), k(43, 0), k(47.5, .7), k(50.5, 1), k(57, .95), k(60, .35), k(63, 0), k(90, 0)],
@@ -382,12 +382,14 @@
   function buildLayoutFull(F) {
     const L = buildLayout(F), J = L.jetty, d = J.dir, pp = [-d[1], d[0]];
     const jp = (u, w) => [J.root[0] + d[0] * u + pp[0] * w, J.root[1] + d[1] * u + pp[1] * w];
-    const e = F.shoreAlong(-104, 72, 0, -1, 0.2, 60) || [-104, 59];
-    L.hulk = { x: e[0], z: e[1] - 2, yaw: -Math.PI / 2 + 0.3, len: 15, mid: [e[0], 4.2, e[1] - 1], near: [e[0] + 6, 3.0, e[1] - 4] };
-    L.campView = { a: [-132, 6.0, 78], b: [-124, 5.8, 75], c: [-116, 6.2, 77] };
+    /* the hulk lies aground on the east beach of the camp island, 15 m long, parallel to the shore (the shore there runs along the jetty direction): jetty frame u 24.5, w 15.5. The camera of the wrack line stands on the beach near the fire. */
+    const hp = jp(26.5, 15.8);
+    L.hulk = { x: hp[0], z: hp[1], yaw: Math.atan2(d[1], d[0]), len: 15, mid: [hp[0], 3.4, hp[1]], u: 26.5, w: 15.8 };
+    L.campView = { a: [].concat(jp(8.5, 11.4), []), b: [].concat(jp(10.5, 11.0), []), c: [].concat(jp(12.5, 11.6), []) };
+    for (const k of ['a', 'b', 'c']) L.campView[k] = [L.campView[k][0], 4.4, L.campView[k][1]];
     /* the repair robot stands on the apron, facing the land (toward the camera); its battery socket is on its local +z side. theta is THREE rotation.y: forward = (cos t, -sin t), side (+z) = (sin t, cos t). */
     const rp = jp(5.6, 2.55), fx = pp[0] * .85 - d[0] * .35, fz = pp[1] * .85 - d[1] * .35, fl = Math.hypot(fx, fz), f = [fx / fl, fz / fl], th = Math.atan2(-f[1], f[0]), side = [Math.sin(th), Math.cos(th)];
-    L.repair = { x: rp[0], z: rp[1], theta: th, f, side, scale: 1.35, cam: [rp[0] + f[0] * 2.7 + side[0] * 1.4, J.deckY + 1.55, rp[1] + f[1] * 2.7 + side[1] * 1.4], tgt: [rp[0] + side[0] * .55, J.deckY + 1.3, rp[1] + side[1] * .55] };
+    L.repair = { x: rp[0], z: rp[1], theta: th, f, side, scale: 1.35, cam: [rp[0] + f[0] * 1.5 + side[0] * 2.3, J.deckY + 1.5, rp[1] + f[1] * 1.5 + side[1] * 2.3], tgt: [rp[0] + f[0] * .15 + side[0] * .6, J.deckY + 1.25, rp[1] + f[1] * .15 + side[1] * .6] };
     L.boat = [62, -44]; L.jp = jp; return L;
   }
 
