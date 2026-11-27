@@ -120,6 +120,13 @@ else {
     }
     errs = []; const times = [5, 30, 65, 88];
     for (const t of times) { await page.goto('file://' + path.join(root, 'opening_proto.html') + '?ui=0&freeze=1&tier=ipad&t=' + t); await page.waitForFunction(() => window.__opening && window.__opening.ready && window.__oframes > 2, null, { timeout: 600000 }); await page.waitForTimeout(300); }
+    /* the film uses the kit: at 88 s the repair robot's hatch is open, the battery is in, the lens is lit, the hands are on; at 65 s the hulk and three still robots stand with dark lenses */
+    await page.goto('file://' + path.join(root, 'opening_proto.html') + '?ui=0&freeze=1&tier=ipad&t=88'); await page.waitForFunction(() => window.__opening && window.__opening.ready && window.__oframes > 2, null, { timeout: 600000 });
+    const f88 = await page.evaluate(() => { const o = window.__opening, r = o.robots.repair, h = r.getObjectByName('hatch'), b = r.getObjectByName('battery'), g = r.userData.glow_lens; return { bays: o.G.bays.length, hatch: h.rotation.y, bat: b.visible, lens: g.color.r, hands: o.robots.hands.visible, hut: !!o.G.hut, hulk: !!o.G.hulk }; });
+    ok(f88.bays === 4 && f88.hatch < -1.8 && f88.bat && f88.lens > .9 && f88.hands && f88.hut && f88.hulk, 'at 88 s the film shows the kit: 4 bays, hut, hulk, repair robot with the hatch open, battery seated, lens lit (' + f88.lens.toFixed(2) + '), gloved hands on it');
+    await page.goto('file://' + path.join(root, 'opening_proto.html') + '?ui=0&freeze=1&tier=ipad&t=65'); await page.waitForFunction(() => window.__opening && window.__opening.ready && window.__oframes > 2, null, { timeout: 600000 });
+    const f65 = await page.evaluate(() => { const o = window.__opening; return { stills: [o.robots.still1, o.robots.still2, o.robots.still3].map(r => [r.visible, r.userData.glow_lens.color.r]), hulk: o.G.hulk.visible, hands: o.robots.hands.visible }; });
+    ok(f65.hulk && f65.stills.every(s => s[0] && s[1] < .3), 'at 65 s the hulk stands on the shore and three still robots have dark lenses (' + f65.stills.map(s => s[1].toFixed(2)).join(', ') + ')');
     ok(errs.length === 0, 'opening_proto.html: zero console errors at t = ' + times.join(', ') + ' s' + (errs.length ? ' ' + errs.slice(0, 3).join(' | ') : ''));
     await browser.close();
   }
