@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Living Islands audio demo</title>
+<style>
+:root{--bg:#1d2a33;--fg:#f1e9d8;--ac:#e0a458;--pn:#2a3b47}
+*{box-sizing:border-box}body{margin:0;padding:16px;background:var(--bg);color:var(--fg);font:16px/1.4 system-ui,sans-serif;touch-action:manipulation}
+h1{font-size:20px;margin:0 0 8px}h2{font-size:15px;margin:16px 0 6px;color:var(--ac)}
+button{font:inherit;color:var(--fg);background:var(--pn);border:1px solid #4a6070;border-radius:8px;padding:10px 12px;margin:3px;min-height:44px}
+button:active{background:var(--ac);color:#000}#start{background:var(--ac);color:#000;font-weight:700;font-size:18px;padding:14px 22px}
+label{display:flex;align-items:center;gap:10px;margin:6px 0}label span{width:90px}input[type=range]{flex:1;min-height:32px}
+#bar{display:flex;align-items:flex-end;height:60px;gap:2px;background:#142029;padding:4px;border-radius:6px}#bar i{flex:1;background:var(--ac);min-height:1px}
+.row{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+</style></head><body>
+<h1>Living Islands audio demo</h1>
+<p>All sound is synthesised in the browser. Nothing is loaded.</p>
+<div class="row"><button id="start">Start audio</button><span id="status">audio not started</span><span>voices: <b id="vc">0</b></span><button id="mute">Mute</button></div>
+<div id="bar"></div>
+<h2>Master and mix</h2>
+<label><span>master</span><input type="range" id="master" min="0" max="1" step="0.01" value="0.7"></label>
+<label><span>effects</span><input type="range" id="fx" min="0" max="1" step="0.01" value="1"></label>
+<label><span>music</span><input type="range" id="music" min="0" max="1" step="0.01" value="0"></label>
+<h2>Beds</h2>
+<label><span>sea energy</span><input type="range" data-p="setSeaEnergy" min="0" max="1" step="0.01" value="0.3"></label>
+<label><span>wind</span><input type="range" data-p="setWind" min="0" max="1" step="0.01" value="0.1"></label>
+<label><span>rain</span><input type="range" data-p="setRain" min="0" max="1" step="0.01" value="0"></label>
+<label><span>night</span><input type="range" data-p="setNight" min="0" max="1" step="0.01" value="0"></label>
+<h2>Robot (kind x state; battery and wear below)</h2>
+<label><span>battery</span><input type="range" id="bat" min="0" max="1" step="0.01" value="1"></label>
+<label><span>wear</span><input type="range" id="wear" min="0" max="1" step="0.01" value="0"></label>
+<div id="robots"></div>
+<h2>Events</h2><div id="events"></div>
+<h2>Storm</h2>
+<label><span>storm pitch</span><input type="range" id="sp" min="0" max="1" step="0.01" value="0"></label>
+<button data-ev="rockHum">rock hum (at pitch)</button><button data-ev="thunder">thunder</button><button data-ev="stormRoar">storm roar</button>
+<script src="audio.js"></script>
+<script>
+(function(){
+var A=window.LI_AUDIO,$=function(i){return document.getElementById(i)};
+function unlock(){A.unlock();upd()}
+$('start').addEventListener('click',unlock);$('start').addEventListener('touchend',unlock);
+function upd(){var r=A.isRunning();$('status').textContent=r?'audio running':'audio not started';$('start').style.display=r?'none':''}
+$('mute').addEventListener('click',function(){var m=!A.isMuted();A.mute(m);this.textContent=m?'Unmute':'Mute'});
+$('master').oninput=function(){A.setMasterVolume(this.value)};$('fx').oninput=function(){A.setEffectsVolume(this.value)};$('music').oninput=function(){A.setMusicVolume(this.value)};
+[].forEach.call(document.querySelectorAll('[data-p]'),function(e){e.oninput=function(){A[e.dataset.p](e.value)};e.oninput()});
+var kinds=['hauler','sorter','stacker'],states=['work','tired','new','wet','idle'],rb=$('robots');
+kinds.forEach(function(k){states.forEach(function(s){var b=document.createElement('button');b.textContent=k+' '+s;b.onclick=function(){A.robotWork(k,k,s,+$('bat').value,+$('wear').value)};rb.appendChild(b)})});
+var st=document.createElement('button');st.textContent='stop all robots';st.onclick=function(){kinds.forEach(A.robotStop)};rb.appendChild(st);
+var ev=['key','winch','horn','crateThud','plankFit','uiTick','holdLoop','boatCreak','wake','gull','cricket','chord'];
+ev.forEach(function(n){var b=document.createElement('button');b.textContent=n;b.dataset.ev=n;$('events').appendChild(b)});
+['pebble','sand','grass','plank','stone'].forEach(function(g){var b=document.createElement('button');b.textContent='scrape '+g;b.onclick=function(){A.playEvent('scrape',{ground:g})};$('events').appendChild(b)});
+document.addEventListener('click',function(e){var n=e.target.dataset&&e.target.dataset.ev;if(n){unlock();A.playEvent(n,{pitch:+$('sp').value,level:+$('sp').value})}});
+var bars=[];for(var i=0;i<32;i++){var d=document.createElement('i');$('bar').appendChild(d);bars.push(d)}
+var data=null;
+function frame(){var an=A.analyser(128);$('vc').textContent=A.voices();
+ if(an){data=data||new Uint8Array(an.frequencyBinCount);an.getByteFrequencyData(data);for(var i=0;i<32;i++)bars[i].style.height=(data[i]/255*100)+'%'}
+ requestAnimationFrame(frame)}
+frame();upd();setInterval(upd,500);
+})();
+</script></body></html>
