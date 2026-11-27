@@ -138,3 +138,9 @@ Every placeholder is marked `PLACEHOLDER` in the page and listed in its panel so
 ## 10. Order of work
 
 1. This plan. 2. `opening.js` and `tests/opening-test.js`. 3. `opening_proto.html`. 4. Stills at t = 5, 15, 30, 45, 55, 65, 75, 88 s, `research/OPENING_PROTO_REPORT.md`.
+
+## 11. As built (27 Nov 2026)
+
+- Engine, page, test and the stills are in. Test: `node games/living-islands/tests/opening-test.js` gives 51 of 51. Stills and report: `research/opening_proto_shots/` and `research/OPENING_PROTO_REPORT.md`.
+- Changes from this plan while building: (1) a trough floor (`troughCompress`: below -1.2 m the surface falls at 0.15 of the rate, in the shader and the CPU height) because the storm troughs showed the 3.4 m shelf round the islands as a cliff; (2) the layout puts the camp bottom-left and the lighthouse top-right as in frame 02 (`ISLANDS` in `opening.js`); (3) the crest travels toward the camp at 145 degrees and the broken jetty section strands near the jetty root (`sectionPose`); (4) the wrack line is its own staged scatter on the shore (the salvage world's beach spawner assumes a fixed spot, so it is switched off and the floating drift is kept); (5) the page has no sound, only the cue log.
+- Not done: wiring, sound, real robot and quay models, grading, a measurement on any device.
