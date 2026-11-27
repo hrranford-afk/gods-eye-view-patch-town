@@ -36,3 +36,6 @@ About 15 more builder days.
 - Real device speed is unmeasured on the Radeon until a cost ladder report arrives.
 - Tests have gaps (build-tap-test never finishes); the owner's playtests are the real gate.
 - Story rules stay FIXED (helper never shown or named as an AI in act one; robots no mouths or speech; whirlpool only with the Great Storm).
+
+## Added 27 Nov (OWNER idea): the island clock
+One shared island pulse used by BOTH animation and sound: robot work cycles (lift, turn, place) quantised to the pulse with per-robot phase offsets and tempo multipliers (1/2x, 1x, 2x), lamp-eye pulses, lighthouse sweep, winch strokes; sound fired from animation contact frames so sight and sound always agree; tired robots drift off the beat, so the rhythm shows tiredness. It must read as working rhythm, never as dancing (the town warned against dancing robots; robots stay old plain machines). Slot: part of M5 (robot sound and eyes plus the weekly beat), after picture fixes. Needs a deterministic island clock in the page and a lookahead audio scheduler (AudioContext time) so iPad timing does not jitter.
