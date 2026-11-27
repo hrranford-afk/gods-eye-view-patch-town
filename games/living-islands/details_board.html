@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Opening detail kit board</title>
+<link rel="icon" href="data:,">
+<!-- Living Islands: the OPENING DETAIL KIT board. STANDALONE: three.js r128 (vendor copy) and details.js. Every piece, large, with a label.
+     URL: ?piece=robot_hauler|robot_sorter|robot_stacker|hulk|jetty|bay_planks|bay_rope|bay_glass|bay_metal|hut|lantern|washline|firepit|barrels|battery|hands|camp|all
+          &wear=0..1 &seed=N &lod=0|1|2 &hatch=0..1 &lens=0..1.5 &broken=0..1 &stack=0..1 &ui=0 &spin=0 &t=seconds (freeze the sway and flame clock)
+     Triangle and draw call counters are three.js renderer.info numbers. Software GL says nothing about speed on a device. -->
+<style>
+:root{--bg:#171a22;--ink:#ece6da;--panel:rgba(18,22,30,.9);--line:#3b4352;--accent:#e0a458}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:13px/1.35 system-ui,sans-serif;overflow:hidden}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+#side{position:fixed;left:12px;top:12px;width:268px;max-height:calc(100% - 24px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-sizing:border-box}
+#side h1{font-size:14px;margin:0 0 6px}
+#side label{display:block;margin:7px 0 2px;font-size:12px;opacity:.85}
+#side select,#side input[type=number]{width:100%;box-sizing:border-box;background:#0e1118;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font:inherit}
+#side input[type=range]{width:100%}
+.row{display:flex;gap:6px;align-items:center}
+.row button{flex:1;background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:5px 0;font:inherit}
+.row button.on{background:var(--accent);color:#1a1408;border-color:var(--accent)}
+.chk{display:flex;gap:8px;align-items:center;margin:8px 0 0;font-size:12px}
+#cnt{margin-top:10px;font-size:12px;font-variant-numeric:tabular-nums;white-space:pre-wrap;border-top:1px solid var(--line);padding-top:8px}
+#lbls{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+.lb{position:absolute;transform:translate(-50%,0);background:rgba(18,22,30,.82);border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-size:12px;white-space:nowrap}
+.hide{display:none!important}
+@media (max-width:640px){#side{width:auto;right:12px;max-height:46%}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="lbls"></div>
+<div id="side">
+  <h1>Opening detail kit</h1>
+  <label for="piece">Piece</label><select id="piece"></select>
+  <label>Wear <span id="wv">0.50</span></label><input id="wear" type="range" min="0" max="1" step="0.01" value="0.5">
+  <label for="seed">Seed</label><input id="seed" type="number" value="3" min="0" step="1">
+  <label>Level of detail</label><div class="row" id="lods"><button data-l="0" class="on">LOD 0</button><button data-l="1">LOD 1</button><button data-l="2">LOD 2</button></div>
+  <label>Lens brightness <span id="lv">1.00</span></label><input id="lens" type="range" min="0" max="1.5" step="0.01" value="1">
+  <label class="chk"><input id="hatch" type="checkbox"> battery hatch open</label>
+  <label class="chk"><input id="bout" type="checkbox"> battery half out</label>
+  <label class="chk"><input id="broken" type="checkbox"> broken (jetty storm and wreck state)</label>
+  <label>Stock height <span id="sv">0.70</span></label><input id="stack" type="range" min="0" max="1" step="0.01" value="0.7">
+  <label class="chk"><input id="spin" type="checkbox" checked> slow turn</label>
+  <div id="cnt"></div>
+  <div style="font-size:11px;opacity:.65;margin-top:6px">Drag to turn, wheel to zoom. Counters are renderer.info numbers; software GL says nothing about speed on a device.</div>
+</div>
+<script src="rubble/vendor/three/three.min.js"></script>
+<script src="details.js"></script>
+<script>
+(function(){
+'use strict';
+const Q=new URLSearchParams(location.search),D=window.LI_DETAILS,clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const canvas=document.getElementById('c'),renderer=new THREE.WebGLRenderer({canvas,antialias:true,preserveDrawingBuffer:true});
+renderer.setClearColor(0x232a38);
+const scene=new THREE.Scene();scene.fog=new THREE.Fog(0x232a38,60,260);
+const cam=new THREE.PerspectiveCamera(38,1,.05,600);
+scene.add(new THREE.HemisphereLight(0xcfd8ee,0x3a2c22,.9));
+const sun=new THREE.DirectionalLight(0xffd9a8,1.25);sun.position.set(6,10,7);scene.add(sun);
+const fill=new THREE.DirectionalLight(0x7f9ccf,.35);fill.position.set(-8,3,-6);scene.add(fill);
+const ground=new THREE.Mesh(new THREE.CircleGeometry(400,48),new THREE.MeshLambertMaterial({color:0x4a4034}));ground.rotation.x=-Math.PI/2;ground.position.y=-.02;scene.add(ground);
+const kit=D.makeKit(THREE);
+const IDS=D.KINDS.map(k=>k.id).concat(['camp','all']),LAB={camp:'Camp (hut, fire, washing line, barrels, lantern)',all:'All pieces (gallery)'};D.KINDS.forEach(k=>LAB[k.id]=k.label);
+const el=id=>document.getElementById(id);
+const sel=el('piece');IDS.forEach(id=>{const o=document.createElement('option');o.value=id;o.textContent=LAB[id];sel.appendChild(o);});
+const S={piece:IDS.includes(Q.get('piece'))?Q.get('piece'):'robot_hauler',wear:Q.has('wear')?parseFloat(Q.get('wear')):.5,seed:Q.has('seed')?parseInt(Q.get('seed'),10):3,lod:Q.has('lod')?parseInt(Q.get('lod'),10):0,lens:Q.has('lens')?parseFloat(Q.get('lens')):1,hatch:Q.has('hatch')?parseFloat(Q.get('hatch')):0,bout:Q.has('bout')?parseFloat(Q.get('bout')):0,broken:Q.has('broken')?parseFloat(Q.get('broken')):0,stack:Q.has('stack')?parseFloat(Q.get('stack')):.7,spin:Q.get('spin')!=='0',t:Q.has('t')?parseFloat(Q.get('t')):null};
+if(Q.get('ui')==='0')el('side').classList.add('hide');
+let cur=null,labels=[],radius=5,center=new THREE.Vector3(),yaw=.7,pitch=.28,dist=8,stats={tris:0,draws:0};
+function disposeCur(){if(!cur)return;cur.userData.dispose&&cur.userData.dispose();if(cur.parent)cur.parent.remove(cur);cur=null;el('lbls').innerHTML='';labels=[];}
+function opts(id){const o={seed:S.seed,wear:S.wear,lod:S.lod,lens:S.lens,hatch:S.hatch,batteryOut:S.bout,broken:S.broken,stack:S.stack};
+  if(id==='jetty'){o.crane=16;o.u0=-2;o.u1=38;o.apron=true;o.bollards=[4,34];}if(id==='firepit'||id==='hut'||id==='lantern')o.lit=1;return o;}
+function one(id){return id==='camp'?D.buildCamp(kit,opts(id)):D.build(kit,id,opts(id));}
+function frame(obj){const b=new THREE.Box3().setFromObject(obj),s=b.getSize(new THREE.Vector3());center.copy(b.getCenter(new THREE.Vector3()));radius=Math.max(.6,s.length()*.5);dist=radius/Math.sin(cam.fov*Math.PI/360)*.62;}
+function rebuild(){
+  disposeCur();
+  if(S.piece==='all'){
+    const g=new THREE.Group(),list=D.KINDS.map(k=>({id:k.id,o:{}})).filter(q=>q.id!=='jetty').concat([{id:'jetty',o:{u0:-2,u1:10,crane:6,broken:0},tag:'jetty, intact (section)'},{id:'jetty',o:{u0:-2,u1:10,crane:6,broken:1},tag:'jetty, broken (section)'}]);
+    let tris=0,draws=0;const place=[],cols=5,cell=6.2;
+    list.forEach((q,i)=>{const op=Object.assign(opts(q.id),q.o),p=D.build(kit,q.id,op),bd=D.bounds(p.userData.plan),sz=bd.size,mx=Math.max(sz[0],sz[1],sz[2],.1),sc=Math.min(4.6/mx,6),holder=new THREE.Group();
+      p.position.set(-(bd.min[0]+bd.max[0])/2,-bd.min[1],-(bd.min[2]+bd.max[2])/2);holder.add(p);holder.scale.setScalar(sc);holder.position.set((i%cols)*cell,0,Math.floor(i/cols)*cell);g.add(holder);
+      tris+=p.userData.stats.tris;draws+=p.userData.stats.draws;place.push({q,p,holder,top:sz[1]*sc,real:sz});});
+    g.userData={dispose(){place.forEach(q=>q.p.userData.dispose&&q.p.userData.dispose());},stats:{tris,draws}};scene.add(g);cur=g;
+    place.forEach(q=>{const d=document.createElement('div');d.className='lb';d.textContent=(q.q.tag||LAB[q.q.id])+'  ('+q.real[0].toFixed(1)+' x '+q.real[1].toFixed(1)+' x '+q.real[2].toFixed(1)+' m)';el('lbls').appendChild(d);labels.push({d,p:q.holder,top:q.top});});
+    center.set((cols-1)*cell/2,1.2,(Math.ceil(list.length/cols)-1)*cell/2);radius=cols*cell*.62;dist=radius*2.1;pitch=.62;
+  }else{const p=one(S.piece);scene.add(p);cur=p;frame(p);pitch=.28;
+    const d=document.createElement('div');d.className='lb';d.textContent=LAB[S.piece];el('lbls').appendChild(d);labels.push({d,p,top:null});}
+  stats=cur.userData.stats;applyState();
+}
+function applyState(){if(!cur)return;const ud=cur.userData;if(S.piece==='all')return;if(ud.setLens){ud.setLens(S.lens);ud.setHatch(S.hatch);ud.setBattery(S.bout);}}
+/* controls */
+function sync(){sel.value=S.piece;el('wear').value=S.wear;el('wv').textContent=S.wear.toFixed(2);el('seed').value=S.seed;[...el('lods').children].forEach(b=>b.classList.toggle('on',+b.dataset.l===S.lod));el('lens').value=S.lens;el('lv').textContent=S.lens.toFixed(2);el('hatch').checked=S.hatch>.5;el('bout').checked=S.bout>.01;el('broken').checked=S.broken>.5;el('stack').value=S.stack;el('sv').textContent=S.stack.toFixed(2);el('spin').checked=S.spin;}
+sel.onchange=()=>{S.piece=sel.value;rebuild();};
+el('wear').oninput=e=>{S.wear=parseFloat(e.target.value);el('wv').textContent=S.wear.toFixed(2);rebuild();};
+el('seed').onchange=e=>{S.seed=parseInt(e.target.value,10)||0;rebuild();};
+[...el('lods').children].forEach(b=>b.onclick=()=>{S.lod=+b.dataset.l;sync();rebuild();});
+el('lens').oninput=e=>{S.lens=parseFloat(e.target.value);el('lv').textContent=S.lens.toFixed(2);applyState();};
+el('hatch').onchange=e=>{S.hatch=e.target.checked?1:0;applyState();};
+el('bout').onchange=e=>{S.bout=e.target.checked?.5:0;applyState();};
+el('broken').onchange=e=>{S.broken=e.target.checked?1:0;rebuild();};
+el('stack').oninput=e=>{S.stack=parseFloat(e.target.value);el('sv').textContent=S.stack.toFixed(2);rebuild();};
+el('spin').onchange=e=>{S.spin=e.target.checked;};
+let drag=null;canvas.onpointerdown=e=>{drag=[e.clientX,e.clientY];canvas.setPointerCapture(e.pointerId);S.spin=false;el('spin').checked=false;};canvas.onpointerup=()=>{drag=null;};
+canvas.onpointermove=e=>{if(!drag)return;yaw-=(e.clientX-drag[0])*.008;pitch=clamp(pitch+(e.clientY-drag[1])*.006,-.2,1.4);drag=[e.clientX,e.clientY];};
+canvas.onwheel=e=>{dist=clamp(dist*Math.exp(e.deltaY*.0012),radius*.4,radius*8);e.preventDefault();};
+function resize(){const w=window.innerWidth,h=window.innerHeight,pr=Math.min(window.devicePixelRatio||1,2);renderer.setPixelRatio(pr);renderer.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();}
+window.addEventListener('resize',resize);
+const t0=performance.now();let frames=0;
+function loop(now){frames++;window.__bframes=frames;const t=S.t!==null?S.t:(now-t0)/1000;kit.update(t);
+  if(S.spin&&S.t===null)yaw+=.004;
+  const cp=Math.cos(pitch);cam.position.set(center.x+Math.sin(yaw)*cp*dist,center.y+Math.sin(pitch)*dist,center.z+Math.cos(yaw)*cp*dist);cam.lookAt(center);
+  renderer.info.reset();renderer.render(scene,cam);
+  const ri=renderer.info.render;el('cnt').textContent='triangles '+ri.triangles+'   draw calls '+ri.calls+'\nbuilt tris (plan) '+stats.tris+'   meshes '+stats.draws+'\nwear '+S.wear.toFixed(2)+'  seed '+S.seed+'  lod '+S.lod+(S.broken>.5?'  broken':'');
+  labels.forEach(l=>{let v;if(l.top===null){const b=new THREE.Box3().setFromObject(l.p);v=new THREE.Vector3((b.min.x+b.max.x)/2,b.max.y+.15*radius*.4,(b.min.z+b.max.z)/2);}else{v=new THREE.Vector3(l.p.position.x,l.top+.3,l.p.position.z);}
+    v.project(cam);const vis=v.z<1&&v.z>-1;l.d.style.display=vis?'block':'none';l.d.style.left=((v.x*.5+.5)*window.innerWidth)+'px';l.d.style.top=((-v.y*.5+.5)*window.innerHeight-22)+'px';});
+  requestAnimationFrame(loop);}
+window.__board={S,D,kit,scene,get cur(){return cur;},rebuild,stats:()=>({tris:renderer.info.render.triangles,calls:renderer.info.render.calls,built:stats}),setView:(y,p,d)=>{yaw=y;pitch=p;if(d)dist=d;},ready:true};
+sync();resize();rebuild();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

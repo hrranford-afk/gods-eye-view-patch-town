@@ -313,10 +313,10 @@
   }
   /* ---------------------------------------------------------------- 6. gloved hands and a loose battery ---------------------------------------------------------------- */
   function planHands(o) {
-    const S = skins(o.seed * 5 + 3), wear = o.wear, nodes = {}, leather = S.paint([.44, .33, .20], wear * .8, { h: .3, grime: .4 }), knit = (x, y, z, nx, ny, nz, e, u) => { const rib = Math.floor(x * 70) % 2 === 0 ? 1 : .86; return mulc(mixc([.40, .36, .30], [.30, .26, .20], S.N(x, y, z, 5)), rib); };
+    const S = skins(o.seed * 5 + 3), wear = o.wear, nodes = {}, leather = S.paint([.44, .33, .20], wear * .8, { h: .3, grime: .4 }), knit = (x, y, z, nx, ny, nz, e, u) => { const rib = Math.floor(x * 70) % 2 === 0 ? 1 : .88; return mulc(mixc([.62, .56, .44], [.5, .44, .34], S.N(x, y, z, 5)), rib); };
     for (const name of ['handL', 'handR']) {
       const h = new MB(o.lod, o.seed + (name === 'handL' ? 1 : 2)), sgn = name === 'handL' ? 1 : -1, curl = o.curl === undefined ? .55 : o.curl;
-      h.begin(name); h.use('cloth', knit).at(-.19, 0, 0, 0, 0, PI / 2, 1, 1, 1, () => h.cyl(.062, .066, .26, 12, 2, 3));
+      h.begin(name); h.use('cloth', knit).at(-.3, 0, 0, 0, 0, PI / 2, 1, 1, 1, () => h.cyl(.06, .05, .45, 10, 3, 3));
       h.use('rubber', () => [.46, .33, .24]).at(-.04, 0, 0, 0, 0, PI / 2, 1, 1, 1, () => h.cyl(.05, .056, .08, 10, 3));
       h.use('matte', leather).at(.0, 0, 0, 0, 0, PI / 2, 1, 1, 1, () => h.cyl(.058, .06, .03, 10, 3)); h.use('matte', leather);
       h.at(.07, 0, 0, 0, 0, 0, 1, 1, 1, () => h.rbox(.12, .045, .105, .018, 1));
@@ -421,8 +421,8 @@
     /* the apron: planks along the jetty on the land side (w 1.7 .. 6.7) for u -2 .. 12 */
     if (apronOn && P0) { const a0 = Math.max(u0, -2), a1 = Math.min(u1, 12); let w = 1.72, r = 0; while (w < 6.7) { const wid = .17 + .07 * R(r + 500, 1); let u = a0; let q = 0; while (u < a1 - .05) { const len = Math.min(a1 - u, 2.2 + 2.6 * R(r * 17 + q, 2)); if (len > .3) plankItems.push({ m: xf(u + len / 2, DECK - .028, w + wid / 2, 0, 0, 0, len - .012, .05 + .012 * R(r * 17 + q, 3), wid), col: woodTone(R(r * 17 + q, 4), wear * 1.2, seed, r * 17 + q), warp: (R(r * 17 + q, 5) - .5) * .02 }); u += len + .008; q++; } w += wid + .01; r++; } }
     /* extra loose planks floating by the broken jetty */
-    const nLoose = Math.round(br * 12);
-    for (let i = 0; i < nLoose; i++) { const u = lerp(u0, u1, R(i, 30)), w = (R(i, 31) < .5 ? -1 : 1) * (1.9 + 1.6 * R(i, 32)), len = 1.2 + 2.2 * R(i, 33); plankItems.push({ m: xf(u, .05 + .5 * R(i, 34), w, .04 * (R(i, 35) - .5), R(i, 36) * PI, 0, len, .05, .19), col: woodTone(R(i, 37), wear, seed, i + 900), warp: (R(i, 38) - .5) * .04 }); }
+    const nLoose = o.loose !== undefined ? o.loose : Math.round(br * 12), onlySide = o.side || 0, snapP = o.snap !== undefined ? o.snap : br * .55;
+    for (let i = 0; i < nLoose; i++) { const u = lerp(u0, u1, R(i, 30)), w = (onlySide || (R(i, 31) < .5 ? -1 : 1)) * (1.9 + 1.6 * R(i, 32)), len = 1.2 + 2.2 * R(i, 33); plankItems.push({ m: xf(u, .05 + .5 * R(i, 34), w, .04 * (R(i, 35) - .5), R(i, 36) * PI, 0, len, .05, .19), col: woodTone(R(i, 37), wear, seed, i + 900), warp: (R(i, 38) - .5) * .04 }); }
     const inst = [];
     if (plankItems.length) inst.push({ key: 'plank', geo: plankBase(lod), items: plankItems, name: 'planks' });
     /* piles: three variants (plain, rope-wrapped, weedy), and snapped stubs for the broken state */
@@ -447,7 +447,7 @@
     for (let kk = Math.ceil((u0 + 1) / 3); ; kk++) {
       const u = -1 + 3 * kk; if (u >= u1) break; if (u < u0) continue;
       for (const sd of [-1, 1]) {
-        const id = kk * 2 + (sd > 0 ? 1 : 0), snap = R(id, 40) < br * .55, vr = Math.floor(R(id, 41) * 3) % 3, tone = woodTone(R(id, 42) * .5, wear, seed, id), lean = (R(id, 43) - .5) * (.04 + (snap ? .14 * br : 0)), ox = (R(id, 44) - .5) * .06, lift = snap ? 0 : (R(id, 45) - .5) * .35;
+        if (o.piles === false || (onlySide && sd !== onlySide)) continue; const id = kk * 2 + (sd > 0 ? 1 : 0), snap = R(id, 40) < snapP, vr = Math.floor(R(id, 41) * 3) % 3, tone = woodTone(R(id, 42) * .5, wear, seed, id), lean = (R(id, 43) - .5) * (.04 + (snap ? .14 * br : 0)), ox = (R(id, 44) - .5) * .06, lift = snap ? 0 : (R(id, 45) - .5) * .35;
         const item = { m: xf(u + ox, lift, sd * 1.6 + (R(id, 46) - .5) * .05, lean, 0, lean * .7, 1, 1, 1), col: tone, warp: 0 };
         if (snap) stubItems[vr % 2].push(item); else pileItems[vr].push(item);
       }
@@ -460,8 +460,8 @@
     m.begin('braces');
     for (let kk = Math.ceil((u0 + 1) / 3); ; kk++) {
       const u = -1 + 3 * kk; if (u >= u1) break; if (u < u0) continue; const id = kk;
-      if (!(R(id, 50) < br * .45)) m.at(u, DECK - .62, 0, 0, 0, 0, 1, 1, 1, () => m.box(.12, .14, 3.5, .5));
-      for (const sd of [-1, 1]) { const gone = R(id * 2 + (sd > 0 ? 1 : 0), 51) < br * .6; if (gone && R(id, 52) < .5) continue; const ang = Math.atan2(1.6, 3) * (kk % 2 ? 1 : -1) + (gone ? .5 : 0); m.at(u + 1.5, DECK - 1.2 - (gone ? .5 : 0), sd * 1.72, 0, 0, ang, 1, 1, 1, () => m.box(Math.hypot(3, 1.6) * (gone ? .8 : 1), .17, .07, .5)); }
+      if (o.braces !== false && !onlySide && !(R(id, 50) < br * .45)) m.at(u, DECK - .62, 0, 0, 0, 0, 1, 1, 1, () => m.box(.12, .14, 3.5, .5));
+      for (const sd of (o.braces === false || o.piles === false ? [] : [-1, 1])) { if (onlySide && sd !== onlySide) continue; const gone = R(id * 2 + (sd > 0 ? 1 : 0), 51) < br * .6; if (gone && R(id, 52) < .5) continue; const ang = Math.atan2(1.6, 3) * (kk % 2 ? 1 : -1) + (gone ? .5 : 0); m.at(u + 1.5, DECK - 1.2 - (gone ? .5 : 0), sd * 1.72, 0, 0, ang, 1, 1, 1, () => m.box(Math.hypot(3, 1.6) * (gone ? .8 : 1), .17, .07, .5)); }
     }
     m.end();
     if (rails) {
@@ -707,8 +707,8 @@
     }
     if (kind === 'battery') { const b = g.getObjectByName('battery'); void b; }
     if (kind === 'lantern') {
-      const h = addHalo(g, 0, -.24, 0, 1.6, [1, .72, .36]), gm = ud.glow_lamp; let lit = o.lit === undefined ? 1 : o.lit;
-      ud.setLit = k => { lit = k; const m = .18 + .82 * clamp(k, 0, 1.5); gm.color.setRGB(m, m, m); h.material.opacity = clamp(k, 0, 1); h.visible = k > .02; }; ud.setLit(lit);
+      const h = o.halo === false ? null : addHalo(g, 0, -.24, 0, 1.6, [1, .72, .36]), gm = ud.glow_lamp; let lit = o.lit === undefined ? 1 : o.lit;
+      ud.setLit = k => { lit = k; const m = .18 + .82 * clamp(k, 0, 1.5); gm.color.setRGB(m, m, m); if (h) { h.material.opacity = clamp(k, 0, 1); h.visible = k > .02; } }; ud.setLit(lit);
     }
     if (kind === 'hut') {
       const gm = ud.glow_hut; let lit = o.lit === undefined ? .8 : o.lit; const lamps = [];
@@ -724,7 +724,7 @@
       ud.setLit = k => { lit = k; }; ud.tick(0);
     }
     if (ud.tick) kit.tickers.push(ud.tick);
-    ud.dispose = () => { g.removeFromParent && g.removeFromParent(); geos.forEach(x => x.dispose()); ownMats.forEach(x => x.dispose()); if (ud.tick) { const i = kit.tickers.indexOf(ud.tick); if (i >= 0) kit.tickers.splice(i, 1); } };
+    ud.dispose = () => { if (g.parent) g.parent.remove(g); geos.forEach(x => x.dispose()); ownMats.forEach(x => x.dispose()); if (ud.tick) { const i = kit.tickers.indexOf(ud.tick); if (i >= 0) kit.tickers.splice(i, 1); } };
     return g;
   }
   /* a composite of the camp for a board or a wide shot */
