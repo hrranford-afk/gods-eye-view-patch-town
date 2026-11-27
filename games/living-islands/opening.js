@@ -132,6 +132,8 @@
     if (st.wind !== undefined && st.wind !== null) P.wind = st.wind;
     P.name = 'film'; P.s = Math.max(wS, wW, wA); return P;
   }
+  /* a gentle floor for the troughs: the islands stand on a 3.4 m shelf, and a trough that goes lower than about 1.2 m under the mean level would show a cliff of sea bed. Below -1.2 the surface falls at 0.15 of the rate. The same function is in the sea shader. */
+  const TROUGH = -1.2, troughCompress = y => y > TROUGH ? y : TROUGH + (y - TROUGH) * 0.15;
   /* the sea of the film. S = LI_SEA_WAVES, director, opts {tier: 'ipad'|..., scale: 1, stepS: .25}. Phase per wave is accumulated along the film from the tracks (tabulated), so any t is a pure function. */
   function makeSeaClock(S, director, opts) {
     opts = opts || {}; const tier = S.TIERS[opts.tier || 'ipad'] || S.TIERS.ipad, scale = opts.scale || 1, step = opts.stepS || .25, T = director.duration, n = Math.ceil(T / step) + 2;
@@ -163,7 +165,7 @@
       /* the whirlpool dip at (x, z) for the vortex weight v (zero when v is zero) */
       vortexDip(x, z, v) { if (!(v > 0)) return 0; const rx = x - VORT.x, rz = z - VORT.z; return v * VORT.depth * Math.exp(-(rx * rx + rz * rz) / (VORT.R * VORT.R)); },
       /* the surface height above (x, z) at film time t, whirlpool included. All waves are used (a camera must clear every crest). */
-      height(x, z, t) { const tb = clock.table(t); return S.height(x, z, null, tb) - clock.vortexDip(x, z, tb.st.vortex || 0); },
+      height(x, z, t) { const tb = clock.table(t); return troughCompress(S.height(x, z, null, tb)) - clock.vortexDip(x, z, tb.st.vortex || 0); },
       /* the largest height anywhere in a window around (x,z) is not needed by callers; sightline helper: true when the sea surface blocks the straight line a -> b at time t (sampled every 2 m) */
       blocked(a, b, t) {
         const d = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]), nS = Math.max(2, Math.ceil(d / 2));
@@ -248,7 +250,7 @@
     const day = sm((s.sunElev + 6) / 10);
     return {
       sunDir: [sunDir[0] / l, sunDir[1] / l, sunDir[2] / l], sunElev: s.sunElev, sunI: s.sunI !== undefined ? s.sunI : day, hor: v.hor, zen: v.zen, cloud: v.cloud, fogC: v.fogC, sunCol: v.sunCol, deep: v.deep, shal: v.shal,
-      fog: s.fog, cover: s.cover, exposure: s.exposure !== undefined ? s.exposure : 1, rainbow: s.rainbow || 0, rays: s.rays || 0, dark: s.dark || 0, rain: s.rain || 0, beam: s.beam || 0, windows: s.windows || 0,
+      fog: s.fog, cover: s.cover, exposure: s.exposure !== undefined ? s.exposure : 1, rainbow: s.rainbow || 0, rays: (s.rays || 0) * sm((s.sunElev + 2) / 3), dark: s.dark || 0, rain: s.rain || 0, beam: s.beam || 0, windows: s.windows || 0,
       stars: s.stars || 0, fade: s.fade || 0, lightning: s.lightning || 0, lens: s.lens || 0, smoke: s.smoke || 0
     };
   }
@@ -280,15 +282,24 @@
     return bad;
   }
 
+  /* the staged Great Wash: the broken jetty section (the last 14 m of the jetty, u 24 to 38) breaks at TB, rides the crest toward the camp shore and strands near the jetty root. A closed form of t (no physics): [x, z, yaw, state] with state 0 = on the jetty, 1 = drifting, 2 = aground. */
+  const STAGE = { tb: 50.3, speed: 3.0, sEnd: 9.4, spin: 0.12 };
+  function sectionPose(layout, t) {
+    const J = layout.jetty, d = J.dir, u0 = 31, x0 = J.root[0] + d[0] * u0, z0 = J.root[1] + d[1] * u0, yaw0 = -Math.atan2(d[1], d[0]), c = [Math.cos(CREST.dirDeg * DEG), Math.sin(CREST.dirDeg * DEG)];
+    const s = clamp(t - STAGE.tb, 0, STAGE.sEnd), r = s < 1 ? s * s : s;   /* eases off the deck in the first second */
+    const m = s < 1 ? s * s * STAGE.speed / 2 + 0 : STAGE.speed * (s - .5) , sway = Math.sin(s * .6) * 1.6;
+    return [x0 + c[0] * m - c[1] * sway * .3, z0 + c[1] * m + c[0] * sway * .3, yaw0 + STAGE.spin * s * (r > 0 ? 1 : 0), t < STAGE.tb ? 0 : (t - STAGE.tb < STAGE.sEnd ? 1 : 2)];
+  }
+
   /* ---------------------------------------------------------------- 6. the film ---------------------------------------------------------------- */
   /* the 90 s opening as data. layout = buildLayout(field); field (optional) lets near-ground camera keys be lifted to ground + 1 m at build time (so the authored path never starts inside an island). Every number is TUNING. */
   function defaultFilm(layout, field) {
     const J = layout.jetty, d = J.dir, pp = [-d[1], d[0]], LH = layout.lighthouse;
     const jp = (u, w, y) => [J.root[0] + d[0] * u + pp[0] * w, y, J.root[1] + d[1] * u + pp[1] * w];   /* the jetty frame: u along the jetty seaward, w toward the island (land side), y world */
     const up = (p, lift) => { if (field) p[1] = Math.max(p[1], field.groundAt(p[0], p[2]) + (lift === undefined ? 1 : lift)); return p; };
+    const at3 = (t, y) => { const q = sectionPose(layout, t); return [q[0], y, q[1]]; };
     const lampTop = [LH.x, LH.baseY + LH.height - 1, LH.z];
-    const boat = [90, 0.5, -24];                                   /* the small lit boat of the night watch, on the sight line to the lighthouse */
-    const hulk = layout.hulk, camp = layout.campView;
+        const hulk = layout.hulk, camp = layout.campView, RP = layout.repair;
     const k = (t, v, o) => Object.assign({ t, v }, o || {});
     const c = o => Object.assign({ cut: true }, o);
     const shots = [
@@ -305,21 +316,21 @@
       /* 1 night watch */ k(0, [40, 3.4, 150]), k(4.5, [50, 3.4, 116]), k(9, [58, 3.6, 92]),
       /* 2 first light (cut: a dissolve) */ k(9, [34, 3.9, 148], c()), k(13.5, [14, 20, 178]), k(20, [0, 58, 232]),
       /* 3 and 4: one run, the rope pan hides the shot change */ k(20, up(jp(-7, 4, 4.4), 0.9), c()), k(27, up(jp(5, -1.6, 3.9), .9)), k(34, up(jp(24, -2.2, 3.7), .9)), k(38.5, up(jp(40, -2.6, 3.8), .9)), k(42.5, up(jp(52, -3, 3.9), .9)), k(46.99, up(jp(62, -3.4, 4.1), .9)),
-      /* 5 great wash */ k(47, [34, 27, 142], c()), k(53, [30, 25, 134]), k(58.99, [24, 24, 126]),
+      /* 5 great wash */ k(47, [30, 24, 40], c()), k(52, [10, 19, 38]), k(55.5, [-28, 13, 26]), k(58.99, [-50, 11, 28]),
       /* 6 wrack line */ k(59, up(camp.a, 1.2), c()), k(64.5, up(camp.b, 1.2)), k(69.99, up(camp.c, 1.2)),
       /* 7 arrival */ k(70, up(jp(34, -22, 2.5), 0.5), c()), k(75.5, up(jp(18, -14, 2.5), 0.5)), k(80.99, up(jp(5, -7, 2.6), 0.5)),
-      /* 8 first repair */ k(81, up(jp(4.1, 3.2, 3.55), .5), c()), k(86.4, up(jp(4.3, 3.0, 3.52), .5)), k(90, up(jp(4.35, 2.95, 3.52), .5))
+      /* 8 first repair */ k(81, RP.cam, c()), k(86.4, [RP.cam[0] + RP.f[0] * .05, RP.cam[1], RP.cam[2] + RP.f[1] * .05]), k(90, [RP.cam[0] + RP.f[0] * .08, RP.cam[1], RP.cam[2] + RP.f[1] * .08])
     ];
     const tgt = [
       k(0, lampTop), k(4.5, [LH.x - 12, 12, LH.z + 30]), k(9, lampTop),
       k(9, lampTop, c()), k(13.5, [40, 6, -30]), k(20, [0, 0, -20]),
       k(20, jp(10, 2, 2.6), c()), k(27, jp(14, -1, 2.8)), k(34, jp(36, -3, 2.2)), k(38.5, jp(58, -4, 1.8)), k(42.5, [LH.x - 20, 2.2, LH.z + 40]), k(46.99, [LH.x - 10, 4, LH.z + 20]),
-      k(47, jp(10, -4, 2.5), c()), k(52, jp(18, -10, 2)), k(56, jp(14, -26, 0.5)), k(58.99, jp(4, -34, 0)),
-      k(59, hulk.mid, c()), k(64.5, hulk.mid), k(69.99, hulk.near),
+      k(47, [-20, 2, 18], c()), k(52, [-58, 3, 42]), k(55.5, at3(55.5, 1.4)), k(58.99, at3(58.99, 1.2)),
+      k(59, [hulk.x, 4.5, hulk.z], c()), k(64.5, [hulk.x + 2, 4.2, hulk.z - 2]), k(69.99, [hulk.x + 6, 3.8, hulk.z - 6]),
       k(70, jp(2, 0, 3), c()), k(75.5, jp(1, 1, 3.3)), k(80.99, jp(0, 2, 3.4)),
-      k(81, jp(5.6, 2.55, 3.4), c()), k(90, jp(5.6, 2.55, 3.4))
+      k(81, RP.tgt, c()), k(90, RP.tgt)
     ];
-    const fov = [k(0, 50), k(9, 50), k(9, 52, c()), k(20, 44), k(20, 56, c()), k(36, 54), k(46.99, 50), k(47, 42, c()), k(59, 44), k(59, 52, c()), k(70, 50), k(70, 48, c()), k(81, 50), k(81, 36, c()), k(90, 34)];
+    const fov = [k(0, 50), k(9, 50), k(9, 52, c()), k(20, 44), k(20, 56, c()), k(36, 54), k(46.99, 50), k(47, 46, c()), k(59, 46), k(59, 52, c()), k(70, 50), k(70, 48, c()), k(81, 50), k(81, 40, c()), k(90, 36)];
     const T = {
       seaSwell: [k(0, .10), k(30, .10), k(37, .35), k(44, .85), k(49, .3), k(53, 0), k(90, 0)],
       seaStorm: [k(0, 0), k(43, 0), k(47.5, .7), k(50.5, 1), k(57, .95), k(60, .35), k(63, 0), k(90, 0)],
@@ -333,13 +344,13 @@
       sunI: [k(0, 0), k(9, 0), k(13, .25), k(20, 1), k(20, 1.1, c()), k(36, .9), k(44, .35), k(47, .25), k(47, .2, c()), k(59, .25), k(59, .7, c()), k(70, 1.1), k(70, 1.3, c()), k(90, 1.5)],
       fog: [k(0, .0016), k(20, .0012), k(36, .0014), k(44, .0028), k(47, .0044), k(59, .0042), k(59, .0022, c()), k(70, .0016), k(81, .0010), k(90, .0008)],
       cover: [k(0, .8), k(20, .6), k(36, .8), k(47, 1), k(59, 1), k(59, .8, c()), k(70, .6), k(90, .5)],
-      exposure: [k(0, 1.8), k(9, 1.6), k(13, 1.2), k(20, 1), k(47, 1.15), k(59, 1.05, c()), k(90, 1)],
+      exposure: [k(0, 1.7), k(9, 1.5), k(13, 1.0), k(20, .85), k(44, .95), k(48, 1.35), k(58, 1.3), k(59, .95, c()), k(90, .9)],
       dark: [k(0, .5), k(20, 0), k(36, .1), k(47, .6), k(59, .5), k(59, .1, c()), k(66, 0), k(90, 0)],
       rain: [k(0, 0), k(47, .2), k(50, 1), k(57, .8), k(59, 0), k(59.01, 0, c()), k(90, 0)],
       rays: [k(0, 0), k(11, .3), k(17, .8), k(20, .6), k(36, .5), k(44, .2), k(47, 0), k(59, 0), k(59.01, .1, c()), k(70, .5), k(90, .5)],
       rainbow: [k(0, 0), k(62, 0), k(66, .8), k(70, 1), k(78, .6), k(84, 0), k(90, 0)],
       beam: [k(0, 1), k(9, 1), k(14, .5), k(18, .1), k(20, 0), k(40, .05), k(44, .7), k(47, 1), k(59, 1), k(59, .3, c()), k(62, 0), k(90, 0)],
-      beamAz: [k(0, -3), k(90, 3597)],
+      beamAz: [k(0, 45), k(90, 3645)],
       windows: [k(0, .8), k(9, .6), k(13, 0), k(20, .2), k(22, .8), k(47, .9), k(59, .2, c()), k(65, 0), k(90, 0)],
       stars: [k(0, .8), k(9, .5), k(13, 0), k(90, 0)],
       smoke: [k(0, .6), k(47, .6), k(52, .1), k(59, .1, c()), k(90, .1)],
@@ -347,10 +358,10 @@
       fade: [k(0, 1), k(1.2, 0), k(8.4, 0), k(9, 1), k(9.6, 0), k(69.4, 0), k(70, 1), k(70.6, 0), k(90, 0)]
     };
     const V = {
-      hor: [k(0, [.06, .05, .12]), k(9, [.08, .06, .14]), k(14, [.85, .5, .38]), k(20, [.95, .62, .42]), k(20, [.98, .55, .3], c()), k(36, [.85, .45, .3]), k(44, [.45, .28, .3]), k(47, [.3, .2, .3]), k(47, [.3, .2, .3], c()), k(59, [.3, .2, .3]), k(59, [.82, .74, .7], c()), k(70, [.9, .72, .56]), k(70, [.98, .66, .45], c()), k(90, [1, .7, .42])],
-      zen: [k(0, [.012, .012, .04]), k(9, [.02, .02, .06]), k(14, [.18, .22, .42]), k(20, [.22, .26, .45]), k(20, [.18, .2, .4], c()), k(36, [.14, .15, .3]), k(44, [.08, .08, .16]), k(47, [.05, .05, .1]), k(59, [.05, .05, .1]), k(59, [.3, .34, .44], c()), k(70, [.28, .32, .46]), k(70, [.22, .28, .5], c()), k(90, [.25, .3, .5])],
-      cloud: [k(0, [.1, .06, .16]), k(9, [.12, .08, .18]), k(14, [.7, .45, .45]), k(20, [.85, .55, .5]), k(20, [.9, .5, .45], c()), k(36, [.7, .4, .42]), k(44, [.3, .18, .3]), k(47, [.16, .13, .22]), k(59, [.16, .13, .22]), k(59, [.62, .58, .6], c()), k(70, [.8, .62, .6]), k(70, [.9, .6, .55], c()), k(90, [.95, .65, .5])],
-      fogC: [k(0, [.05, .04, .09]), k(9, [.06, .05, .1]), k(14, [.6, .42, .38]), k(20, [.7, .52, .45]), k(20, [.75, .5, .4], c()), k(36, [.6, .42, .36]), k(44, [.35, .25, .3]), k(47, [.25, .2, .27]), k(59, [.25, .2, .27]), k(59, [.7, .68, .68], c()), k(70, [.78, .66, .58]), k(70, [.78, .62, .52], c()), k(90, [.8, .6, .45])],
+      hor: [k(0, [.10, .06, .16]), k(9, [.12, .07, .17]), k(14, [.50, .26, .20]), k(20, [.58, .33, .24]), k(20, [.62, .30, .16], c()), k(36, [.52, .25, .17]), k(44, [.28, .17, .20]), k(47, [.20, .13, .20]), k(47, [.20, .13, .20], c()), k(59, [.20, .13, .20]), k(59, [.50, .45, .44], c()), k(70, [.55, .42, .32]), k(70, [.60, .38, .24], c()), k(90, [.62, .40, .24])],
+      zen: [k(0, [.015, .012, .05]), k(9, [.02, .015, .06]), k(14, [.10, .12, .26]), k(20, [.13, .15, .30]), k(20, [.10, .12, .28], c()), k(36, [.08, .09, .20]), k(44, [.05, .05, .12]), k(47, [.035, .03, .08]), k(59, [.035, .03, .08]), k(59, [.20, .24, .34], c()), k(70, [.18, .22, .36]), k(70, [.14, .19, .38], c()), k(90, [.16, .20, .38])],
+      cloud: [k(0, [.10, .06, .16]), k(9, [.12, .07, .18]), k(14, [.55, .30, .30]), k(20, [.62, .36, .34]), k(20, [.65, .34, .30], c()), k(36, [.50, .26, .28]), k(44, [.22, .13, .24]), k(47, [.12, .10, .17]), k(59, [.12, .10, .17]), k(59, [.46, .43, .46], c()), k(70, [.60, .44, .42]), k(70, [.68, .42, .36], c()), k(90, [.72, .46, .36])],
+      fogC: [k(0, [.05, .04, .09]), k(9, [.06, .045, .10]), k(14, [.40, .26, .24]), k(20, [.45, .32, .28]), k(20, [.48, .30, .24], c()), k(36, [.40, .26, .22]), k(44, [.24, .17, .21]), k(47, [.17, .13, .18]), k(59, [.17, .13, .18]), k(59, [.46, .46, .48], c()), k(70, [.52, .42, .36]), k(70, [.54, .38, .30], c()), k(90, [.55, .38, .28])],
       deep: [k(0, [.004, .012, .03]), k(9, [.005, .014, .035]), k(14, [.01, .06, .1]), k(20, [.01, .07, .11]), k(36, [.01, .06, .1]), k(44, [.008, .04, .07]), k(47, [.006, .03, .05]), k(59, [.006, .03, .05]), k(59, [.012, .06, .09], c()), k(90, [.012, .075, .11])],
       shal: [k(0, [.01, .04, .07]), k(9, [.012, .045, .08]), k(14, [.04, .2, .24]), k(20, [.05, .25, .28]), k(36, [.04, .22, .25]), k(47, [.02, .1, .13]), k(59, [.02, .1, .13]), k(59, [.05, .2, .22], c()), k(90, [.05, .26, .28])],
       sunCol: [k(0, [.3, .3, .6]), k(14, [2.4, 1.5, .9]), k(20, [3, 1.9, 1.1]), k(20, [3.2, 1.7, .8], c()), k(36, [3, 1.4, .7]), k(47, [1.6, .9, .7]), k(59, [1.6, .9, .7]), k(59, [1.6, 1.3, 1], c()), k(70, [2.4, 1.6, 1]), k(70, [3, 1.8, 1], c()), k(90, [3.2, 1.9, 1])]
@@ -358,7 +369,7 @@
     const cues = [];
     const cue = (t, name, arg) => cues.push(arg === undefined ? { t, name } : { t, name, arg });
     for (let i = 0; i < 4; i++) cue(5 + i * 9 - 9 + 9, 'beam-sweep', i);   /* 5, 14 (faded), 23, 32 sweeps (the beam is dark by day: the sound still marks the lamp) */
-    cue(5, 'boat-lamp'); cue(9.6, 'dawn-bell'); cue(24, 'winch', 1); cue(31, 'crate-set'); cue(35.6, 'rope-taut'); cue(41, 'swell-rise');
+    cue(4.6, 'boat-lamp'); cue(9.6, 'dawn-bell'); cue(24, 'winch', 1); cue(31, 'crate-set'); cue(35.6, 'rope-taut'); cue(41, 'swell-rise');
     [[46.2, .6], [48.9, 1], [49.4, .7], [51.6, 1], [52.1, .6], [55.8, .9], [56.3, .5]].forEach(a => cue(a[0], 'flash', a[1]));
     cue(46.9, 'thunder', .5); cue(49.9, 'thunder', 1); cue(52.6, 'thunder', .8); cue(56.9, 'thunder', .6);
     cue(CREST.tc, 'crest'); cue(53.8, 'snag'); cue(55, 'raft-turn'); cue(59, 'roar-cut');
@@ -371,12 +382,15 @@
   function buildLayoutFull(F) {
     const L = buildLayout(F), J = L.jetty, d = J.dir, pp = [-d[1], d[0]];
     const jp = (u, w) => [J.root[0] + d[0] * u + pp[0] * w, J.root[1] + d[1] * u + pp[1] * w];
-    const e = F.shoreAlong(-90, 70, 1, -0.12, 0.2, 90) || [-52, 66];
-    L.hulk = { x: e[0] + 2, z: e[1] + 1, yaw: 0.35, len: 15, mid: [e[0] - 4, 4.2, e[1]], near: [e[0] - 12, 3.4, e[1]] };
-    L.campView = { a: [-134, 5.5, 86], b: [-122, 5.2, 82], c: [-110, 7.8, 86] };
-    L.jp = jp; return L;
+    const e = F.shoreAlong(-104, 72, 0, -1, 0.2, 60) || [-104, 59];
+    L.hulk = { x: e[0], z: e[1] - 2, yaw: -Math.PI / 2 + 0.3, len: 15, mid: [e[0], 4.2, e[1] - 1], near: [e[0] + 6, 3.0, e[1] - 4] };
+    L.campView = { a: [-132, 6.0, 78], b: [-124, 5.8, 75], c: [-116, 6.2, 77] };
+    /* the repair robot stands on the apron, facing the land (toward the camera); its battery socket is on its local +z side. theta is THREE rotation.y: forward = (cos t, -sin t), side (+z) = (sin t, cos t). */
+    const rp = jp(5.6, 2.55), fx = pp[0] * .85 - d[0] * .35, fz = pp[1] * .85 - d[1] * .35, fl = Math.hypot(fx, fz), f = [fx / fl, fz / fl], th = Math.atan2(-f[1], f[0]), side = [Math.sin(th), Math.cos(th)];
+    L.repair = { x: rp[0], z: rp[1], theta: th, f, side, scale: 1.35, cam: [rp[0] + f[0] * 2.7 + side[0] * 1.4, J.deckY + 1.55, rp[1] + f[1] * 2.7 + side[1] * 1.4], tgt: [rp[0] + side[0] * .55, J.deckY + 1.3, rp[1] + side[1] * .55] };
+    L.boat = [62, -44]; L.jp = jp; return L;
   }
 
-  const api = { TAU, DEG, clamp, lerp, sm, hash, Track, Director, CREST, VORT, seaParams, makeSeaClock, decodeIsland, makeIslands, ISLANDS, buildLayout, buildLayoutFull, skyLook, flashAt, attachThree, cameraViolations, defaultFilm };
+  const api = { TAU, DEG, clamp, lerp, sm, hash, Track, Director, CREST, VORT, seaParams, makeSeaClock, troughCompress, TROUGH, decodeIsland, makeIslands, ISLANDS, buildLayout, buildLayoutFull, sectionPose, STAGE, skyLook, flashAt, attachThree, cameraViolations, defaultFilm };
   return api;
 }));

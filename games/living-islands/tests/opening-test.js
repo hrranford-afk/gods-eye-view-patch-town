@@ -110,6 +110,15 @@ for (const tier of ['ipad', 'desktop', 'radeon', 'max']) {
   ok(stormH > 3 * calmH, 'the sea is much bigger in the storm: significant height ' + stormH.toFixed(2) + ' m at 50.5 s against at most ' + calmH.toFixed(2) + ' m before 40 s');
 }
 
+/* 7b. the trough floor: identity above -1.2, continuous, monotone, a 0.15 slope below; the sea never shows more than a few metres of bed away from the whirlpool */
+{
+  let mono = true, ident = true, prev = -1e9; for (let y = -30; y <= 12; y += .01) { const c = O.troughCompress(y); if (c < prev) mono = false; prev = c; if (y >= O.TROUGH && c !== y) ident = false; }
+  ok(mono && ident && Math.abs(O.troughCompress(O.TROUGH - 1e-9) - O.TROUGH) < 1e-6 && Math.abs(O.troughCompress(-9.8) - (O.TROUGH + (-9.8 - O.TROUGH) * .15)) < 1e-9, 'troughCompress is the identity above -1.2 m, continuous, monotone, and a 0.15 slope below');
+  const sea = O.makeSeaClock(S, dir, { tier: 'radeon', jetty: layout.jetty.tip }); let lo = 1e9;
+  for (let t = 0; t <= 90; t += 0.5) for (let i = 0; i < 40; i++) { const x = (O.hash(i, 31) - .5) * 400, z = (O.hash(i, 32) - .5) * 400; if (Math.hypot(x - O.VORT.x, z - O.VORT.z) < 3 * O.VORT.R) continue; lo = Math.min(lo, sea.height(x, z, t)); }
+  ok(lo > -3.3, 'away from the whirlpool the deepest trough in the whole film is ' + lo.toFixed(2) + ' m (the shelf is at -3.4 m, so no sea bed shows)');
+}
+
 /* 8. the wave clock is continuous: no jump in a wave phase or in the height at one point between 0.01 s steps; seek lands on the same sea */
 {
   const sea = O.makeSeaClock(S, dir, { tier: 'radeon', jetty: layout.jetty.tip }); let worstPh = 0, worstH = 0, prevH = null;
