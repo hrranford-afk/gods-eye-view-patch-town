@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Island song demo</title>
+<style>
+:root{--bg:#1d2a33;--fg:#f1e9d8;--ac:#e0a458;--pn:#2a3b47}
+*{box-sizing:border-box}body{margin:0;padding:16px;background:var(--bg);color:var(--fg);font:16px/1.4 system-ui,sans-serif;touch-action:manipulation}
+h1{font-size:20px;margin:0 0 8px}h2{font-size:15px;margin:16px 0 6px;color:var(--ac)}
+button,input[type=text]{font:inherit;color:var(--fg);background:var(--pn);border:1px solid #4a6070;border-radius:8px;padding:10px 12px;margin:3px;min-height:44px}
+button:active{background:var(--ac);color:#000}#start{background:var(--ac);color:#000;font-weight:700;font-size:18px;padding:14px 22px}
+label{display:flex;align-items:center;gap:10px;margin:6px 0}label span{width:110px}input[type=range]{flex:1;min-height:32px}
+#bar{display:flex;align-items:flex-end;height:50px;gap:2px;background:#142029;padding:4px;border-radius:6px}#bar i{flex:1;background:var(--ac);min-height:1px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}pre{background:#142029;padding:8px;border-radius:6px;overflow:auto;max-height:340px;font-size:13px;white-space:pre-wrap}
+</style></head><body>
+<h1>The Island Song demo</h1>
+<p>Generative music, all synthesised. Nothing is loaded. Notes come from the sliders and buttons below.</p>
+<div class="row"><button id="start">Start audio</button><span id="status">audio not started</span><span>voices: <b id="vc">0</b></span><span id="info"></span></div>
+<div id="bar"></div>
+<h2>Island</h2>
+<div class="row"><input type="text" id="seed" value="isle-one" size="12" aria-label="island seed"><button id="go">Set island</button><button id="mute">Mute</button></div>
+<label><span>music volume</span><input type="range" id="mv" min="0" max="1" step="0.01" value="0.5"></label>
+<h2>Island life</h2>
+<label><span>working robots</span><input type="range" id="nr" min="0" max="4" step="1" value="2"></label>
+<label><span>battery</span><input type="range" id="bat" min="0" max="1" step="0.01" value="1"></label>
+<label><span>tide</span><input type="range" id="tide" min="0" max="1" step="0.01" value="0.5"></label>
+<label><span>storm</span><input type="range" id="storm" min="0" max="1" step="0.01" value="0"></label>
+<div class="row"><label><input type="checkbox" id="night"> night</label></div>
+<h2>Events</h2>
+<div class="row"><button data-c="lh">lighthouse sweep</button><button data-c="winch">winch</button><button data-c="key">key</button><button data-c="gull">gull</button><button data-c="thunder">thunder note</button><button data-c="delivery">delivery</button></div>
+<h2>Week beat</h2>
+<div class="row"><button data-w="tender">tender's day</button><button data-w="lowtide">low-tide day</button><button data-w="lighthouse">lighthouse day</button><button data-w="none">no phrase</button></div>
+<h2>Last 30 notes (why it plays what it plays)</h2><pre id="log">(nothing yet)</pre>
+<script src="audio.js"></script><script src="audio_song.js"></script>
+<script>
+(function(){
+var A=LI_AUDIO,S=LI_SONG,$=function(i){return document.getElementById(i)},kinds=['hauler','sorter','stacker'];
+function robots(){var n=+$('nr').value,b=+$('bat').value;for(var i=0;i<4;i++){if(i<n)S.robotBeat('r'+i,kinds[i%3],b);else S.robotStop('r'+i)}}
+function go(){A.unlock();A.setMusicVolume(+$('mv').value);S.setIsland($('seed').value);robots();S.start();upd()}
+function upd(){var r=A.isRunning();$('status').textContent=r?'audio running':'audio not started';$('start').style.display=r?'none':'';var s=S.stats();$('info').textContent=s.mood+', root '+s.root+', '+s.bpm+' bpm, scale '+s.scale.join(' ')}
+$('start').addEventListener('click',go);$('start').addEventListener('touchend',function(e){e.preventDefault();go()});
+$('go').onclick=function(){A.unlock();S.setIsland($('seed').value);robots();upd()};
+$('mute').onclick=function(){var m=!A.isMuted();A.mute(m);this.textContent=m?'Unmute':'Mute'};
+$('mv').oninput=function(){A.setMusicVolume(+this.value)};
+$('nr').oninput=robots;$('bat').oninput=robots;$('tide').oninput=function(){S.setTide(+this.value)};$('storm').oninput=function(){S.setStorm(+this.value)};$('night').onchange=function(){S.setNight(this.checked);A.setNight(this.checked?1:0)};
+[].forEach.call(document.querySelectorAll('[data-c]'),function(b){b.onclick=function(){var c=b.dataset.c;if(c==='lh')S.lighthouse();else S.cue(c)}});
+[].forEach.call(document.querySelectorAll('[data-w]'),function(b){b.onclick=function(){S.setWeekBeat(b.dataset.w)}});
+var bars=[];for(var i=0;i<32;i++){var d=document.createElement('i');$('bar').appendChild(d);bars.push(d)}var data=null;
+function frame(){var an=A.analyser(128);$('vc').textContent=S.voices();if(an){data=data||new Uint8Array(an.frequencyBinCount);an.getByteFrequencyData(data);for(var i=0;i<32;i++)bars[i].style.height=(data[i]/255*100)+'%'}requestAnimationFrame(frame)}
+frame();upd();setInterval(function(){upd();var l=S.dump(30);if(l.length)$('log').textContent=l.reverse().join('\n')},500);
+})();
+</script></body></html>
