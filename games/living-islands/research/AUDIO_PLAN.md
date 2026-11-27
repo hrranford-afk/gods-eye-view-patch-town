@@ -80,3 +80,53 @@ Game loop sets sea energy from the macro sea, wind from the weather, rain from s
 5. Thunder and roar: awe, not alarm. Anything shrill or harsh should be lowered.
 6. Rock hum: pitch rise audible but slow.
 7. On the iPad: first tap starts audio, no crackle, device does not warm up.
+
+## 8. THE ISLAND SONG (generative music layer, job T3)
+
+Module `audio_song.js` (window.LI_SONG), demo `audio_song_proto.html`, test `tests/audio-song-test.js`. Not heard by the author; every number is a first guess for the owner's ears.
+
+Idea: the island's rhythms together are the song. There are no loops and no melody tracks. Real game events cause notes, and every note is quantised to one soft shared pulse and picked from one calm scale.
+
+### Scale, root, mood (from the island seed)
+The seed (number or string) is hashed (FNV-1a) into a small seeded RNG (mulberry32). It picks:
+- a scale: one of the five pentatonic rotations [0 2 4 7 9], [0 2 5 7 10], [0 3 5 8 10], [0 2 5 7 9], [0 3 5 7 10] (no semitone steps, so nothing can sound sour);
+- a root note from MIDI 45..52 (A2 to E3);
+- a pulse of 52..64 beats per minute (the grid is an eighth note, about 0.5 s).
+Mood name is derived from the rotation (bright, open, tender, dusk, deep). All notes are scale degrees, so a log can show degree and midi and a test can prove every pitch class is in the scale.
+
+### Voices
+| Voice | Trigger | Sound | Weight |
+|---|---|---|---|
+| Robot (soft percussion) | robotBeat(id, kind, battery) | short soft bell/pluck on a degree fixed per robot (from hash of id); hauler an octave low, sorter middle, stacker an octave up and sparse. Spacing in grid steps = base (4, 3, 8) * (1 + round(3 * (1-battery)^2)): clicks spread as the robot tires, and each note is a little softer | 0.08 |
+| Lighthouse | lighthouse() each beam sweep | one slow note (1.2 s attack, 5 s tail) walking a fixed pattern of degrees; a little louder at night | 0.22 |
+| Tide | setTide(0..1) | a low three-note swell chord, always present, gain and filter rise and fall with the tide | pad, not counted |
+| Winch | cue('winch') | two-note motif, degrees 4 then 2 | 0.2 |
+| Key | cue('key') | rising three-note figure, high | 0.2 |
+| Gulls | automatic by day, rare; cue('gull') | single bright high note with a small glide | 0.1 |
+| Phrase | form (below) | an 8-step phrase generated from the seed, soft bell | 0.15 |
+| Storm cue | cue('thunder') | one very low note, long | 0.25 |
+
+### Form: the game week
+setWeekBeat(name): `tender` (tender's day) is the opening phrase: phrase plays every 4 bars. `lowtide` (low-tide day) is the quiet middle: only the first notes of the phrase every 8 bars, robots spaced twice as far, swell a little stronger, everything softer. `lighthouse` (lighthouse day) is a gentle variation: phrase shifted up two degrees with pairs swapped, lighthouse note louder. `none` stops the phrase.
+
+### Storms
+setStorm(0..1). Above 0.55 the song goes dark: same pitches, but the home degree moves to the relative minor (degree 4 of the scale), the swell chord drops an octave, its gain rises and the percussion and phrase fade to about a third. This is awe: low and wide, no shrill notes. Below 0.4 it returns, and a short rising three-note figure brightens the song once.
+
+### Limits, ducking, battery
+- Hard caps: 8 simultaneous notes; per-voice caps (robot 4, phrase 2, lighthouse 1, gull 1, cue 3); a loudness budget of 0.6 (sum of live note weights); a refused note is simply not played.
+- Quiet by default: song bus gain 0.5, then the LI_AUDIO music bus (the music slider) and master. LI_AUDIO's music slider defaults to 0; wire the game default to about 0.35. Mute and master are honoured because the song plays through LI_AUDIO's music bus.
+- No per-frame allocation. A scheduler tick runs every 100 ms (look-ahead 0.3 s), not per frame; nodes exist only for the length of a note; the swell chord is built once.
+- Randomness is hashed from (seed, grid step), never Math.random, so the same seed and the same event stream give the same notes.
+- LI_AUDIO.chordBed(false) is called on start so the plain chord bed does not double the song. `LI_AUDIO.hook()` is an additive accessor for the live context; nothing else in audio.js changed.
+
+### Game wiring (later)
+setIsland(seed) on island load; setTide each frame (cheap, ramped); setStorm from storm intensity; setWeekBeat on day change; lighthouse() each sweep; robotBeat on robot state change (battery changes are read by the scheduler, so call it when battery moves a step, not per frame); cue('winch'|'key'|'gull'|'thunder'|'delivery') from game events.
+
+### What to listen for (owner)
+1. Does the pulse feel like one soft thing, or do notes feel scattered? Notes should land on the grid.
+2. A tiring robot: do its notes spread out in a way that feels sleepy?
+3. Tide swell: heard as water-like low breathing, not a drone alarm.
+4. Storm: does the darker mode feel big and calm, not scary; does the brighten figure feel like relief?
+5. Between islands (different seeds): different keys and moods, same warm family.
+6. Too many robots: does it stay gentle, or get busy?
+7. The three week beats: opening, quiet, variation recognisable.
