@@ -187,13 +187,17 @@
       void main(){vec3 r=normalize(vD);float y=r.y;vec3 col=mix(uSkyH,uSkyZ,pow(max(y,0.0),0.5));
         float sd=max(dot(r,uSun),0.0);float glow=0.05*pow(sd,5.0)+0.6*pow(sd,160.0);col+=uSunCol*glow*(1.0-uDeckOp*0.9);
         if(y>0.0){vec2 q=r.xz/(y+0.07)*60.0-uOff*0.5;float cov=max(uCoverP*1.5,uCD.z);vec2 lk=wxLook(q,normalize(uSun.xz+vec2(0.001)),cov);float fade=smoothstep(0.0,0.22,y);
-          if(uCir>0.01){vec2 qc=r.xz/(y+0.2)*40.0;float a=dot(qc,uCirD)*0.35,b=dot(qc,vec2(-uCirD.y,uCirD.x))*3.2;float f=texture2D(uWN,vec2(a*0.03,b*0.03)).r*0.6+texture2D(uWN,vec2(a*0.07+0.3,b*0.07)).g*0.4;
-            float m=smoothstep(0.55,0.75,f)*uCir*smoothstep(0.02,0.25,y)*(1.0-smoothstep(0.7,1.0,y)*0.5);vec3 cc2=mix(uCl,vec3(1.0,0.78,0.6)*max(uCl.r,0.8),uGold);col=mix(col,cc2*0.95,m*0.7);}
+          if(uCir>0.01){vec2 qc=r.xz/(y+0.2)*40.0;float a=dot(qc,uCirD)*0.35,b=dot(qc,vec2(-uCirD.y,uCirD.x))*3.2;vec2 cw=texture2D(uWN,qc*0.011+vec2(0.2,0.7)).gb-0.5;a+=cw.x*9.0;b+=cw.y*4.0;float f=texture2D(uWN,vec2(a*0.03,b*0.03)).r*0.6+texture2D(uWN,vec2(a*0.07+0.3,b*0.07)).g*0.4;
+            float pm=0.3+0.7*smoothstep(0.3,0.7,texture2D(uWN,qc*0.018+vec2(0.4,0.1)).r);float m=smoothstep(0.55,0.75,f)*pm*uCir*smoothstep(0.02,0.25,y)*(1.0-smoothstep(0.7,1.0,y)*0.5);vec3 cc2=mix(uCl,vec3(1.0,0.78,0.6)*max(uCl.r,0.8),uGold);col=mix(col,cc2*0.95,m*0.7);}
           vec3 cc=mix(uCs*(1.0-uDeckDark*0.7),uCl*(1.0-uDeckDark*0.6),lk.y);col=mix(col,cc,lk.x*fade*(0.55+0.4*max(uDeckOp,uCoverP)));}
         else col=uSkyH*0.92;
         {vec2 sh=normalize(uSun.xz+vec2(0.001));float opp=clamp(-dot(normalize(r.xz+vec2(0.001)),sh),0.0,1.0);float band=smoothstep(0.0,0.07,y)*(1.0-smoothstep(0.1,0.34,y));
          col=mix(col,vec3(0.55,0.34,0.42),uGold*opp*band*0.8);col=mix(col,vec3(0.10,0.12,0.22),uGold*opp*(1.0-smoothstep(0.0,0.07,abs(y)))*0.4);}
-        col+=uFlash*vec3(0.5,0.55,0.8)*0.5;gl_FragColor=vec4(col,1.0);${TONE}}` }));
+        col+=uFlash*vec3(0.5,0.55,0.8)*0.5;gl_FragColor=vec4(col,1.0);${TONE}
+#ifdef NOPOST
+        {vec3 p3=fract(vec3(gl_FragCoord.xyx)*0.1031);p3+=dot(p3,p3.yzx+33.33);float h1=fract((p3.x+p3.y)*p3.z);p3=fract(vec3(gl_FragCoord.yxy+17.0)*0.1031);p3+=dot(p3,p3.yzx+33.33);float h2=fract((p3.x+p3.y)*p3.z);gl_FragColor.rgb+=(h1+h2-1.0)/255.0;}   /* T1a item 3: with no post pass the dome writes the 8-bit canvas itself, so it dithers its own gradient (triangular, one level) */
+#endif
+      }` }));
     dm.renderOrder = -100; dm.frustumCulled = false; scene.add(dm); objs.dome = dm;
     /* cloud deck: one plane just above the islands, translucent, lit from the sun side by a second density tap */
     const dk = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400).rotateX(-Math.PI / 2), new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, defines: defs,
