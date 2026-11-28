@@ -5964,7 +5964,7 @@ $('lrStart').addEventListener('click', lrStartGo);
 // so they always sit under the road. Static shapes are merged per material and per 90-unit cell (`kMerge`), so the whole kitchen is a few dozen
 // draw calls. Cars: you drive with the usual `drive()` in x and z and ride a height (`krCar`: ground, air with gravity, fall = quick respawn a little
 // back with a wobble); the 3 red cars are scripted along the main line (s, a lane, rubber band), so they take every jump, flight and teleport.
-const KR = { G: 50, STEP: 1.25, TOP: 24, BOOST: 36, FALL: 5.5 };
+const KR = { G: 50, STEP: 1.25, TOP: 24, BOOST: 36, FALL: 5.5, STEPUP: 1.4, UPRATE: 36 }; // STEPUP: the most the ground may be above the car before it counts as a wall; UPRATE: how fast a car may climb a step (units per second)
 let krFlashEl = null; // the white flash for the microwave
 const KR_RIVALS = [{ name: 'Red 1', k: 0.84, lane: -1.4 }, { name: 'Red 2', k: 0.815, lane: 1.4 }, { name: 'Red 3', k: 0.79, lane: 0 }];
 const kVC = (s) => shared(`kr:vc${s}`, () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: s ? 0.3 : 0.7, metalness: s ? 0.45 : 0.04 }));
@@ -6091,7 +6091,7 @@ function krCourse(lv) {
   // Shortcuts. The cutlery drawer: down a wooden spoon into the open drawer, along a divider (narrow, with a boost), up a spoon and back.
   const Dr = kBranch(M, 'drawer', forkA);
   kT(Dr, 70, 9);
-  kS(Dr, 16);
+  kS(Dr, 17); // (the spoons start at the worktop's front edge, so the road does not dip into the worktop)
   kS(Dr, 8, { dy: -4, hw: 2.6, edge: 1, surf: 'spoon', name: 'spoon1' });
   kT(Dr, -70, 6, { hw: 2.6, edge: 1, surf: 'rim', name: 'drT1' });
   kS(Dr, 10, { hw: 1.8, edge: 1, surf: 'rim', name: 'rim0' });
@@ -6104,7 +6104,7 @@ function krCourse(lv) {
   Dr.to = jA;
   // The whisk: a spring pad off to the right before the cereal boxes throws you straight up onto the sill.
   const Sp = kBranch(M, 'spring', forkS);
-  kT(Sp, 35, 8);
+  kT(Sp, 68, 7); // (sharp enough that the pad stands clear of the cereal-box ramp beside it)
   kS(Sp, 6, { hw: 4, surf: 'pad', name: 'pad' });
   const jS = kNearest(M, 106, -73, M.named.sill1.i0, M.named.sill2.i1);
   kJ(Sp, M.pts[jS].x, M.pts[jS].z, M.pts[jS].y, M.head[jS], { scr: 'fly', v: 34, arc: 24, gap: 1, hw: 4, name: 'whisk' });
@@ -6238,13 +6238,32 @@ function kMerge(src, dst) {
 const KR_WORKTOP = [0xd2b48a, 0xb9c0c8, 0x8c6a4f, 0xa9bcc8, 0x45484e, 0xb07a45]; // per level: light oak, cool grey, walnut, pale blue, dark granite, butcher's block
 const KR_SURF = { board: 0xdcb27c, bin: 0xf4ecd8, tin: 0x2e6fb5, book: 0x8a3b3b, sill: 0xc89262, caddy: 0x2f7a5c, tray: 0x45494f, knife: 0xd5d9de, toaster: 0xd9dde2, spatula: 0xe8603c, oven: 0x26272b, ovendoor: 0x1b1d22, spoon: 0xc89a62, rim: 0xd2a874, pad: 0xef4136, tube: 0xb98d5a };
 const KR_SHINY = { tray: 1, knife: 1, toaster: 1, ovendoor: 1, oven: 1 };
+// Solid volumes (Kitchen Run solids, 28 Nov 2026): the props a car must not drive into. `K.solids` is filled by krScene beside the shapes it draws, and krSolids pushes the car out.
+// obb = a box turned by h (half length hl along h, half width hw), cyl = a round post, slab = a ramp board (its top runs from point a to b, t thick, w wide).
+function kSolids(K) {
+  const L = K.solids = [];
+  return {
+    obb: (name, cx, cz, h, hl, hw, y0, y1, stand) => L.push({ k: 0, name, cx, cz, c: Math.cos(h), s: Math.sin(h), hl, hw, y0, y1, stand: !!stand }),
+    cyl: (name, cx, cz, r, y0, y1, stand) => L.push({ k: 1, name, cx, cz, r, y0, y1, stand: !!stand }),
+    slab: (name, a, b, w, t) => { const len = Math.hypot(b.x - a.x, b.z - a.z), h = Math.atan2(b.z - a.z, b.x - a.x); L.push({ k: 2, name, ax: a.x, az: a.z, ay: a.y, by: b.y, len, c: Math.cos(h), s: Math.sin(h), hw: w / 2, t }); },
+  };
+}
+// The box that exactly holds a bend (a segment of a path): the road's two edges, from the start plane to the end plane, in the start's frame.
+function kPad(P, s) {
+  const i0 = s.i0, [tx, tz] = P.tan[i0], [nx, nz] = P.nor[i0], q0 = P.pts[i0];
+  let u0 = 1e9, u1 = -1e9, w0 = 1e9, w1 = -1e9;
+  for (let i = s.i0; i <= s.i1; i++) { const q = P.pts[i], [mx, mz] = P.nor[i]; for (const sd of [-1, 1]) { const x = q.x + mx * q.hw * sd - q0.x, z = q.z + mz * q.hw * sd - q0.z, u = x * tx + z * tz, w = x * nx + z * nz; u0 = Math.min(u0, u); u1 = Math.max(u1, u); w0 = Math.min(w0, w); w1 = Math.max(w1, w); } }
+  u0 = Math.max(u0, 0);
+  const cu = (u0 + u1) / 2, cw = (w0 + w1) / 2;
+  return { cx: q0.x + tx * cu + nx * cw, cz: q0.z + tz * cu + nz * cw, h: Math.atan2(tz, tx), hl: (u1 - u0) / 2, hw: (w1 - w0) / 2 };
+}
 function krScene(K, lv, R) {
-  const M = K.main, N = M.named, src = new THREE.Group(), grp = R.group, Dr = K.br[0], Sp = K.br[1], Ru = K.br[2];
+  const M = K.main, N = M.named, src = new THREE.Group(), grp = R.group, Dr = K.br[0], Sp = K.br[1], Ru = K.br[2], sol = kSolids(K);
   const seg = (P, nm) => P.named[nm], A = (P, s) => P.pts[s.i0], B = (P, s) => P.pts[s.i1];
   const bbox = (P, names, pad = 0) => { let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const nm of names) { const s = P.named[nm]; for (let i = s.i0; i <= s.i1; i++) { const q = P.pts[i]; x0 = Math.min(x0, q.x - q.hw); x1 = Math.max(x1, q.x + q.hw); z0 = Math.min(z0, q.z - q.hw); z1 = Math.max(z1, q.z + q.hw); } } return [x0 - pad, x1 + pad, z0 - pad, z1 + pad]; };
   const wt = kMat(`wt${lv}`, () => kMt(KR_WORKTOP[lv], { map: kTex.worktop(), roughness: 0.5 }));
   const slab = (x0, x1, z0, z1, top = 0, th = 4) => { const o = kBox(src, x1 - x0, th, z1 - z0, 0xffffff, (x0 + x1) / 2, top - th / 2, (z0 + z1) / 2, 0, 0, 0, wt); o.userData.big = 1; return o; };
-  const FRONT = 6, BACK = -86, WEST = -232, EAST = 222;
+  const FRONT = 0, BACK = -86, WEST = -232, EAST = 222; // (the worktop's front edge: the cutlery drawer's spoons start right there)
   // The room: floor far below, the tiled back wall, the main worktop with the sink cut out, cupboards, the island.
   const basin = bbox(M, ['sink0', 'sink1', 'sinkW', 'sinkOut'], 3); basin[2] = Math.min(basin[2], -31); basin[3] = Math.max(basin[3], -1);
   const fl = kAdd(src, new THREE.PlaneGeometry(700, 420), 0xffffff, 0, -90, 80, 0, 0, -Math.PI / 2, kTM('floor', { roughness: 0.4 })); fl.userData.big = 1; fl.userData.ns = 1;
@@ -6265,7 +6284,8 @@ function krScene(K, lv, R) {
   for (let x = isl[0] + 6; x < isl[1] - 34; x += 38) { kBox(src, 35, 70, 1, doorCol, x + 17.5, -50, isl[3] - 2.4); kBox(src, 1.2, 10, 1.4, 0xc8ccd2, x + 30, -30, isl[3] - 1.6, 0, 0, 0, kShiny()); }
   // Window above the sill.
   const sill = bbox(M, ['sillT', 'sill1', 'plant', 'sill2'], 0);
-  const sx0 = sill[0] - 10, sx1 = sill[1] + 4, sz1 = -63, sy = M.pts[N.sill1.i0].y;
+  const sx0 = sill[0] - 10, sx1 = sill[1] + 4, sz1 = Math.min(-63, M.pts[N.sillT.i0].z - 0.05), sy = M.pts[N.sill1.i0].y;
+  sol.obb('sill', (sx0 + sx1) / 2, (BACK + sz1) / 2, 0, (sx1 - sx0) / 2, (sz1 - BACK) / 2, sy - 4, sy);
   kBox(src, sx1 - sx0, 4, sz1 - BACK, 0xc89262, (sx0 + sx1) / 2, sy - 2, (BACK + sz1) / 2);
   kBox(src, sx1 - sx0, 1.2, 1.4, 0xe3dccd, (sx0 + sx1) / 2, sy - 4.2, sz1 - 0.6);
   for (const x of [sx0 + 8, (sx0 + sx1) / 2, sx1 - 8]) kBox(src, 2, 8, 10, 0xe3dccd, x, sy - 8, BACK + 5);
@@ -6303,14 +6323,16 @@ function krScene(K, lv, R) {
   kCyl(src, 0.7, 0.7, sq.hw * 2 + 10, 8, 0xd9a86a, sq.x, 14.2, sq.z + 2, 0, 0, Math.PI / 2); kAdd(src, shared('kr:spoonG', () => new THREE.SphereGeometry(1.3, 10, 6)), 0xd9a86a, sq.x, 14.2, sq.z - sq.hw - 6, 0, 0, 0).scale.set(1.6, 0.6, 2.4); // a wooden spoon across the mills
   for (let k = 0; k < 7; k++) kBox(src, 0.3, 3, 2.2, k % 2 ? 0x1c1712 : 0xfff8ec, sq.x, 12, sq.z - sq.hw + 1 + k * (sq.hw * 2 - 2) / 6); // a chequered flag strip hanging from it
   // The chopping board on the bread bin; the gap; the biscuit tin and a cookbook down.
-  kSlab(src, A(M, N.board), B(M, N.board), 13, 1.4, 0xdcb27c);
+  kSlab(src, A(M, N.board), B(M, N.board), 13, 1.4, 0xdcb27c); sol.slab('board', A(M, N.board), B(M, N.board), 13, 1.4);
   kCyl(src, 1.4, 1.4, 1.6, 12, 0x5a3d26, A(M, N.board).x + 3, 0.3, A(M, N.board).z);
   const bin = kAlong(src, M, N.bin, 15, 10, 3, 0xf4ecd8, 10);
+  { const a = A(M, N.bin), b = B(M, N.bin); sol.obb('bin', (a.x + b.x) / 2, (a.z + b.z) / 2, Math.atan2(b.z - a.z, b.x - a.x), Math.hypot(b.x - a.x, b.z - a.z) / 2, 7.5, 0, 10); }
   kBox(src, 27, 7, 0.6, 0xffffff, (A(M, N.bin).x + B(M, N.bin).x) / 2, 5.4, A(M, N.bin).z + 7.6, 0, 0, 0, kTM('bread'));
   kBox(src, 8, 1, 1.4, 0xc8ccd2, (A(M, N.bin).x + B(M, N.bin).x) / 2, 1.6, A(M, N.bin).z + 8, 0, 0, 0, kShiny());
   kCyl(src, 1.8, 1.8, 24, 10, 0xd99a48, A(M, N.bin).x + 14, 7, A(M, N.bin).z - 10, 0, 0.35, 0.3); // a baguette leaning on the bin
+  { const a = A(M, N.tin), b = B(M, N.tin); sol.obb('tin', (a.x + b.x) / 2, (a.z + b.z) / 2, Math.atan2(b.z - a.z, b.x - a.x), Math.hypot(b.x - a.x, b.z - a.z) / 2, 7, 0, 7); }
   kAlong(src, M, N.tin, 14, 7, 2, 0x2e6fb5, 7, kShiny()); kAlong(src, M, N.tin, 14.6, 0.8, 2.6, 0xe8c547, 7.1, kShiny());
-  kSlab(src, A(M, N.tinramp), B(M, N.tinramp), 13, 1.6, 0x8a3b3b);
+  kSlab(src, A(M, N.tinramp), B(M, N.tinramp), 13, 1.6, 0x8a3b3b); sol.slab('tinramp', A(M, N.tinramp), B(M, N.tinramp), 13, 1.6);
   // The kitchen roll (you drive through its cardboard tube) and breakfast in the loop.
   const tA = A(M, N.tube), tB = B(M, N.tube), tL = Math.hypot(tB.x - tA.x, tB.z - tA.z) + 2;
   const fadeRoll = new THREE.Group();
@@ -6329,6 +6351,10 @@ function krScene(K, lv, R) {
   for (const [w, d, x, z] of [[dx1 - dx0, 1.4, (dx0 + dx1) / 2, dz1], [1.4, dz1 - dz0, dx0, (dz0 + dz1) / 2], [1.4, dz1 - dz0, dx1, (dz0 + dz1) / 2]]) kBox(src, w, 9, d, 0xa8743f, x, dyT - 4.5, z);
   kBox(src, dx1 - dx0 + 2, 12, 1.6, doorCol, (dx0 + dx1) / 2, dyT - 6, dz1 + 1); kBox(src, 10, 1.2, 1.4, 0xc8ccd2, (dx0 + dx1) / 2, dyT - 3, dz1 + 2.2, 0, 0, 0, kShiny());
   const rz = Dr.pts[Dr.named.rim.i0].z;
+  sol.obb('drWallW', dx0, (dz0 + dz1) / 2, 0, 0.7, (dz1 - dz0) / 2, dyT - 9, dyT); sol.obb('drWallE', dx1, (dz0 + dz1) / 2, 0, 0.7, (dz1 - dz0) / 2, dyT - 9, dyT); sol.obb('drWallS', (dx0 + dx1) / 2, dz1, 0, (dx1 - dx0) / 2, 0.7, dyT - 9, dyT);
+  sol.obb('drLip', (dx0 + dx1) / 2, (BACK + FRONT) / 2, 0, (dx1 - dx0) / 2, (FRONT - BACK) / 2, -4, 0); // (the worktop's front edge, over the back of the drawer)
+  sol.obb('drDiv', (dx0 + dx1) / 2, rz, 0, (dx1 - dx0) / 2, 0.5, dyT - 8.5, dyT - 0.5);
+  for (const z of [rz + 8, rz + 15]) sol.obb('drTray', (dx0 + dx1) / 2, z, 0, (dx1 - dx0) / 2, 0.4, dyT - 8.6, dyT - 0.6);
   for (const z of [rz + 8, rz + 15]) kBox(src, dx1 - dx0, 8, 0.8, 0xc0915c, (dx0 + dx1) / 2, dyT - 4.6, z);
   kBox(src, dx1 - dx0, 8, 1, 0xc0915c, (dx0 + dx1) / 2, dyT - 4.5, rz); // the divider you drive along (its top is the road)
   for (let x = dx0 + 4; x < dx1 - 4; x += 4.5) { // knives, forks and spoons lying in the trays
@@ -6336,15 +6362,16 @@ function krScene(K, lv, R) {
     kBox(src, 1, 0.5, 6, 0xd5d9de, x, dyT - 7.6, z, 0, 0, 0, kShiny()); kBox(src, 1.2, 0.6, 3, k ? 0x2b2b2b : 0xd5d9de, x, dyT - 7.6, z - 4, 0, 0, 0, kShiny());
     kBox(src, 1, 0.5, 5, 0xd5d9de, x, dyT - 7.6, z2, 0, 0, 0, kShiny()); kAdd(src, shared('kr:spoonG', () => new THREE.SphereGeometry(1.3, 10, 6)), 0xd5d9de, x, dyT - 7.6, z2 + 3, 0, 0, 0, kShiny()).scale.set(1, 0.35, 1.4);
   }
-  for (const nm of ['spoon1', 'spoon2']) { const s = Dr.named[nm]; kSlab(src, A(Dr, s), B(Dr, s), 6, 1, 0xc89a62); }
+  for (const nm of ['spoon1', 'spoon2']) { const s = Dr.named[nm]; kSlab(src, A(Dr, s), B(Dr, s), 6, 1, 0xc89a62); sol.slab(nm, A(Dr, s), B(Dr, s), 6, 1); }
   // The whisk spring.
   const pd = B(Sp, Sp.named.pad);
   kCyl(src, 4.2, 4.2, 0.6, 20, 0xef4136, pd.x, 0.5, pd.z); kCyl(src, 0.9, 0.9, 12, 10, 0x2b2b2b, pd.x + 7, 1, pd.z + 3, 0.5, Math.PI / 2, 0);
   for (let k = 0; k < 4; k++) kAdd(src, shared('kr:whiskG', () => new THREE.TorusGeometry(3.6, 0.25, 6, 20)), 0xd5d9de, pd.x, 1.2, pd.z, k * Math.PI / 4, 0, 0, kShiny()).scale.set(1, 0.5, 1);
   // Cereal-box ramps and the cookbook stack between them.
-  for (const [nm, c] of [['ramp1', 0xffd23d], ['ramp2', 0x6ec3ff]]) kSlab(src, A(M, N[nm]), B(M, N[nm]), 16, 7, c);
-  const pc = N.plat.c, pr = pc[2] + 7.5;
-  [0x8a3b3b, 0x2f5f8a, 0x3f7a4a, 0xd9a03a].forEach((c, k) => kBox(src, pr * 2 + kRand(k) * 3, 4, pr * 2 + kRand(k + 3) * 2, c, pc[0] + (kRand(k + 6) - 0.5) * 1.5, k * 4 + 2, pc[1] + (kRand(k + 9) - 0.5) * 1.5, (kRand(k + 1) - 0.5) * 0.12));
+  for (const [nm, c] of [['ramp1', 0xffd23d], ['ramp2', 0x6ec3ff]]) { kSlab(src, A(M, N[nm]), B(M, N[nm]), 16, 7, c); sol.slab(nm, A(M, N[nm]), B(M, N[nm]), 16, 7); }
+  const bk = kPad(M, N.plat); // the stack fits the platform's bend exactly (flush with where the two ramps meet it), so no road runs into its side
+  [0x8a3b3b, 0x2f5f8a, 0x3f7a4a, 0xd9a03a].forEach((c, k) => { const t = 0.15 * (k % 3); kBox(src, bk.hl * 2 - t, 4, bk.hw * 2 - t, c, bk.cx + Math.cos(bk.h) * t / 2, k * 4 + 2, bk.cz + Math.sin(bk.h) * t / 2, -bk.h); });
+  sol.obb('books', bk.cx, bk.cz, bk.h, bk.hl, bk.hw, 0, M.pts[N.plat.i0].y);
   // The sill's things: a plant in the bend, a jam jar, a radio.
   const ppc = N.plant.c;
   kCyl(src, 4.2, 3.2, 7, 14, 0xc4603a, ppc[0], sy + 3.5, ppc[1]); kCyl(src, 4.4, 4.4, 1, 14, 0xb3542f, ppc[0], sy + 7, ppc[1]);
@@ -6353,9 +6380,11 @@ function krScene(K, lv, R) {
   kBox(src, 10, 6, 4, 0x3f6fb3, sx0 + 20, sy + 3, BACK + 3.5);
   // Tea caddy at the corner, the baking-tray slide.
   const cc = N.caddy.c;
-  kCyl(src, 13, 13, sy, 28, 0x2f7a5c, cc[0], sy / 2, cc[1]); kCyl(src, 13.4, 13.4, 2.4, 28, 0xe8c547, cc[0], sy - 1.5, cc[1], 0, 0, 0, kShiny());
+  { const tn = kPad(M, N.caddy); // a square tea tin that holds the bend exactly: the slide leaves from its far face, so the car never drives down through it
+    kBox(src, tn.hl * 2, sy - 1.2, tn.hw * 2, 0x2f7a5c, tn.cx, (sy - 1.2) / 2, tn.cz, -tn.h); kBox(src, tn.hl * 2, 1.2, tn.hw * 2, 0xe8c547, tn.cx, sy - 0.6, tn.cz, -tn.h, 0, 0, kShiny());
+    sol.obb('caddy', tn.cx, tn.cz, tn.h, tn.hl, tn.hw, 0, sy); }
   const sA = A(M, N.slide), sB = B(M, N.slide);
-  kSlab(src, sA, sB, 14, 0.8, 0x3a3e44, kShiny());
+  kSlab(src, sA, sB, 14, 0.8, 0x3a3e44, kShiny()); sol.slab('slide', sA, sB, 14, 0.8);
   for (const sd of [-1, 1]) kSlab(src, { x: sA.x + sd * 6.8, y: sA.y + 1.4, z: sA.z }, { x: sB.x + sd * 6.8, y: sB.y + 1.4, z: sB.z }, 1, 2, 0x55595f, kShiny());
   // The sink: steel basin, water, a tap, sponges to drive on, the ruler bridge.
   const [bx0, bx1, bz0, bz1] = basin, bw = bx1 - bx0, bd = bz1 - bz0;
@@ -6370,9 +6399,10 @@ function krScene(K, lv, R) {
     for (let i = s.i0 + 1; i <= s.i1; i += 4) { const q = M.pts[i], h = M.head[i], j = i * 7; kBox(src, 4.6, 2.4, q.hw * 2 + 0.6, [0xffd23d, 0xffe16b, 0xf6c42f][j % 3], q.x, q.y - 1.95, q.z, -h + (kRand(j) - 0.5) * 0.25); kBox(src, 4.6, 0.7, q.hw * 2 + 0.6, 0x3f9a4a, q.x, q.y - 0.4, q.z, -h + (kRand(j) - 0.5) * 0.25); }
   }
   // The butter knife up onto the toaster, the toaster, and its toast (it pops when you launch).
-  kSlab(src, A(M, N.knife), B(M, N.knife), 7, 0.6, 0xd5d9de, kShiny());
+  kSlab(src, A(M, N.knife), B(M, N.knife), 7, 0.6, 0xd5d9de, kShiny()); sol.slab('knife', A(M, N.knife), B(M, N.knife), 7, 0.6);
   kBox(src, 9, 1.4, 3, 0x2b2b2b, A(M, N.knife).x + 6, 0.7, A(M, N.knife).z);
-  const ta = A(M, N.toaster), tb = B(M, N.toaster), tcx = (ta.x + tb.x) / 2 - 1, tcz = ta.z + 2.5;
+  const ta = A(M, N.toaster), tb = B(M, N.toaster), th = M.head[N.toaster.i0], tcx = ta.x + Math.cos(th) * 8, tcz = ta.z + 2.5; // (the body starts where the knife ends: no road runs into its front)
+  sol.obb('toaster', tcx, tcz, th, 8, 7.5, 0, 8);
   kBox(src, 16, 8, 15, 0xd63b2f, tcx, 4, tcz, 0, 0, 0, kShiny()); kBox(src, 16.4, 1, 15.4, 0xd5d9de, tcx, 7.9, tcz, 0, 0, 0, kShiny());
   kBox(src, 10, 0.3, 2, 0x1c1712, tcx, 8.45, tcz + 5); kBox(src, 3, 1.5, 1.2, 0x1c1712, tcx + 4, 5, tcz + 8);
   const toast = new THREE.Group(); toast.position.set(tcx, 6, tcz + 5); grp.add(toast);
@@ -6389,22 +6419,25 @@ function krScene(K, lv, R) {
     kAdd(src, shared('kr:ringG', () => new THREE.TorusGeometry(4, 0.25, 4, 28)), isHot ? 0xff7a3a : 0x6a6c72, c[0], 0.6, c[1], 0, 0, Math.PI / 2, isHot ? hot : null).userData.ns = 1;
     K.rings.push({ x: c[0], z: c[1], r: 6.5, hot: isHot });
   });
-  kSlab(src, A(M, N.spatula), B(M, N.spatula), 9.5, 0.6, 0xe8603c);
+  kSlab(src, A(M, N.spatula), B(M, N.spatula), 9.5, 0.6, 0xe8603c); sol.slab('spatula', A(M, N.spatula), B(M, N.spatula), 9.5, 0.6);
   kBox(src, 16, 1, 2, 0x2b2b2b, A(M, N.spatula).x + 9, 0.5, A(M, N.spatula).z + 0.5);
-  const ck = [(A(M, N.cake).x + B(M, N.cake).x) / 2, (A(M, N.cake).z + B(M, N.cake).z) / 2];
-  kCyl(src, 5.4, 5.4, 2, 24, 0xe7b968, ck[0], 1, ck[1]); kCyl(src, 5.5, 5.5, 0.7, 24, 0xd8344a, ck[0], 2.3, ck[1]); kCyl(src, 5.4, 5.4, 1.8, 24, 0xe7b968, ck[0], 3.5, ck[1]); kCyl(src, 5.7, 5.7, 0.7, 24, 0xfff8ec, ck[0], 4.7, ck[1]);
+  const cA = A(M, N.cake), cB = B(M, N.cake), cf = 10.5 / Math.hypot(cB.x - cA.x, cB.z - cA.z), ck = [cA.x + (cB.x - cA.x) * cf, cA.z + (cB.z - cA.z) * cf]; // (a little smaller and later, so the jump's arc is over it all the way)
+  kCyl(src, 4.3, 4.3, 2, 24, 0xe7b968, ck[0], 1, ck[1]); kCyl(src, 4.4, 4.4, 0.7, 24, 0xd8344a, ck[0], 2.3, ck[1]); kCyl(src, 4.3, 4.3, 1.8, 24, 0xe7b968, ck[0], 3.5, ck[1]); kCyl(src, 4.5, 4.5, 0.7, 24, 0xfff8ec, ck[0], 4.7, ck[1]);
+  sol.cyl('cake', ck[0], ck[1], 4.5, 0, 5.05, true);
   kAdd(src, shared('kr:cherryG', () => new THREE.SphereGeometry(0.9, 10, 8)), 0xd8344a, ck[0], 5.8, ck[1], 0, 0, 0, kShiny());
-  for (let k = 0; k < 5; k++) { const a = k * 1.256; kCyl(src, 0.25, 0.25, 2, 6, [0x6ec3ff, 0xffd23d, 0xef4136][k % 3], ck[0] + Math.cos(a) * 3.6, 6, ck[1] + Math.sin(a) * 3.6); }
+  for (let k = 0; k < 5; k++) { const a = k * 1.256; kCyl(src, 0.25, 0.25, 2, 6, [0x6ec3ff, 0xffd23d, 0xef4136][k % 3], ck[0] + Math.cos(a) * 2.9, 6, ck[1] + Math.sin(a) * 2.9); }
   // The mini fridge on legs (you drive under it) and the microwave (in you go...).
   const fA = A(M, N.fridge), fB = B(M, N.fridge), fx0 = Math.min(fA.x, fB.x) - 2, fx1 = Math.max(fA.x, fB.x) + 2, fz = fA.z;
   const fadeFridge = new THREE.Group();
   kBox(fadeFridge, fx1 - fx0, 24, 30, 0xf4f6f8, (fx0 + fx1) / 2, 19, fz, 0, 0, 0, kShiny()); kBox(fadeFridge, 2, 12, 1.2, 0xc8ccd2, fx0 + 4, 21, fz + 15.2, 0, 0, 0, kShiny());
   kBox(fadeFridge, 5, 4, 0.6, 0xffc23d, fx1 - 8, 24, fz + 15.2);
-  for (const [x, z] of [[fx0 + 2, fz - 13], [fx1 - 2, fz - 13], [fx0 + 2, fz + 13], [fx1 - 2, fz + 13]]) kCyl(src, 1.1, 1.1, 7, 8, 0x2b2b2b, x, 3.5, z);
+  for (const [x, z] of [[fx0 + 2, fz - 13], [fx1 - 2, fz - 13], [fx0 + 2, fz + 13], [fx1 - 2, fz + 13]]) { kCyl(src, 1.1, 1.1, 7, 8, 0x2b2b2b, x, 3.5, z); sol.cyl('fridgeLeg', x, z, 1.1, 0, 7); }
+  sol.obb('fridge', (fx0 + fx1) / 2, fz, 0, (fx1 - fx0) / 2, 15, 6.6, 31);
   kBox(src, fx1 - fx0, 0.4, 0.8, 0xffffff, (fx0 + fx1) / 2, 6.8, fz + 14, 0, 0, 0, kMat('blueGlow', () => new THREE.MeshBasicMaterial({ color: 0x8fd0ff })));
   kBox(src, fx1 - fx0, 0.4, 0.8, 0xffffff, (fx0 + fx1) / 2, 6.8, fz - 14, 0, 0, 0, kMat('blueGlow', () => new THREE.MeshBasicMaterial({ color: 0x8fd0ff })));
   const glow = kAdd(src, new THREE.PlaneGeometry(fx1 - fx0, 26), 0xffffff, (fx0 + fx1) / 2, 0.15, fz, 0, 0, -Math.PI / 2, kMat('coldPool', () => new THREE.MeshBasicMaterial({ color: 0x3f8fff, transparent: true, opacity: 0.28, depthWrite: false }))); glow.userData.ns = 1;
   const mI = B(M, N.mwIn), mx = mI.x, mz = mI.z;
+  sol.obb('mwRoof', mx - 15, mz, 0, 15, 15, 16.4, 18); sol.obb('mwWallN', mx - 15, mz - 14, 0, 15, 1, 0, 18); sol.obb('mwWallS', mx - 15, mz + 14, 0, 15, 1, 0, 18); sol.obb('mwBack', mx - 29.2, mz, 0, 0.8, 15, 0, 18);
   const fadeMw = new THREE.Group(); // its walls go see-through as you drive in, so you see the glowing inside
   kBox(fadeMw, 30, 1.6, 30, 0xe4e7eb, mx - 15, 17.2, mz); kBox(fadeMw, 1.6, 18, 30, 0xe4e7eb, mx - 29.2, 9, mz);
   kBox(fadeMw, 30, 18, 2, 0xe4e7eb, mx - 15, 9, mz - 14); kBox(fadeMw, 30, 18, 2, 0xe4e7eb, mx - 15, 9, mz + 14); kBox(fadeMw, 20, 11, 0.4, 0x1c1f24, mx - 17, 9.5, mz + 15.1); kBox(fadeMw, 6, 13, 0.5, 0x2b2f36, mx - 3.5, 9, mz + 15.2);
@@ -6427,6 +6460,7 @@ function krScene(K, lv, R) {
   kBox(src, 1.4, 1.4, 12, 0xc8ccd2, B(M, N.ovendoor).x - 1, 1.2, oz, 0, 0, 0, kShiny());
   krDress(src, K, lv, { sy, sx0, sx1, basin, isl, BACK, FRONT });
   K.floors = [[WEST, EAST, BACK, FRONT, 0], [isl[0], isl[1], isl[2], isl[3], 0]]; K.basin = basin;
+  K.tops = K.floors; // (worktop and island: a car that comes down on one off the road is out, it does not sink into it)
   K.blob = new THREE.Mesh(shared('kr:blobG', () => new THREE.CircleGeometry(2.2, 20)), kMat('blobM', () => new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false })));
   K.blob.rotation.x = -Math.PI / 2; K.blob.visible = false; grp.add(K.blob);
   // Bake it: the plain shapes into a few meshes; the kitchen roll and the fridge into their own see-through meshes.
@@ -6536,7 +6570,7 @@ const krMainS = (P, i, f = 0) => { const K = state.race.kr; if (P === K.main) re
 function krNear(c) {
   const K = state.race.kr, M = K.main;
   let bP = c.kp, bi = c.wp, bd = 1e9;
-  const test = (P, i) => { const q = P.pts[i], d = (c.x - q.x) ** 2 + (c.z - q.z) ** 2 + ((c.y - q.y) * 0.8) ** 2 + (P === c.kp ? 0 : 5); if (d < bd) { bd = d; bP = P; bi = i; } }; // (switching line needs a clear lead)
+  const test = (P, i) => { const q = P.pts[i]; if (P !== c.kp && q.y > c.y + 2.5) return; /* (never hop onto another line that is well above you) */ const d = (c.x - q.x) ** 2 + (c.z - q.z) ** 2 + ((c.y - q.y) * 0.8) ** 2 + (P === c.kp ? 0 : 5); if (d < bd) { bd = d; bP = P; bi = i; } }; // (switching line needs a clear lead)
   const P = c.kp, n = P.pts.length;
   for (let k = -4; k <= 10; k++) { const i = c.wp + k; if (i >= 0 && i < n) test(P, i); }
   if (P === M) { for (const B of K.br) if (c.wp >= B.from - 12 && c.wp <= B.from + 4) for (let i = 0; i < Math.min(12, B.pts.length); i++) test(B, i); }
@@ -6558,12 +6592,14 @@ function krCar(c, dt, go, ix, iz) {
     c.vx = (x - c.x) / dt; c.vz = (z - c.z) / dt; c.vy = (y - c.y) / dt;
     c.x = x; c.y = y; c.z = z; c.wp = i; if (Math.hypot(c.vx, c.vz) > 1) c.heading = Math.atan2(c.vz, c.vx);
     if (S.s >= end) {
-      const q = P.pts[S.end], h = P.head[S.end], v = Math.max(18, S.out);
-      Object.assign(c, { x: q.x, z: q.z, y: q.y, vy: 0, heading: h, vx: Math.cos(h) * v, vz: Math.sin(h) * v, wp: S.end, scr: null, krAir: false, good: [P, S.end], goodY: q.y });
+      let P2 = P, e = S.end; // (the whisk ends on the shortcut's last point, which is still a ride point: put the car on the main line there, or it is lifted again and again and never gets off)
+      if (P !== K.main && P.to != null && S.end >= P.pts.length - 1) { P2 = K.main; e = P.to; }
+      const q = P2.pts[e], h = P2.head[e], v = Math.max(18, S.out);
+      Object.assign(c, { x: q.x, z: q.z, y: q.y, vy: 0, heading: h, vx: Math.cos(h) * v, vz: Math.sin(h) * v, kp: P2, wp: e, scr: null, krAir: false, good: [P2, e], goodY: q.y });
       if (S.kind === 'tele') { K.flash = 1; K.snap = true; sfx('ding'); burst(q.x, q.z, 0xffe9a0, 14, 12, q.y + 2); toast('Ding! Out of the oven'); }
       else { sfx('thud'); burst(q.x, q.z, 0xfff8ec, 8, 8, q.y + 0.5); state.shake = Math.max(state.shake || 0, 0.5); }
     }
-    c.prog = Math.max(c.prog, krMainS(P, c.wp));
+    c.prog = Math.max(c.prog, krMainS(c.kp, c.wp));
     return;
   }
   const top = KR.TOP * (c.sog > 0 ? 0.72 : 1) * (c.wob > 0 ? 0.75 : 1) * (c.kp.pts[c.wp].surf === 'sponge' ? 0.85 : 1), boosting = c.boostT > 0;
@@ -6574,10 +6610,12 @@ function krCar(c, dt, go, ix, iz) {
   for (const k of ['boostT', 'spinT', 'sog', 'wob']) if (c[k] > 0) c[k] -= dt;
   const g = krNear(c), q = g.q, P = c.kp, i = c.wp;
   // Ground under the car: the deck if you are on it; the worktop roads have soft rails; raised roads have edges you can drive off.
+  // (Kitchen Run solids: a road that turns from rails to edges, e.g. the tape onto the chopping board, keeps its rails for a moment, so you are not dropped at the join.)
   let ground = null;
+  if (!q.edge && q.solid && !c.krAir) c.railT = 0.2; else if (c.railT > 0) c.railT -= dt;
   if (q.solid && !q.scr) {
     if (Math.abs(g.lat) <= q.hw + 0.4) ground = g.gy;
-    else if (!q.edge) {
+    else if (!q.edge || c.railT > 0) {
       ground = g.gy;
       if (!c.krAir) { const [nx, nz] = P.nor[i], over = g.lat - Math.sign(g.lat) * q.hw; c.x -= nx * over; c.z -= nz * over; const vn = c.vx * nx + c.vz * nz; if (vn * Math.sign(g.lat) > 0) { c.vx -= nx * vn * 1.3; c.vz -= nz * vn * 1.3; } c.vx *= 0.985; c.vz *= 0.985; }
     }
@@ -6589,9 +6627,12 @@ function krCar(c, dt, go, ix, iz) {
     if (q.scr === 'tele') { K.flash = 1; sfx('ding'); toast('Into the microwave...'); } else { sfx('boing'); state.shake = Math.max(state.shake || 0, 0.4); if (q.surf === 'toaster' || P.pts[Math.max(0, i - 1)].surf === 'toaster') { K.toastT = 1; toast('TOASTER LAUNCH!'); } else toast('Boing! Up onto the sill'); }
     c.krAir = false; c.boostT = 0; return;
   }
+  if (K.solids) ground = krGround(c, ground);
   if (!c.krAir) {
     if (ground === null || ground < c.y - 1.3) c.krAir = true; // off an edge or a lip: fly with the speed you had
-    else { c.vy = Math.max(-30, Math.min(30, (ground - c.y) / dt)); c.y = ground; }
+    else if (ground > c.y + KR.STEPUP) { // the ground is a wall (a ramp's end, a prop): never snap up through it, stop against it and slide back
+      c.x -= c.vx * dt; c.z -= c.vz * dt; c.vx *= 0.3; c.vz *= 0.3; c.y += Math.min(KR.UPRATE * dt, ground - c.y); c.vy = 0; c.bumpT = (c.bumpT || 0) + dt;
+    } else { c.vy = Math.max(-30, Math.min(30, (ground - c.y) / dt)); c.y = ground; }
   }
   if (c.krAir) {
     c.vy -= G * dt; c.y += c.vy * dt;
@@ -6609,9 +6650,60 @@ function krCar(c, dt, go, ix, iz) {
     if (q.boost && c.boostT < 0.7) { c.boostT = 1.2; const sp = Math.max(KR.BOOST, Math.hypot(c.vx, c.vz)); c.vx = Math.cos(c.heading) * sp; c.vz = Math.sin(c.heading) * sp; if (c === state.player) sfx('missile'); }
     if (q.hob && K.hotOn && c.spinT <= 0) for (const r of K.rings) if (r.hot && (c.x - r.x) ** 2 + (c.z - r.z) ** 2 < r.r * r.r) { c.spinT = 0.8; c.vx *= 0.5; c.vz *= 0.5; sfx('sizzle'); toast('Hot ring! Ouch'); burst(c.x, c.z, 0xff7a1a, 8, 7, 1); }
   }
+  if (K.solids && krSolids(c, dt, ground)) { krRespawn(c, false); return; } // (stuck inside something, or came down on the bare worktop: back on the road)
   // Fallen off: a splash or a bump, then back on the road a little way back, wobbling.
   if (c.y < c.goodY - KR.FALL || c.y < -80) krRespawn(c, q.water);
   c.prog = Math.max(c.prog - 30, Math.min(c.prog + 30, krMainS(c.kp, c.wp, g.f)));
+}
+// The ground under a car that is not on its road: the highest standable top at or just below its feet (the cake, the toaster), else the road it is on.
+// A top more than a small step above the feet is a wall, not ground: nothing ever lifts the car up through a roof or a side.
+function krGround(c, ground) {
+  for (const s of state.race.kr.solids) {
+    if (!s.stand) continue;
+    const inx = krIn(s, c.x, c.z, 0.6);
+    if (inx && c.y >= s.y1 - 0.5 && c.y <= s.y1 + 1.0 && (ground === null || s.y1 > ground)) ground = s.y1;
+  }
+  return ground;
+}
+// Is (x, z) inside the solid's footprint grown by r? (obb and cyl)
+function krIn(s, x, z, r) {
+  if (s.k === 1) return Math.hypot(x - s.cx, z - s.cz) < s.r + r;
+  const dx = x - s.cx, dz = z - s.cz, u = dx * s.c + dz * s.s, v = -dx * s.s + dz * s.c;
+  return Math.abs(u) < s.hl + r && Math.abs(v) < s.hw + r;
+}
+// Make the props solid. The car (a post of radius 1.1, 1.4 high) is pushed out sideways from any solid it is under the top of, the speed into the wall is lost, and
+// under a ceiling it is held down. Returns true when the car should go back to its last good point: stuck inside something for 0.4 s, or down on the bare worktop.
+function krSolids(c, dt, ground) {
+  const K = state.race.kr, R = 1.1, H = 1.4;
+  let hit = false, inside = false;
+  for (const s of K.solids) {
+    let y1 = s.y1, y0 = s.y0, nx = 0, nz = 0, d = 0;
+    if (s.k === 2) { // a ramp board: only its sides (its ends are where the road comes on and off)
+      const dx = c.x - s.ax, dz = c.z - s.az, u = dx * s.c + dz * s.s, v = -dx * s.s + dz * s.c;
+      if (u < -R || u > s.len + R || Math.abs(v) >= s.hw + R) continue;
+      const top = s.ay + (s.by - s.ay) * Math.max(0, Math.min(1, u / s.len));
+      if (c.y >= top - 0.4 || c.y + H <= top - s.t) continue;
+      const side = Math.sign(v) || 1, over = s.hw + R - Math.abs(v);
+      nx = -s.s * side; nz = s.c * side; d = over;
+    } else {
+      if (c.y >= y1 - 1.0 || c.y + H <= y0 + 0.05 || !krIn(s, c.x, c.z, R)) continue; // (a car within a step of the top is on it: a ramp's last bit is a little under it)
+      if (y0 > 1 && c.y < y0) { c.y = y0 - H; if (c.vy > 0) c.vy = 0; continue; } // a roof (the fridge, the microwave): the car cannot rise into it
+      if (s.k === 1) { const dx = c.x - s.cx, dz = c.z - s.cz, l = Math.hypot(dx, dz) || 1e-3; nx = dx / l; nz = dz / l; d = s.r + R - l; }
+      else {
+        const dx = c.x - s.cx, dz = c.z - s.cz, u = dx * s.c + dz * s.s, v = -dx * s.s + dz * s.c, du = s.hl + R - Math.abs(u), dv = s.hw + R - Math.abs(v);
+        if (du < dv) { const sg = Math.sign(u) || 1; nx = s.c * sg; nz = s.s * sg; d = du; } else { const sg = Math.sign(v) || 1; nx = -s.s * sg; nz = s.c * sg; d = dv; }
+      }
+    }
+    if (d > 0.9) inside = true;
+    c.x += nx * d; c.z += nz * d;
+    const vn = c.vx * nx + c.vz * nz; if (vn < 0) { c.vx -= nx * vn * 1.25; c.vz -= nz * vn * 1.25; }
+    hit = true;
+  }
+  c.inT = inside ? (c.inT || 0) + dt : Math.max(0, (c.inT || 0) - dt * 2);
+  if (c.inT > 0.4) { c.inT = 0; return true; }
+  // down on the bare worktop (not on a road): out, the same as falling off an edge
+  if (c.krAir && ground === null && c.y <= 0.05 && c.y > -60 && K.tops.some(([a, b, z0, z1]) => c.x > a && c.x < b && c.z > z0 && c.z < z1) && !(c.x > K.basin[0] && c.x < K.basin[1] && c.z > K.basin[2] && c.z < K.basin[3])) return true;
+  return false;
 }
 function krRespawn(c, wet) {
   const K = state.race.kr, M = K.main;
