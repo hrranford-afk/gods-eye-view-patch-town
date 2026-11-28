@@ -5,6 +5,7 @@
 var http = require('http'), fs = require('fs'), path = require('path');
 var ROOT = path.join(__dirname, '..'), MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.bin': 'application/octet-stream', '.png': 'image/png' };
 var pw; try { pw = require('playwright'); } catch (e) { console.error('playwright not found: run with NODE_PATH=$(npm root -g)'); process.exit(2); }
+var HA = require('./hud_audit.js');
 var fails = 0, results = [];
 function check(n, ok, d) { results.push({ name: n, ok: !!ok, detail: d }); if (!ok) fails++; console.log((ok ? 'PASS ' : 'FAIL ') + n + (d ? '   [' + d + ']' : '')); }
 var server = http.createServer(function (req, res) {
@@ -115,6 +116,16 @@ async function main() {
   /* 1b. the camera frames the fort by default; Big rod and Burst work with no menu; the bell rule; Rebuild */
   var fr = await page.evaluate(function () { var r = window.__rubble, f = r.ses.sim.fort, d = f.design, v = new r.THREE.Vector3(d.cx, d.baseY + d.height * 0.5, d.cz).project(r.cam); return { x: v.x, y: v.y, z: v.z, dist: r.orb.dist }; });
   check('the camera frames the fort by default (fort centre near the middle of the screen, in front of the camera)', Math.abs(fr.x) < 0.25 && Math.abs(fr.y) < 0.45 && fr.z < 1, JSON.stringify(fr));
+  /* the play HUD: closed drawer, every control on screen and 44 px or more with no overlaps; the drawer opens and holds the settings; Juice is on in Pretty and off in Plain */
+  var hd0 = await page.evaluate(HA.collect); HA.audit(check, 'HUD at ' + hd0.W + 'x' + hd0.H + ' (drawer closed)', hd0, 44);
+  var hd1 = await page.evaluate(function () { var d = document.getElementById('drawer'); return { open: d.classList.contains('open'), j: window.__rubble.juice.on, jb: document.getElementById('juice').textContent, shake: window.__rubble.juice.shakeOn }; });
+  check('the settings drawer is closed during play, Juice is on in the Pretty look (' + hd1.jb + ') and the camera shake is on', !hd1.open && hd1.j && hd1.shake, JSON.stringify(hd1));
+  await openD(); var hd2 = await page.evaluate(function () { return ['pieces', 'shape', 'tide', 'ground', 'tier', 'look', 'juice', 'shake', 'bench', 'replay'].map(function (id) { var e = document.getElementById(id), r = e.getBoundingClientRect(); return e && r.width > 0 && getComputedStyle(e).visibility !== 'hidden'; }); });
+  await page.screenshot({ path: path.join(shots, 'rubble-14-drawer-open.png') });
+  check('opening the drawer shows pieces, shape, tide, ground, tier, look, juice, shake, bench and replay', hd2.every(Boolean), JSON.stringify(hd2));
+  var jt = await page.evaluate(async function () { var r = window.__rubble, w = function (ms) { return new Promise(function (x) { setTimeout(x, ms); }); }, o = {}; document.getElementById('juice').click(); o.off = r.juice.on; document.getElementById('juice').click(); o.on = r.juice.on; r.applyLook(false); o.plain = r.juice.on; await w(300); r.applyLook(true); o.back = r.juice.on; return o; });
+  check('the Juice switch works and follows the look: off when switched, off in Plain, on again in Pretty', jt.off === false && jt.on === true && jt.plain === false && jt.back === true, JSON.stringify(jt));
+  await closeD();
   var ev0 = await page.evaluate(function () { return window.__rubble.ses.events.length; });
   await page.click('#bigrod'); await settle(300);
   var br = await page.evaluate(function () { var e = window.__rubble.ses.events; return { n: e.length, k: e[e.length - 1] && e[e.length - 1].k }; });
@@ -129,6 +140,13 @@ async function main() {
   var sc = await page.evaluate(function () { var s = window.__rubble.ses.score(); return { sc: s, text: document.getElementById('score').innerText }; });
   check('the bell comes down to big rods and the page says Bell down, with moved, standing and shots', sc.sc.bellDown && /Bell down!/.test(sc.text) && /Knocked out/.test(sc.text) && /Standing/.test(sc.text) && sc.sc.shots >= 3, sc.text.replace(/\n/g, ' | '));
   await page.screenshot({ path: path.join(shots, 'rubble-1b-bell-down.png') });
+  var jx = await page.evaluate(function () { var j = window.__rubble.juice.stats; return { ev: j.events, sp: j.spawned, rings: j.rings, conf: j.confetti, fl: j.flashes, pops: j.pops, shown: window.__rubble.hitShown() }; });
+  check('real hits made juice (' + jx.ev + ' impacts, ' + jx.sp + ' particles), the fallen bell rang (' + jx.rings + ' ring waves), threw confetti (' + jx.conf + '), flashed the screen (' + jx.fl + ') and the Replay the hit button is showing', jx.ev > 0 && jx.sp > 0 && jx.rings >= 3 && jx.conf >= 60 && jx.fl >= 1 && jx.shown, JSON.stringify(jx));
+  var hitHash = await page.evaluate(function () { return window.__rubble.ses.sim.hash(); });
+  await page.click('#hitReplay'); var hph = [], th = Date.now();
+  while (Date.now() - th < 300000) { var hh = await page.evaluate(function () { var h = window.__rubble.hit(); return h ? { p: h.phase, d: h.dist } : null; }); if (!hh) break; if (hph[hph.length - 1] !== hh.p) hph.push(hh.p); await page.waitForTimeout(500); }
+  var hl = await page.evaluate(function () { return window.__rubble.ses.lastReplay; });
+  check('Replay the hit ran fast to the last shot, then slow (' + hph.join(' > ') + '), and ended on the same hash at the same step as the live game', hph[0] === 'seek' && hph.indexOf('slow') > 0 && hl && hl.ok, JSON.stringify(hl));
   await page.click('#rebuild'); await page.waitForFunction('/Ready/.test(document.getElementById("status").textContent)', null, { timeout: 120000 }); await settle(2500);
   var rb = await page.evaluate(function () { var s = window.__rubble.ses.score(); return { sc: s, h: window.__rubble.ses.sim.hash(), n: window.__rubble.ses.sim.bodies.length }; });
   check('Rebuild: the same fort is back, 250 pieces, bell up, score back to zero', rb.n === 250 && rb.sc.moved === 0 && !rb.sc.bellDown && rb.sc.shots === 0, JSON.stringify(rb.sc));

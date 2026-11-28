@@ -1,0 +1,61 @@
+{
+ "when": "2026-11-28T11:09:16.071Z",
+ "results": [
+  {
+   "name": "slow motion is only in the replay: the quarter speed is used in one place, the replay branch of the loop (3 mentions: its definition, that branch, and the test hook)",
+   "ok": true,
+   "detail": "3 mentions"
+  },
+  {
+   "name": "before the bell falls there is no Replay the hit button",
+   "ok": true,
+   "detail": "{\"shown\":false,\"live\":[3],\"btn\":\"Replay the hit\"}"
+  },
+  {
+   "name": "the bell is down (8 shots) and the gold Replay the hit button is on show",
+   "ok": true,
+   "detail": "{\"hash\":\"70306905\",\"steps\":150,\"down\":true,\"at\":126,\"shots\":8,\"orb\":{\"az\":0,\"el\":0.42,\"dist\":11.106445027850787,\"tx\":0,\"ty\":1.8529297656250001,\"tz\":-7},\"txt\":\"Replay the hit\"}"
+  },
+  {
+   "name": "the button is at least 44 px and on screen",
+   "ok": true,
+   "detail": "{\"w\":121,\"h\":44,\"on\":true}"
+  },
+  {
+   "name": "the replay ran in two parts: fast to the last shot, then slow (phases: seek > slow), and only the last shot is slow (seek to 96, shot at 120, slow part ends 176)",
+   "ok": true,
+   "detail": "{\"phase\":\"slow\",\"seekTo\":96,\"stopAt\":176,\"shotStep\":120,\"speed\":0.25,\"ff\":false,\"dist\":6.259468275852145,\"steps\":109,\"saved\":{\"az\":0,\"el\":0.42,\"dist\":11.106445027850787,\"tx\":0,\"ty\":1.8529297656250001,\"tz\":-7},\"avg\":1.5,\"btn\":\"Skip replay\",\"status\":\"REPLAY OF THE HIT at 1/4 speed\",\"drawer\":false}"
+  },
+  {
+   "name": "in the slow part the physics runs at a quarter speed: about 1.50 steps a frame against 3.00 when live (at most 1.6 against at least 2)",
+   "ok": true,
+   "detail": "[1.5,3,0.25]"
+  },
+  {
+   "name": "the close camera comes in (6.3 m from 11.1 m), the button turned into Skip replay, the drawer was put away",
+   "ok": true,
+   "detail": "{\"d\":6.259468275852145,\"b\":\"Skip replay\",\"dr\":false}"
+  },
+  {
+   "name": "afterwards the camera is back where you had it, the replay ended on the same hash as the live game had at the same step (7035f84e at step 198), and the button is back",
+   "ok": true,
+   "detail": "{\"pre\":\"70306905@150\",\"post\":\"c2596dc7@201\",\"last\":{\"ok\":true,\"expected\":\"7035f84e\",\"got\":\"7035f84e\",\"steps\":198},\"sameCam\":true}"
+  },
+  {
+   "name": "Skip replay catches up at once and lands in the same state (hash 2d48346d)",
+   "ok": true,
+   "detail": "{\"hash\":\"4e4bec87\",\"ok\":true,\"exp\":\"2d48346d\"}"
+  },
+  {
+   "name": "Keep, three stars: no button before (false), the replay of the last shot runs (seek/none > slow/none), the result card is hidden during it and back after, same hash at the same step",
+   "ok": true,
+   "detail": "{\"kpre\":{\"hash\":\"e84bfed0\",\"steps\":36,\"orb\":14.06931227185763},\"kpost\":{\"hash\":\"ef615e92\",\"steps\":90,\"ok\":true,\"exp\":\"4ffd9f8b\",\"ke\":\"block\"}}"
+  },
+  {
+   "name": "zero console errors and zero page errors (replay-the-hit test)",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "errors": []
+}

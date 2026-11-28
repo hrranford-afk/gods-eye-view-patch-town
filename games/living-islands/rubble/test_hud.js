@@ -11,34 +11,14 @@ var server = http.createServer(function (req, res) {
   var u = decodeURIComponent(req.url.split('?')[0]), f = path.join(ROOT, u); if (f.indexOf(ROOT) !== 0) { res.writeHead(403); return res.end(); }
   fs.readFile(f, function (e, b) { if (e) { res.writeHead(404); return res.end('no'); } res.writeHead(200, { 'content-type': MIME[path.extname(f)] || 'application/octet-stream', 'cache-control': 'no-store' }); res.end(b); });
 });
-/* runs in the page: the visible controls and text blocks, as rectangles */
-function collect(scope) {
-  var W = innerWidth, H = innerHeight, root = scope ? document.querySelector(scope) : document, out = [];
-  function vis(e) { var cs = getComputedStyle(e); if (cs.visibility === 'hidden' || cs.display === 'none' || +cs.opacity === 0) return null; var r = e.getBoundingClientRect(); if (r.width < 1 || r.height < 1) return null; return r; }
-  Array.prototype.forEach.call(root.querySelectorAll('button,input,select,textarea'), function (e) {
-    if (!scope && e.closest('#drawer')) { if (!vis(e)) return; }
-    var r = vis(e); if (!r) return; out.push({ id: e.id || (e.dataset && e.dataset.k ? 'ammo:' + e.dataset.k : e.className || e.tagName), r: { l: r.left, t: r.top, r: r.right, b: r.bottom }, ctl: true });
-  });
-  if (!scope) ['score', 'keepEnd', 'hint', 'ammoNote', 'status'].forEach(function (id) { var e = document.getElementById(id), r = e && vis(e); if (r) out.push({ id: '#' + id, r: { l: r.left, t: r.top, r: r.right, b: r.bottom }, ctl: false }); });
-  return { W: W, H: H, items: out };
-}
-function audit(label, d, minSize) {
-  var it = d.items, probs = [], i, j, a, b;
-  for (i = 0; i < it.length; i++) {
-    a = it[i]; var w = a.r.r - a.r.l, h = a.r.b - a.r.t;
-    if (a.r.l < -0.5 || a.r.t < -0.5 || a.r.r > d.W + 0.5 || a.r.b > d.H + 0.5) probs.push('off screen: ' + a.id);
-    if (a.ctl && (w < minSize - 0.5 || h < minSize - 0.5)) probs.push('too small ' + a.id + ' ' + Math.round(w) + 'x' + Math.round(h));
-    for (j = i + 1; j < it.length; j++) { b = it[j]; var ox = Math.min(a.r.r, b.r.r) - Math.max(a.r.l, b.r.l), oy = Math.min(a.r.b, b.r.b) - Math.max(a.r.t, b.r.t); if (ox > 2 && oy > 2) probs.push('overlap ' + a.id + ' / ' + b.id); }
-  }
-  check(label + ': ' + it.filter(function (x) { return x.ctl; }).length + ' controls, all on screen, 44 px or more, no overlaps', probs.length === 0, probs.slice(0, 6).join('; '));
-  return probs;
-}
+var HA = require('./hud_audit.js'), collect = HA.collect;
+function audit(label, d, minSize) { return HA.audit(check, label, d, minSize); }
 async function main() {
   await new Promise(function (r) { server.listen(0, '127.0.0.1', r); });
   var port = server.address().port, base = 'http://127.0.0.1:' + port + '/rubble/index.html';
   var browser = await pw.chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox', '--ignore-gpu-blocklist'] });
   var errs = [];
-  var views = [{ name: 'iPad 834x1062 touch', w: 834, h: 1062, touch: true }, { name: 'desktop 1280x720', w: 1280, h: 720, touch: false }, { name: 'small 700x460', w: 700, h: 460, touch: true }];
+  var views = [{ name: 'iPad 834x1062 touch', short: 'ipad', w: 834, h: 1062, touch: true }, { name: 'desktop 1280x720', short: 'desk', w: 1280, h: 720, touch: false }, { name: 'small 700x460', short: 'small', w: 700, h: 460, touch: true }];
   for (var vi = 0; vi < views.length; vi++) {
     var V = views[vi], ctx = await browser.newContext({ viewport: { width: V.w, height: V.h }, hasTouch: V.touch, isMobile: V.touch, deviceScaleFactor: 1 }), page = await ctx.newPage();
     page.on('console', function (m) { if (m.type() === 'error') errs.push('console: ' + m.text()); }); page.on('pageerror', function (e) { errs.push('pageerror: ' + e.message); });
@@ -75,11 +55,11 @@ async function main() {
         return { n: all.length, bad: bad, small: small, ov: ov, w: Math.round(dr.width) };
       });
       check(tag + ': ' + reach.n + ' controls in the open drawer: reachable, 44 px or more, no overlaps (drawer ' + reach.w + ' px wide)', reach.bad.length === 0 && reach.small.length === 0 && reach.ov.length === 0, JSON.stringify(reach));
-      await page.screenshot({ path: path.join(__dirname, 'shots', 'rubble-30-drawer-' + (V.touch ? 'ipad' : 'desk') + '-' + M.n.toLowerCase() + '.png') });
+      await page.screenshot({ path: path.join(__dirname, 'shots', 'rubble-30-drawer-' + V.short + '-' + M.n.toLowerCase() + '.png') });
       await page.click('#drawerClose'); await page.waitForTimeout(400);
       var back = await page.evaluate(function () { return document.getElementById('drawer').classList.contains('open'); });
       check(tag + ': Close puts the drawer away again', !back, '');
-      if (M.n === 'Keep') await page.screenshot({ path: path.join(__dirname, 'shots', 'rubble-31-keep-' + (V.touch ? 'ipad' : 'desk') + '.png') }); else await page.screenshot({ path: path.join(__dirname, 'shots', 'rubble-32-topple-' + (V.touch ? 'ipad' : 'desk') + '.png') });
+      if (M.n === 'Keep') await page.screenshot({ path: path.join(__dirname, 'shots', 'rubble-31-keep-' + V.short + '.png') }); else await page.screenshot({ path: path.join(__dirname, 'shots', 'rubble-32-topple-' + V.short + '.png') });
     }
     await ctx.close();
   }

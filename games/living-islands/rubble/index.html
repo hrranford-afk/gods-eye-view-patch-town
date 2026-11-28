@@ -24,6 +24,7 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
 .seg .btn{border:0;border-radius:0;min-height:44px;min-width:92px;background:transparent}
 .seg .btn.on{background:var(--accent)}
 #topbar>.btn{background:var(--card)}
+#topbar>.btn.gold{background:linear-gradient(#f3c25c,#e8a33d);color:#2b2218}
 #keepDone,#hitReplay{display:none}
 body.keepmode #keepDone{display:inline-block}
 #hitReplay.show{display:inline-block;animation:glow 1.6s ease-in-out infinite}
@@ -262,7 +263,7 @@ var seaPlain = sea.material;
 /* Castle Sound's water: moving stripes of wave, a warm glint, fading into the horizon colour (its shader, plus fog by distance and a little see-through) */
 var seaPretty = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, uniforms: { time: { value: 0 } },
   vertexShader: 'varying vec3 p;void main(){p=(modelMatrix*vec4(position,1.)).xyz;gl_Position=projectionMatrix*viewMatrix*vec4(p,1.);}',
-  fragmentShader: 'uniform float time;varying vec3 p;void main(){float w=sin(p.z*3.1+2.8*sin(p.x*.6+time*.5)+time*1.7)+.6*sin(p.z*6.+p.x*1.1-time*2.);float glint=smoothstep(.82,1.52,w)*exp(-.05*abs(p.x+1.5+p.z*.18));vec3 c=vec3(.14,.40,.46);c+=.035*w+glint*vec3(.75,.54,.34);float d=length(p-cameraPosition);c=mix(c,vec3(.93,.76,.66),smoothstep(60.,220.,d));gl_FragColor=vec4(c,mix(.80,1.,smoothstep(40.,160.,d)));}' });
+  fragmentShader: 'uniform float time;varying vec3 p;void main(){float w=sin(p.z*3.1+2.8*sin(p.x*.6+time*.5)+time*1.7)+.6*sin(p.z*6.+p.x*1.1-time*2.);float glint=smoothstep(.82,1.52,w)*exp(-.05*abs(p.x+1.5+p.z*.18));vec3 c=vec3(.14,.40,.46);float d=length(p-cameraPosition);float fd=1.-smoothstep(22.,70.,d);c+=(.035*w+glint*vec3(.75,.54,.34))*fd;c=mix(c,vec3(.93,.76,.66),smoothstep(60.,220.,d));gl_FragColor=vec4(c,mix(.80,1.,smoothstep(40.,160.,d)));}' });
 /* a flag on a pole and a small windmill, from Castle Sound's cloth and windmill ideas (own small copies; they never touch the physics) */
 var decor = new THREE.Group(); scene.add(decor);
 var flagCloth = null, mill = null;
@@ -360,10 +361,9 @@ function pickDecor(f) {
     for (i = 0; i < n; i++) { if (P[i].k !== 'brick') continue; dx = H[i * 3] - tx; dz = H[i * 3 + 2] - tz; if (dx * dx + dz * dz > 0.3) continue; y = H[i * 3 + 1]; if (y > bY) { bY = y; best = i; } }
     if (best >= 0 && bY > d.baseY + d.height * 0.45 && bAnch.indexOf(best) < 0) bAnch.push(best);
   }
-  var zf = -1e9; for (i = 0; i < n; i++) if (P[i].k === 'brick' && H[i * 3 + 2] > zf) zf = H[i * 3 + 2];
-  for (c = 0; c < LN; c++) {
-    tx = d.cx + (c ? 1 : -1) * d.half.x * 0.45; hy = d.baseY + d.height * 0.38; best = -1; bd = 1e9;
-    for (i = 0; i < n; i++) { if (P[i].k !== 'brick' || H[i * 3 + 2] < zf - 0.2) continue; dx = H[i * 3] - tx; dz = H[i * 3 + 1] - hy; q = dx * dx + dz * dz; if (q < bd) { bd = q; best = i; } }
+  for (c = 0; c < LN; c++) {                            /* a lantern on the front face (the side the launcher is on): among the bricks at that x and about a third of the way up, the one furthest to the front */
+    tx = d.cx + (c ? 1 : -1) * d.half.x * 0.45; hy = d.baseY + Math.max(0.5, d.height * 0.4); best = -1; bd = -1e9;
+    for (i = 0; i < n; i++) { if (P[i].k !== 'brick') continue; dx = H[i * 3] - tx; dz = H[i * 3 + 1] - hy; if (dx * dx > 0.12 || dz * dz > 0.06) continue; if (H[i * 3 + 2] > bd) { bd = H[i * 3 + 2]; best = i; } }
     if (best >= 0) lAnch.push(best);
   }
 }

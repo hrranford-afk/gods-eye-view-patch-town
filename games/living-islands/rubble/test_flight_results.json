@@ -1,6 +1,6 @@
 {
- "when": "2026-11-26T15:07:37.335Z",
- "node": "v22.22.0",
+ "when": "2026-11-28T11:03:24.242Z",
+ "node": "v22.23.5",
  "checks": [
   {
    "name": "the big rod is now a Bolt: label Bolt (heavy, flies point first), thrown along its velocity with a spin about its own axis (6 rad/s), drag and a weathervane",
@@ -91,7 +91,7 @@
     0.24
    ],
    "hitsThatMovedBricks": 4,
-   "ms": 32679
+   "ms": 32406
   },
   "ammoFlight": {
    "acorn": {
