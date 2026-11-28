@@ -68,6 +68,9 @@ button {
 button small { font-size: 12px; color: var(--gold); font-weight: 700; }
 button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 button[disabled] { opacity: 0.4; }
+button.dtype { min-width: 56px; padding-left: 8px; padding-right: 8px; }
+button.dtype span { font-size: 18px; line-height: 1; }
+button.dtype small { font-size: 18px; }
 button.fire { width: 104px; height: 104px; border-radius: 50%; font: 20px var(--display); background: rgba(239, 65, 54, 0.75); border-color: var(--paper); }
 button.fire.on { background: var(--red); transform: scale(0.96); }
 
@@ -123,6 +126,13 @@ button.off, .row.off { display: none !important; }
 .slots .lost { font: 13px var(--display); color: #ff8a80; text-shadow: 0 2px 0 var(--ink); margin-left: 6px; animation: fade 3.2s forwards; }
 @keyframes pop { 0% { transform: scale(1.6); } 100% { transform: scale(1); } }
 @keyframes fade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+.modes { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 700px; }
+button.mode { min-width: 168px; min-height: 64px; padding: 10px 14px; gap: 4px; }
+button.mode b { font: 18px var(--display); }
+button.mode span { font: 700 13px var(--body); opacity: 0.85; }
+button.mode.sel { border-color: var(--gold); background: rgba(255, 194, 61, 0.3); }
+button.mode.sel span { opacity: 1; }
+button.mode[aria-disabled="true"] { opacity: 0.4; cursor: default; }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; max-width: 640px; }
 .chips span { display: grid; justify-items: center; gap: 2px; width: 84px; padding: 6px 4px; border-radius: 12px; background: var(--glass); font: 700 12px var(--body); }
 .chips span em { font-style: normal; font-size: 28px; }
@@ -175,7 +185,8 @@ button.off, .row.off { display: none !important; }
   <div class="row">
     <button id="bTruck">Truck<small>15</small></button>
     <button id="bDigger">Digger<small>20</small></button>
-    <button id="bDrones">Drones<small>20</small></button>
+    <button id="bDrones"><span id="droneName">Drones</span><small id="droneCost">20</small></button>
+    <button id="bDroneType" class="dtype" hidden aria-label="Change drone type"><span>&#8646;</span><small id="droneTypeIcon"></small></button>
     <button id="bUpgrade" disabled>Upgrade<small id="upCost">—</small></button>
   </div>
   <div class="row">
@@ -191,6 +202,7 @@ button.off, .row.off { display: none !important; }
     <div class="levels" id="levels"></div>
     <p class="sub" id="lvlSub"></p>
     <p id="lvlBlurb"></p>
+    <p class="sub" id="lvlRace"></p>
     <ul id="lvlTips"></ul>
     <button class="go" id="play">PLAY</button>
   </div>
@@ -198,10 +210,16 @@ button.off, .row.off { display: none !important; }
 <div class="screen" id="lrIntro" hidden>
   <div class="card">
     <p class="sub" id="lrLvl"></p>
-    <h1>LOADOUT RACE</h1>
-    <p>The <b>Kitchen Run</b>: race the 3 red cars over, under and through the kitchen. Drive through a <b>token</b> to win that tool. You can carry <b>4</b>: a 5th swaps out your oldest. Only the tools you win show up in the battle. Finish high for bonus cereal.</p>
+    <h1 id="lrTitle">LOADOUT RACE</h1>
+    <p id="lrText">The <b>Kitchen Run</b>: race the 3 red cars over, under and through the kitchen. Drive through a <b>token</b> to win that tool. You can carry <b>4</b>: a 5th swaps out your oldest. Only the tools you win show up in the battle. Finish high for bonus cereal.</p>
+    <div class="modes" id="lrModes" role="radiogroup" aria-label="Choose your race">
+      <button class="mode" id="lrModeKR" data-mode="kitchen" role="radio"><b>Kitchen Run</b><span>Tokens win tools</span></button>
+      <button class="mode" id="lrModeClassic" data-mode="classic" role="radio"><b>Classic box race</b><span>Boxes become your base</span></button>
+      <button class="mode" id="lrSkip" data-mode="skip" role="radio"><b>Skip race</b><span>Ready-made loadout</span></button>
+    </div>
+    <p class="sub" id="lrModeNote"></p>
     <div class="chips" id="lrChips"></div>
-    <div class="two"><button class="go" id="lrGo">GO!</button><button class="go alt" id="lrSkip">Skip race<small>use a ready-made loadout</small></button></div>
+    <div class="two"><button class="go" id="lrGo">GO!</button></div>
   </div>
 </div>
 <div class="screen" id="lrCard" hidden>
@@ -682,7 +700,7 @@ function darkUpdate(dt) {
   addLit(state.bases[BLUE].x, 0, 27);
   for (const e of entities) {
     if (e.team !== BLUE || e.hp <= 0) continue;
-    if (e.kind === 'turret') addLit(e.x, e.z, 15); else if (e.kind === 'unit') addLit(e.x, e.z, 11); else if (e.kind === 'worker') addLit(e.x, e.z, 8);
+    if (e.kind === 'turret') addLit(e.x, e.z, 15); else if (e.kind === 'unit') addLit(e.x, e.z, e.dr === 'scout' ? 21 : 11); else if (e.kind === 'worker') addLit(e.x, e.z, 8); // (a Scout drone is a lantern: it lights a wide circle)
   }
   for (const o of outposts) if (o.owner === BLUE) addLit(o.x, o.z, 10);
   for (const pl of piles) if (pl.res === 'batteries' && pl.amount > 0) addLit(pl.x, pl.z, 6 + 5 * pl.group.scale.x);
@@ -1104,14 +1122,13 @@ const LEVELS = [
   {
     name: 'Breakfast table', time: 'morning', tableColor: 0xffffff,
     race: { laps: 2 },
-    blurb: 'Race first, then fight. Two laps round the breakfast table against three red cars. Supply boxes sit on the track: drive over one to carry it, and drop it where you want it. When the first car finishes, every dropped box unfolds into a turret, a wall or a worker. Then it is war: dig cereal, build, and smash the red toy box.',
+    blurb: 'Breakfast is served. Pick a race first (the Kitchen Run, the Classic box race, or skip it), then it is war: dig cereal, build turrets, and smash the red toy box. You always have Gunner drones.',
     tips: [
-      '<b>Race:</b> drive through the glowing gates in order. Drag anywhere on the left half (or WASD)',
-      '<b>Boxes:</b> drive over one to pick it up. The picture on top shows what it becomes. You carry one, and it slows you a bit',
-      '<b>Drop:</b> press Drop (or Z) to leave a box where you want it. Keep it near home',
-      '<b>Ram:</b> hit a car that is carrying a box, hard, and the box falls off. Grab it',
-      '<b>Prizes:</b> win the race for 30 cereal. Come last for a free gun turret. Skip race goes straight to the battle',
-      '<b>Battle:</b> hold FIRE (or Space). Build Truck (T), Digger (G), Gun (1), Rocket (2), Upgrade (U), Drones (3)',
+      '<b>Drive:</b> drag anywhere on the left half of the screen (or WASD). Hold FIRE (or Space) to shoot',
+      '<b>Kitchen Run:</b> race through a toy kitchen. Drive through tokens to win tools for the battle. Finish high for bonus cereal',
+      '<b>Classic box race:</b> laps round this table. Drive over supply boxes to carry them, drop them near home (Drop or Z), and they unfold into turrets, walls and workers when the race ends',
+      '<b>Skip race:</b> straight to the battle with a ready-made set of tools',
+      '<b>Battle:</b> Truck (T), Digger (G), Gun (1), Rocket (2), Upgrade (U). Drones (3) are always yours; N changes the drone type once you have won more than one',
       '<b>Haul:</b> trucks unload at your toy box or any bottle cap you hold. Swap vehicle at your toy box',
     ],
     // The layout: pencils make lanes, books and mugs make cover. Mirrored so neither side is favoured.
@@ -1491,6 +1508,11 @@ const ENEMY_TYPES = {
   buggy: { model: 'monster', speed: 13, hp: 90, weapon: 'mg', reward: 6 },
   heavy: { model: 'tank', speed: 8.5, hp: 180, weapon: 'cannon', reward: 10 },
   drone: { model: 'racer', speed: 18, hp: 40, weapon: 'mg', reward: 4 },
+  // Drone types (fly; see "Standard drones and types"): `dr` is the job, `sq` only means "built by squadModel"
+  dshield: { model: 'dshield', speed: 22, hp: 70, weapon: 'mg', reward: 3, sq: true, dr: 'shield' },
+  drepair: { model: 'drepair', speed: 20, hp: 50, weapon: 'mg', reward: 3, sq: true, dr: 'repair' },
+  dscout: { model: 'dscout', speed: 34, hp: 28, weapon: 'mg', reward: 3, sq: true, dr: 'scout' },
+  dbomber: { model: 'dbomber', speed: 11, hp: 55, weapon: 'mg', reward: 4, sq: true, dr: 'bomber' },
   raider: { model: 'racer', speed: 26, hp: 38, weapon: 'raid', reward: 3 }, // fast: sent after your trucks
   hijacker: { model: 'racer', speed: 22, hp: 45, weapon: 'raid', reward: 5 }, // sneaks up on a truck of yours and drives it home as a trojan
   layer: { model: 'mech', speed: 9, hp: 120, weapon: 'mg', reward: 8 }, // lays a domino run towards your toy box
@@ -2086,6 +2108,7 @@ function spawnUnit(type, team, x, z) {
     cool: Math.random() * 0.5, reward: t.reward, mesh: t.sq ? squadModel(t.model, team) : buildModel(t.model, team, 0.9), think: 0, goal: null,
   };
   if (t.inf) { u.inf = true; u.armor = t.armor; u.floats = !!t.floats; } // level 6 infantry
+  if (t.dr) { u.dr = t.dr; u.fly = true; u.alt = 0; u.slot = Math.random() * 6; u.guard = null; } // a drone type: flies, has its own brain (droneThink)
   entities.push(u);
   return u;
 }
@@ -2124,8 +2147,10 @@ function reset() {
   piles.length = spills.length = 0;
   entities.length = shots.length = parts.length = outposts.length = 0;
   const L0 = MT.on ? mtLevel() : LEVELS[curLevel]; // My Track hook: the battle level fitted to the scanned surface
-  stageL = !pendingLoad ? stageLevel(L0, curLevel) : null; // every level starts with the Kitchen Run (the Loadout Race) on a stand-in level
-  const L = stageL || L0;
+  const classic = classicNext && !pendingLoad && !MT.on && classicOk(curLevel); // the Classic box race: the real table, the boxes unfold into your base
+  classicNext = false;
+  stageL = !pendingLoad && !classic ? stageLevel(L0, curLevel) : null; // every level starts with the Kitchen Run (the Loadout Race) on a stand-in level
+  const L = stageL || (classic ? { ...L0, race: classicCfg(curLevel) } : L0);
   buildLevel(L); // clears the obstacles and builds this level's blocks
   navDirty = true;
   Object.assign(state, {
@@ -2145,16 +2170,16 @@ function reset() {
   $('bUse').hidden = true;
   if (L.gumball) gumball = placeGumball(L);
   state.phase = 'battle';
-  if (!stageL) for (const team of [BLUE, RED]) { spawnWorker('truck', team); spawnWorker('digger', team); } // not during the race (the real level is built after it)
+  if (!stageL && !classic) for (const team of [BLUE, RED]) { spawnWorker('truck', team); spawnWorker('digger', team); } // not during the race (the real level is built after it; the Classic race's startBattle spawns them)
   state.player = { kind: 'player', team: BLUE, x: spawnPt(BLUE, 0)[0], z: spawnPt(BLUE, 0)[1], vx: 0, vz: 0, heading: 0, cool: 0, alive: true };
   entities.push(state.player);
   if (state.finale) finaleBegin();
   $('bossbar').hidden = true; $('bossHp').style.width = '100%';
   setVehicle('racer');
-  state.load = state.aiLoad = null; state.freeUp = 0;
+  state.load = state.aiLoad = null; state.freeUp = 0; state.droneSel = 'drones'; state.aiDroneAt = 0;
   if (pendingLoad) { applyLoad(pendingLoad); pendingLoad = null; }
   applyBar();
-  if (stageL) startRace(stageL.race);
+  if (stageL) startRace(stageL.race); else if (classic) startRace(L.race);
   $('pips').innerHTML = outposts.map(() => '<span></span>').join('');
 }
 
@@ -2196,7 +2221,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyQ' && hasClips()) build('staple'); if (e.code === 'KeyR' && hasClips()) armour();
   if (e.code === 'KeyL' && state.level.dark) build('laser'); if (e.code === 'KeyV') flare(); if (e.code === 'KeyX') placeDomino(); if (e.code === 'KeyY') trojan(); if (e.code === 'KeyZ' && state.player.alive) useItem(BLUE, state.player); if (e.code === 'KeyB') buyBoat(); if (e.code === 'KeyK') buildToaster();
   if (e.code === 'KeyF' && hasClips()) build('magnet'); if (e.code === 'KeyE' && hasClips()) build('catapult');
-  if (e.code === 'KeyU') upgrade(); if (e.code === 'Digit3') drones();
+  if (e.code === 'KeyU') upgrade(); if (e.code === 'Digit3') drones(); if (e.code === 'KeyN') droneCycle();
   if (state.finale) { const k = ['KeyI', 'KeyO', 'KeyP'].indexOf(e.code); if (k >= 0) pickLane(k); if (e.code === 'KeyB') buildWall(); } // level 6: battle plan left / middle / right
   if (e.code === 'KeyT') buyWorker('truck', BLUE); if (e.code === 'KeyG') buyWorker('digger', BLUE);
 });
@@ -2222,6 +2247,7 @@ tap('bToaster', () => buildToaster());
 tap('bCatapult', () => build('catapult'));
 tap('bUpgrade', () => upgrade());
 tap('bDrones', () => drones());
+tap('bDroneType', () => droneCycle());
 tap('bTruck', () => buyWorker('truck', BLUE));
 tap('bDigger', () => buyWorker('digger', BLUE));
 $('bDrop').addEventListener('pointerdown', (e) => { e.preventDefault(); dropCrate(state.player); });
@@ -2492,7 +2518,9 @@ function hurt(e, dmg, byTeam, weapon) {
     e.pinned = Math.max(e.pinned || 0, pin);
   }
   // Toy boxes fall to siege weapons (cannons, rockets), not to a few scouts with guns.
-  e.hp -= e.kind === 'base' ? dmg * (weapon?.vsBase ?? 0.3) : dmg;
+  let eff = e.kind === 'base' ? dmg * (weapon?.vsBase ?? 0.3) : dmg;
+  if (e.shields && byTeam != null && e.shields.length) eff = shieldSoak(e, eff); // Shield drones take the hit for what they guard
+  e.hp -= eff;
   const near = dist2(e, state.player) < 1600;
   if (e.hp > 0) {
     // Feel: a plink and a spark when a shot lands near you; your own toy box shakes the screen when it's hit.
@@ -3119,14 +3147,7 @@ function upgrade() {
   if (free) state.freeUp--;
   sfx('build'); toast(`Turret level ${t.level}${free ? ' (free upgrade)' : ''}`);
 }
-function drones() {
-  if (state.over) return;
-  if (state.cereal[BLUE] < 20) { toast('Need 20 cereal'); sfx('no'); return; }
-  if (state.finale && armyOf(BLUE) + 3 > ARMY_CAP) { toast(`Army full (${ARMY_CAP})`); sfx('no'); return; }
-  state.cereal[BLUE] -= 20;
-  for (let i = 0; i < 3; i++) { const sp = state.finale ? spawnPt(BLUE, 8) : [-52, -4]; spawnUnit('drone', BLUE, sp[0] + i * 2, sp[1] + (state.finale ? i * 2 : i * 4)); }
-  sfx('build'); toast('Drones away!');
-}
+// (drones(), droneCycle() and the drone types: see "Standard drones and types" below)
 
 // ---------- Garage ----------
 // What a vehicle costs to unlock on this level (the Tank needs paperclips on level 2).
@@ -3173,6 +3194,7 @@ function updateCosts() {
   $('magnetCost').textContent = priceText('magnet');
   $('catapultCost').textContent = priceText('catapult');
   $('armourCost').textContent = (state.plates || 0) >= 3 ? 'full' : `${armourCost()} clips`;
+  droneUi();
 }
 
 // ---------- Enemy commander ----------
@@ -3234,6 +3256,7 @@ function commander(dt) {
   if (workersOf(RED, 'truck').length < trucksWanted) { buyWorker('truck', RED); return; }
   if (workersOf(RED, 'digger').length < diggersWanted) { buyWorker('digger', RED); return; }
   if (commanderBuild(ramp)) return;
+  if (aiDrones()) return; // the enemy's drones: Gunners, and the types its loadout has
   // Level 5: the enemy builds a toaster launcher in its lane for its waves to jump from (it saves up for it first).
   if (state.level.toaster && !state.finale && aiHas('toaster') && T > 40 && !toasters.some((t) => t.team === RED)) { // (level 6 has ready-made toasters instead)
     const spot = [[34, 0], [36, 6], [36, -6]].find(([x, z]) => !toasterSpot(x, z));
@@ -3246,7 +3269,7 @@ function commander(dt) {
   const heavyClips = state.level.heavyClips || 0; // the enemy's tanks cost paperclips too
   if (want === 'heavy' && state.clips[RED] < heavyClips) want = 'buggy';
   const price = { scout: 8, buggy: 14, heavy: 24 }[want];
-  const army = entities.filter((e) => e.kind === 'unit' && e.team === RED && !e.sq).length; // squadron members have their own budget
+  const army = entities.filter((e) => e.kind === 'unit' && e.team === RED && !e.sq && !e.dr && e.type !== 'drone').length; // squadron members and drones have their own budget
   // A small army early on (3, then 5), growing to 14 late: it should build up, not rush.
   // The rusher (level 5) builds a bigger army, earlier, and holds it at a rally point until a wave is ready.
   const rusher = !!state.level.rules.rusher;
@@ -3385,6 +3408,7 @@ function hijackerThink(u, dt) {
 
 // ---------- Unit brains ----------
 function unitThink(u, dt) {
+  if (u.dr) return droneThink(u, dt); // drone types: shield, repair, scout, bomber
   if (u.fly) return bomberThink(u, dt); // level 6 bombers fly: no routes, no walls
   if (u.hero) return heroThink(u, dt); // level 6 gumball heroes and the Stand Mixer
   if (u.sq) return squadThink(u, dt); // level 6 squadron members follow their squadron's order
@@ -3813,6 +3837,7 @@ const ARMY_CAP = 24; // units (cars, boats, bombers) per side, workers and turre
 const BOMBER = { alt: 9, turn: 2.2, every: 1.5, dmg: 50, splash: 5.5, vsTurret: 1.8, fall: 0.775 };
 const SQ_MODELS = {
   bomber: { r: 1.5, turn: 2.2, grip: 4, accel: 30 },
+  dshield: { r: 1.5, turn: 6, grip: 4, accel: 30 }, drepair: { r: 1.5, turn: 6, grip: 4, accel: 30 }, dscout: { r: 1.1, turn: 8, grip: 4, accel: 30 }, dbomber: { r: 1.7, turn: 4, grip: 4, accel: 30 },
   looper: { r: 1.1, turn: 7, grip: 7, accel: 50 }, pike: { r: 1.0, turn: 3.5, grip: 10, accel: 24 }, pea: { r: 1.2, turn: 4, grip: 8, accel: 30 }, bot: { r: 1.5, turn: 3, grip: 10, accel: 24 },
 };
 // `short` is the button label. Infantry (inf) count half a unit toward ARMY_CAP. Costs: cereal, plus clips, peas or batts (batteries) as the stock.
@@ -3955,6 +3980,7 @@ function squadModel(kind, team) {
     part(g, 'btEye', () => new THREE.BoxGeometry(0.15, 0.5, 1.1), 'btEyeMat', () => new THREE.MeshBasicMaterial({ color: 0xffffff }), 1.0, 2.9, 0, false);
     part(g, 'btLeg', () => new THREE.BoxGeometry(0.9, 1.0, 1.9), 'tkTrack', () => mat(0x2b2b2b), 0, 0.5, 0, false);
   }
+  else if (DRONE_MODELS[kind]) DRONE_MODELS[kind](team, g, col, dark);
   g.scale.setScalar(kind === 'bomber' ? 1 : kind === 'looper' || kind === 'pike' || kind === 'pea' || kind === 'bot' ? 1 : 0.9);
   scene.add(g);
   return g;
@@ -4359,12 +4385,12 @@ function bombsUpdate(dt) {
   }
 }
 function bombBlast(b) {
-  const R = BOMBER.splash;
+  const R = b.splash ?? BOMBER.splash; // (a drone's crumb bomb is smaller than a baguette bomber's)
   for (const e of entities) {
     if (e.team === b.team || e.hp <= 0 || e.fly || e.air || (e.kind === 'player' && !e.alive)) continue;
     const reach = R + (e.kind === 'base' ? 5 : 0), d = Math.sqrt(dist2(e, b));
     if (d > reach) continue;
-    hurt(e, BOMBER.dmg * (1 - 0.5 * d / reach) * (e.kind === 'turret' ? BOMBER.vsTurret : 1), b.team, WEAPONS.bomb);
+    hurt(e, (b.dmg ?? BOMBER.dmg) * (1 - 0.5 * d / reach) * (e.kind === 'turret' ? (b.vsT ?? BOMBER.vsTurret) : 1), b.team, WEAPONS.bomb);
   }
   burst(b.x, b.z, 0xe8c07a, 9, 8, 0.6); burst(b.x, b.z, 0x8a5a2a, 5, 6, 0.5); burst(b.x, b.z, 0xfff3d6, 4, 5, 0.8);
   if (dist2(b, state.player) < 2500) { sfx('boom'); state.shake = Math.min(1.2, (state.shake || 0) + 0.1); }
@@ -4375,6 +4401,249 @@ function bomberPose(e, time) {
   e.mesh.rotation.x = Math.sin(time * 2 + e.slot) * 0.08;
   const prop = e.mesh.getObjectByName('prop');
   if (prop) prop.rotation.x = time * 40;
+}
+
+// ---------- Standard drones and types (28 Nov 2026; the player: "if you don't have the drones on your side, it becomes very hard") ----------
+// Gunner drones (`drones`, three little gun cars) are a basic: always on, every level, both sides. The drone TYPES are the spice and are won as race tokens:
+// Shield (hovers beside a car, turret or toy box and soaks its hits), Repair (slowly mends your turrets, trucks, diggers and toy box), Scout (fast, sees hidden
+// enemies and lets turrets see further) and Bomber (slow, drops crumb bombs on turrets and toy boxes). The Drones button buys the selected type; the small
+// button beside it (or N) cycles through the types you own. Types fly (`fly`, `dr`): no routes, they ignore walls and water. They are units, so armyOf counts them.
+const DRONES = {
+  drones: { unit: 'drone', n: 3, cost: 20, label: 'Gunner' },
+  dr_shield: { unit: 'dshield', n: 2, cost: 25, label: 'Shield' },
+  dr_repair: { unit: 'drepair', n: 2, cost: 25, label: 'Repair' },
+  dr_scout: { unit: 'dscout', n: 2, cost: 20, label: 'Scout' },
+  dr_bomber: { unit: 'dbomber', n: 2, cost: 30, label: 'Bomber' },
+};
+const DRONE_IDS = Object.keys(DRONES);
+const DRONE_CAP = 12; // drones per side outside level 6 (level 6 uses ARMY_CAP, which counts them)
+const DRN = { alt: { shield: 3.4, repair: 3.8, scout: 5.5, bomber: 6.5 }, healRate: 7, baseHealK: 3, healReach: 3.4, scoutSight: 28, spotRange: 1.25, bomb: { dmg: 30, splash: 4.6, vsT: 1.6, every: 2.4, fall: 0.66 } };
+const droneName = (id) => `${DRONES[id].label} drones`;
+const droneCount = (team) => entities.reduce((n, e) => (e.kind === 'unit' && e.team === team && e.hp > 0 && (e.dr || e.type === 'drone') ? n + 1 : n), 0);
+const droneOwned = () => DRONE_IDS.filter(toolOn);
+function droneRoom(team, n) { // false when this side may not add n more drones
+  if (state.finale) return armyOf(team) + n <= ARMY_CAP;
+  return droneCount(team) + n <= DRONE_CAP;
+}
+function dronesSpawn(id, team) {
+  const D = DRONES[id], list = [];
+  for (let i = 0; i < D.n; i++) {
+    let x, z;
+    if (state.finale) { const sp = spawnPt(team, 8); x = sp[0] + i * 2; z = sp[1] + i * 2; }
+    else { x = (team === BLUE ? -1 : 1) * (curL().mtSpawn || 52) + (team === BLUE ? 0 : 2) + i * 2; z = (team === BLUE ? -4 : (Math.random() - 0.5) * 12) + i * 4; }
+    list.push(spawnUnit(D.unit, team, x, z));
+  }
+  return list;
+}
+function drones(id = state.droneSel) { // the Drones button / key 3: buy the selected type
+  if (state.over) return;
+  if (!DRONES[id] || !toolOn(id)) id = 'drones';
+  const D = DRONES[id];
+  if (state.cereal[BLUE] < D.cost) { toast(`Need ${D.cost} cereal`); sfx('no'); return; }
+  if (!droneRoom(BLUE, D.n)) { toast(state.finale ? `Army full (${ARMY_CAP})` : `Drone limit (${DRONE_CAP})`); sfx('no'); return; }
+  state.cereal[BLUE] -= D.cost;
+  dronesSpawn(id, BLUE);
+  sfx('build'); toast(id === 'drones' ? 'Drones away!' : `${droneName(id)} away!`);
+}
+function droneCycle() { // the type button / key N
+  if (state.phase && state.phase !== 'battle') return;
+  const own = droneOwned();
+  if (own.length < 2) return;
+  state.droneSel = own[(own.indexOf(state.droneSel) + 1) % own.length];
+  droneUi(); sfx('cap');
+  toast(`${droneName(state.droneSel)}: ${TOOLS[state.droneSel].text}`);
+}
+function droneUi() { // the label, the price and the type button
+  if (!DRONES[state.droneSel] || !toolOn(state.droneSel)) state.droneSel = 'drones';
+  const id = state.droneSel, own = droneOwned();
+  $('droneName').textContent = own.length > 1 ? DRONES[id].label : 'Drones';
+  $('droneCost').textContent = DRONES[id].cost;
+  $('bDroneType').hidden = own.length < 2;
+  $('droneTypeIcon').textContent = TOOLS[id].icon;
+}
+
+// --- models: shared shapes and materials (sgeo / smat), a few meshes each; the rotors spin and a dark blob under the drone shows how high it is ---
+const droneBlob = (g, r) => { const b = part(g, `drBlob:${r}`, () => new THREE.CircleGeometry(r, 14).rotateX(-Math.PI / 2), 'drBlobMat', () => new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22, depthWrite: false }), 0, 0, 0, false); b.name = 'blob'; };
+const droneRotor = (g, len, x, y, z, k = '') => { const r = part(g, `drRot:${len}`, () => new THREE.BoxGeometry(len, 0.05, 0.22), `drRotMat${k}`, () => mat(k ? 0xeef2f6 : 0x2b2b2b), x, y, z, false); r.name = 'rot'; return r; };
+const DRONE_MODELS = {
+  dshield(team, g, col) { // a teal saucer with a big hexagon shield standing on its front, and a see-through bubble
+    part(g, 'dsDish', () => new THREE.CylinderGeometry(1.25, 1.5, 0.5, 16), 'dsTeal', () => mat(0x39c6d6, { roughness: 0.35 }), 0, 0, 0, true);
+    part(g, 'dsHex', () => new THREE.CylinderGeometry(1.25, 1.25, 0.24, 6).rotateZ(Math.PI / 2), `dsHex:${team}`, () => mat(col, { roughness: 0.4 }), 1.35, 0.7, 0, true);
+    part(g, 'dsEmblem', () => new THREE.CylinderGeometry(0.62, 0.62, 0.3, 6).rotateZ(Math.PI / 2), 'dsWhite', () => mat(0xfff8ec), 1.4, 0.7, 0, false);
+    part(g, 'dsBubble', () => new THREE.SphereGeometry(2.0, 14, 10), 'dsBubbleMat', () => new THREE.MeshBasicMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.16, depthWrite: false }), 0, 0.3, 0, false);
+    droneRotor(g, 2.6, 0, 0.5, 0);
+    droneBlob(g, 1.7);
+  },
+  drepair(team, g, col) { // a white quad-copter with a big green cross on top, one rotor on each arm tip
+    part(g, 'drpBody', () => new THREE.BoxGeometry(1.7, 0.7, 1.7), 'drpWhite', () => mat(0xf4f6f2, { roughness: 0.4 }), 0, 0, 0, true);
+    part(g, 'drpArmA', () => new THREE.BoxGeometry(4.6, 0.16, 0.42), 'drpGreen', () => mat(0x4fd16b), 0, 0.05, 0, false);
+    part(g, 'drpArmB', () => new THREE.BoxGeometry(0.42, 0.16, 4.6), 'drpGreen', () => mat(0x4fd16b), 0, 0.05, 0, false);
+    for (const [x, z] of [[2.3, 0], [-2.3, 0], [0, 2.3], [0, -2.3]]) droneRotor(g, 1.9, x, 0.3, z, 'W');
+    part(g, 'drpCrossA', () => new THREE.BoxGeometry(0.46, 0.14, 1.4), 'drpCross', () => mat(0x1faa45, { emissive: 0x1faa45, emissiveIntensity: 0.4 }), 0, 0.42, 0, false);
+    part(g, 'drpCrossB', () => new THREE.BoxGeometry(1.4, 0.14, 0.46), 'drpCross', () => mat(0x1faa45, { emissive: 0x1faa45, emissiveIntensity: 0.4 }), 0, 0.42, 0, false);
+    part(g, 'drpBand', () => new THREE.BoxGeometry(1.74, 0.2, 0.5), `drpBand:${team}`, () => mat(col, { emissive: col, emissiveIntensity: 0.3 }), 0, -0.2, 0, false);
+    droneBlob(g, 1.9);
+  },
+  dscout(team, g, col) { // a small orange paper-dart with one big camera eye
+    part(g, 'dcDart', () => new THREE.ConeGeometry(1.5, 3.4, 3).rotateZ(-Math.PI / 2).scale(1, 0.28, 1), 'dcOrange', () => mat(0xffb13d, { roughness: 0.4 }), 0, 0, 0, true);
+    part(g, 'dcEye', () => new THREE.SphereGeometry(0.5, 10, 8), 'dcEyeMat', () => new THREE.MeshBasicMaterial({ color: 0xa6f6ff }), 1.2, -0.1, 0, false);
+    part(g, 'dcFin', () => new THREE.BoxGeometry(0.9, 0.9, 0.12), `dcFin:${team}`, () => mat(col), -1.2, 0.5, 0, false);
+    part(g, 'dcMast', () => new THREE.CylinderGeometry(0.08, 0.08, 0.5, 6), 'drRotMat', () => mat(0x2b2b2b), 0, 0.35, 0, false);
+    droneRotor(g, 2.2, 0, 0.62, 0);
+    droneBlob(g, 1.2);
+  },
+  dbomber(team, g, col) { // a chunky khaki barrel with a crumb bomb under its belly and two rotor pods on wing struts
+    part(g, 'dbBarrel', () => new THREE.CylinderGeometry(1.15, 1.15, 2.7, 12).rotateZ(Math.PI / 2), 'dbKhaki', () => mat(0x8b7b5a, { roughness: 0.6 }), 0, 0, 0, true);
+    part(g, 'dbBand', () => new THREE.CylinderGeometry(1.2, 1.2, 0.55, 12).rotateZ(Math.PI / 2), `dbBand:${team}`, () => mat(col, { emissive: col, emissiveIntensity: 0.3 }), 0.4, 0, 0, false);
+    part(g, 'dbBomb', () => new THREE.SphereGeometry(0.75, 10, 8), 'dbCrumb', () => mat(0x5a3b22, { roughness: 0.9 }), 0, -1.15, 0, true);
+    part(g, 'dbStrut', () => new THREE.BoxGeometry(0.4, 0.14, 4.4), 'dbKhaki', () => mat(0x8b7b5a), -0.2, 0.15, 0, false);
+    for (const z of [-2.2, 2.2]) { part(g, 'dbPod', () => new THREE.CylinderGeometry(0.5, 0.5, 0.5, 8), 'dbPodMat', () => mat(0x4a4036), -0.2, 0.3, z, false); droneRotor(g, 2.6, -0.2, 0.62, z); }
+    part(g, 'dbNose', () => new THREE.SphereGeometry(0.7, 10, 8), `dbNose:${team}`, () => mat(col), 1.4, 0.1, 0, false);
+    droneBlob(g, 2.0);
+  },
+};
+function dronePose(e, time) { // render: hover height, bob, spinning rotors, the blob stays on the table
+  const m = e.mesh;
+  m.position.y = (e.alt || 0) + Math.sin(time * 3 + e.slot) * 0.25;
+  if (!e.rots) { e.rots = []; m.traverse((o) => { if (o.name === 'rot') e.rots.push(o); else if (o.name === 'blob') e.blob = o; }); }
+  for (const r of e.rots) r.rotation.y = time * 38;
+  if (e.blob) e.blob.position.y = (0.07 - m.position.y) / 0.9;
+  m.rotation.z = Math.max(-0.25, Math.min(0.25, -Math.hypot(e.vx, e.vz) / (e.speed || 1) * 0.2)); // leans into the flight
+}
+
+// --- brains ---
+function flyTo(u, gx, gz, dt, stop = 0) { // glide to a point: eased, no routes, no walls, nothing in the way
+  const dx = gx - u.x, dz = gz - u.z, d = Math.hypot(dx, dz), sp = Math.min(u.speed, Math.max(0, d - stop) * 3.2), k = 1 - Math.exp(-6 * dt);
+  u.vx += ((d > 0.01 ? dx / d * sp : 0) - u.vx) * k; u.vz += ((d > 0.01 ? dz / d * sp : 0) - u.vz) * k;
+  if (Math.hypot(u.vx, u.vz) > 1.5) u.heading += wrap(Math.atan2(u.vz, u.vx) - u.heading) * Math.min(1, dt * 8);
+  u.x = Math.max(-W / 2 + 3, Math.min(W / 2 - 3, u.x + u.vx * dt)); u.z = Math.max(-D / 2 + 3, Math.min(D / 2 - 3, u.z + u.vz * dt));
+  if (state.finale?.ceasefire) { if (u.team === BLUE) u.x = Math.min(u.x, -2.5); else u.x = Math.max(u.x, 2.5); } // flyers keep to their side of the line too
+}
+const liveShields = (e, except) => (e.shields || []).filter((s) => s.hp > 0 && s.guard === e && s !== except);
+function droneGuard(u, c) { // a shield drone takes up a guard post
+  if (u.guard === c) return;
+  if (u.guard) u.guard.shields = liveShields(u.guard, u);
+  u.guard = c;
+  if (c) (c.shields ||= []).push(u);
+}
+function droneOrbit(u, c, rad) { const a = state.time * 1.3 + u.slot; return [c.x + Math.cos(a) * rad, c.z + Math.sin(a) * rad]; }
+function droneThink(u, dt) {
+  const t = state.time, own = u.team, F = state.finale;
+  u.alt = Math.min(DRN.alt[u.dr], (u.alt || 0) + dt * 5);
+  u.think -= dt; u.cool -= dt;
+  const p = state.player;
+  let gx = state.bases[own].x, gz = state.bases[own].z + 8, stop = 0;
+  if (u.dr === 'shield') {
+    if (u.think <= 0) { // pick who to guard: the one with the fewest shields, then the nearest (you first, then turrets, then the toy box)
+      u.think = 1.2 + Math.random() * 0.4;
+      let best = null, bs = 1e9;
+      for (const e of entities) {
+        if (e.team !== own || e.hp <= 0 || !((e.kind === 'player' && e.alive) || e.kind === 'base' || (e.kind === 'turret' && e.type !== 'wall' && e.type !== 'magnet'))) continue;
+        const sc = liveShields(e, u).length * 500 + Math.sqrt(dist2(u, e)) + (e.kind === 'base' ? 30 : 0) + (e.kind === 'player' ? -12 : 0);
+        if (sc < bs) { bs = sc; best = e; }
+      }
+      droneGuard(u, best);
+    }
+    if (u.guard && u.guard.hp > 0 && !(u.guard.kind === 'player' && !u.guard.alive)) { [gx, gz] = droneOrbit(u, u.guard, (u.guard.r || 2) + 2.4); }
+  } else if (u.dr === 'repair') {
+    if (u.think <= 0) { // the nearest friend that is hurt: a turret, a truck or digger, or the toy box
+      u.think = 0.5 + Math.random() * 0.2;
+      let best = null, bd = 1e9;
+      for (const e of entities) {
+        if (e.team !== own || e.hp <= 0 || e.hp >= e.maxHp - 0.5 || e.trojan || !((e.kind === 'turret' && e.type !== 'wall') || e.kind === 'worker' || e.kind === 'base')) continue;
+        const d = dist2(u, e);
+        if (d < bd) { bd = d; best = e; }
+      }
+      u.heal = best;
+    }
+    const h = u.heal;
+    if (h && h.hp > 0 && h.hp < h.maxHp) {
+      [gx, gz] = droneOrbit(u, h, (h.r || 2) * 0.5 + 1.2); stop = 0.5;
+      if (dist2(u, h) < ((h.r || 2) + DRN.healReach + 1.5) ** 2) { // close enough: mend it, slowly (the toy box faster, it is much bigger)
+        h.hp = Math.min(h.maxHp, h.hp + DRN.healRate * (h.kind === 'base' ? DRN.baseHealK : 1) * dt);
+        if ((u.sparkT = (u.sparkT || 0) - dt) <= 0) { u.sparkT = 0.45; burst(h.x + (Math.random() - 0.5) * 2, h.z + (Math.random() - 0.5) * 2, 0x7dff9a, 2, 2.5, 2.4); }
+      }
+    } else if (p.alive && own === BLUE) { [gx, gz] = droneOrbit(u, p, 6); } else { [gx, gz] = droneOrbit(u, state.bases[own], 12); }
+  } else if (u.dr === 'scout') {
+    if (own === BLUE && p.alive) { gx = p.x + Math.cos(p.heading) * 18 + Math.cos(u.slot) * 7; gz = p.z + Math.sin(p.heading) * 18 + Math.sin(u.slot) * 7; } // a little ahead of you
+    else { const fx = state.bases[own].x * 0.35; gx = fx + Math.sin(t * 0.4 + u.slot) * 16; gz = Math.sin(t * 0.6 + u.slot * 2) * 24; }
+    if ((u.spotT = (u.spotT || 0) - dt) <= 0) { // note everyone of theirs that is close: turrets shoot further at what scouts see (turretTarget)
+      u.spotT = 0.25;
+      for (const e of entities) if (e.team !== own && e.hp > 0 && (e.kind === 'unit' || e.kind === 'worker' || e.kind === 'turret' || e.kind === 'boat' || (e.kind === 'player' && e.alive)) && dist2(u, e) < DRN.scoutSight ** 2) e.spotT = t + 0.9;
+    }
+  } else if (u.dr === 'bomber') {
+    if (u.think <= 0) { // turrets first (bombs hurt them most), then the toy box
+      u.think = 0.8 + Math.random() * 0.3;
+      let best = null, bd = 1e9;
+      if (!F?.ceasefire) {
+        for (const e of entities) if (e.team !== own && e.hp > 0 && e.kind === 'turret' && e.type !== 'wall' && e.type !== 'magnet' && !e.trojan && dist2(u, e) < bd) { bd = dist2(u, e); best = e; }
+        if (best && bd > 90 * 90 && state.bases[1 - own].hp > 0) best = state.bases[1 - own]; // far from every turret: go for the toy box instead
+        best = best || (state.bases[1 - own].hp > 0 ? state.bases[1 - own] : null);
+      }
+      u.target = best;
+    }
+    const tg = u.target && u.target.hp > 0 ? u.target : null;
+    if (tg) {
+      gx = tg.x; gz = tg.z; stop = 0;
+      if (u.alt >= DRN.alt.bomber - 0.5 && u.cool <= 0 && Math.hypot(tg.x - (u.x + u.vx * DRN.bomb.fall), tg.z - (u.z + u.vz * DRN.bomb.fall)) < (tg.kind === 'base' ? 5 : 2.8)) crumbDrop(u);
+    } else { [gx, gz] = droneOrbit(u, state.bases[own], 10); }
+  }
+  flyTo(u, gx, gz, dt, stop);
+}
+function crumbDrop(u) { // a drone's crumb bomb: the same falling bomb as the level 6 bombers', smaller
+  u.cool = DRN.bomb.every;
+  const m = new THREE.Mesh(sgeo('bombGeo', () => new THREE.SphereGeometry(0.7, 8, 6)), smat('bombMat', () => mat(0x5a3b22, { roughness: 0.8 })));
+  m.position.set(u.x, u.alt, u.z); scene.add(m);
+  bombs.push({ x: u.x, z: u.z, y: u.alt, vy: 0, vx: u.vx, vz: u.vz, team: u.team, mesh: m, dmg: DRN.bomb.dmg, splash: DRN.bomb.splash, vsT: DRN.bomb.vsT });
+  if (dist2(u, state.player) < 2500) sfx('whistle');
+}
+// A shield drone takes the hit for what it guards (called from hurt with the damage that would land). Returns what is left over for the guard.
+function shieldSoak(e, eff) {
+  for (const s of e.shields) {
+    if (s.hp <= 0 || s.guard !== e || eff <= 0) continue;
+    const take = Math.min(eff, s.hp);
+    s.hp -= take; eff -= take;
+    burst(e.x + (s.x - e.x) * 0.5, e.z + (s.z - e.z) * 0.5, 0x9fe8ff, 3, 5, 2.4);
+    if (s.hp <= 0) { s.hp = 0.01; hurt(s, 1, null, null); } // it pops: the usual wreck
+  }
+  return eff;
+}
+// Turrets with a scout nearby see what it sees, a quarter further.
+const scoutsOf = (team) => entities.some((e) => e.dr === 'scout' && e.team === team && e.hp > 0);
+function turretTarget(e) {
+  const t = nearestEnemy(e, e.weapon.range);
+  if (t || !scoutsOf(e.team)) return t;
+  const r2 = (e.weapon.range * DRN.spotRange) ** 2, tm = state.time;
+  let best = null, bd = r2;
+  for (const o of entities) {
+    if (o.team === e.team || o.hp <= 0 || !(o.spotT > tm) || (o.kind === 'player' && !o.alive) || o.trojan || o.locked || o.kind === 'base') continue;
+    const d = dist2(e, o);
+    if (d < bd) { bd = d; best = o; }
+  }
+  return best;
+}
+// The enemy builds drones too (fairness): Gunners now and then, and the types its loadout has (aiHas).
+function aiDrones() {
+  if (aiTime() < 75 || state.time < (state.aiDroneAt || 0)) return false;
+  if (state.finale?.stage === 'buildup') return false;
+  state.aiDroneAt = state.time + 20 + Math.random() * 8;
+  const mine = (id) => entities.filter((e) => e.team === RED && e.hp > 0 && e.type === DRONES[id].unit).length;
+  const turrets = redTurrets(), hurtOnes = turrets.some((t) => t.hp < t.maxHp * 0.8) || state.bases[RED].hp < state.bases[RED].maxHp * 0.85;
+  const wish = [];
+  if (aiHas('dr_repair') && hurtOnes && mine('dr_repair') < 2) wish.push('dr_repair');
+  if (aiHas('dr_shield') && turrets.length && mine('dr_shield') < 2) wish.push('dr_shield');
+  if (aiHas('dr_bomber') && aiTime() > 150 && mine('dr_bomber') < 2) wish.push('dr_bomber');
+  if (aiHas('dr_scout') && mine('dr_scout') < 2) wish.push('dr_scout');
+  if (mine('drones') < 6) wish.push('drones');
+  for (const id of wish) {
+    const D = DRONES[id];
+    if (state.cereal[RED] < D.cost + 20 || !droneRoom(RED, D.n)) continue;
+    state.cereal[RED] -= D.cost;
+    const rusher = !!state.level.rules.rusher;
+    for (const u of dronesSpawn(id, RED)) if (rusher && id === 'drones') { u.hold = true; u.rally = [42 + Math.random() * 6, (Math.random() - 0.5) * 18]; }
+    return true;
+  }
+  return false;
 }
 
 // ----- The enemy commander's squadron side -----
@@ -5479,7 +5748,7 @@ function pickUp(car, c) {
   if (c.spot >= 0) { R.spots[c.spot].crate = null; R.spots[c.spot].timer = RACE_RESPAWN; c.spot = -1; } // a new one grows back in 10 s
   c.state = 'carried'; c.carrier = car; car.carry = c; c.fall = false; c.mesh.scale.setScalar(0.7);
   if (car === state.player) { sfx('cap'); toast(`Got a box: ${CRATE_NAMES[c.kind]}. Drop it near home (Z)`); }
-  else { car.dropAt = Math.random() < 0.8 ? RACE_RED_DROPS[(Math.random() * RACE_RED_DROPS.length) | 0] : RACE_RED_ELSE[(Math.random() * RACE_RED_ELSE.length) | 0]; car.carryT = 0; }
+  else { car.dropAt = Math.random() < 0.8 ? R.redDrops[(Math.random() * R.redDrops.length) | 0] : R.redElse[(Math.random() * R.redElse.length) | 0]; car.carryT = 0; }
 }
 function dropCrate(car) {
   const R = state.race;
@@ -5510,7 +5779,8 @@ function startRace(cfg) {
   if (cfg.mt) return mtStart(cfg); // My Track hook
   if (cfg.kr) return krStart(cfg); // the Kitchen Run (every level now)
   const T = cfg.track ? lrTrack(cfg.track) : raceTrack(), p = state.player, gateList = cfg.track ? lrGates(T) : RACE_GATES, N = gateList.length;
-  const R = state.race = { laps: cfg.laps, track: T, gates: [], group: new THREE.Group(), crates: [], spots: [], rivals: [], cars: [p], t: 0, hold: 3, lastN: undefined, winner: null, statsCarry: { ...VEHICLES.racer, speed: VEHICLES.racer.speed * RACE_CARRY_SLOW }, hudText: '', tokens: [], carried: [], intro: true, swap: null, slotSig: '' };
+  const R = state.race = { classic: !!cfg.classic, laps: cfg.laps, track: T, gates: [], group: new THREE.Group(), crates: [], spots: [], rivals: [], cars: [p], t: 0, hold: 3, lastN: undefined, winner: null, statsCarry: { ...VEHICLES.racer, speed: VEHICLES.racer.speed * RACE_CARRY_SLOW }, hudText: '', tokens: [], carried: [], intro: !cfg.classic, swap: null, slotSig: '', redDrops: RACE_RED_DROPS, redElse: RACE_RED_ELSE };
+  if (cfg.classic && cfg.track) { const b = state.bases[RED]; R.redDrops = [[b.x - 9, b.z - 7], [b.x - 9, b.z + 7], [b.x - 13, b.z]]; R.redElse = [[b.x * 0.4, -12], [b.x * 0.4, 12]]; } // (level 1 keeps its own spots)
   scene.add(R.group);
   gateList.forEach(([x, z, hw]) => {
     let idx = 0;
@@ -5518,8 +5788,8 @@ function startRace(cfg) {
     R.gates.push({ idx, x: T.pts[idx][0], z: T.pts[idx][1], tx: T.tan[idx][0], tz: T.tan[idx][1], nx: T.nor[idx][0], nz: T.nor[idx][1], hw });
   });
   R.gates.forEach((g, i) => { const prev = R.gates[(i + N - 1) % N]; g.segLen = Math.hypot(g.x - prev.x, g.z - prev.z) || 1; buildGate(R, g, i); });
-  (cfg.track ? [] : RACE_SPOTS).forEach(([x, z, kind], i) => { const c = makeCrate(kind, x, z, i); c.grow = 1; c.mesh.scale.setScalar(1); R.spots.push({ x, z, kind, crate: c, timer: 0 }); });
-  placeTokens(R, LOADOUTS[curLevel].pool);
+  (cfg.track ? (cfg.classic ? classicSpots(T) : []) : RACE_SPOTS).forEach(([x, z, kind], i) => { const c = makeCrate(kind, x, z, i); c.grow = 1; c.mesh.scale.setScalar(1); R.spots.push({ x, z, kind, crate: c, timer: 0 }); });
+  if (!cfg.classic) placeTokens(R, LOADOUTS[curLevel].pool); // (the Classic race has boxes, not tokens)
   // The grid is the last stretch of the track, two abreast.
   const order = [1, 0, 2, 3]; // you start in the second row, left
   const place = (c, k) => {
@@ -5629,6 +5899,11 @@ function finishRace(winner) {
   if (last === p && R.spots.length) R.result += '. Last place: a free gun turret at home';
   sfx(youWon ? 'win' : 'respawn');
   $('raceHud').hidden = true; $('raceRow').hidden = true;
+  if (R.classic) { // the Classic box race: no loadout card; the ready-made tools, a prize, the kettle clicks, then the boxes unfold
+    R.load = lrLoad(place, foe, false); applyLoad(R.load);
+    state.phase = 'countdown'; R.cd = 3; R.cdN = undefined;
+    return;
+  }
   lrOpenCard(place, foe, false);
 }
 function skipRace() {
@@ -5637,6 +5912,7 @@ function skipRace() {
   $('lrIntro').hidden = true; R.intro = false; R.skipped = true;
   $('raceHud').hidden = true; $('raceRow').hidden = true;
   R.result = 'Race skipped: a ready-made loadout';
+  if (R.classic) { R.load = lrLoad(2, 2, true); applyLoad(R.load); startBattle(true); return; } // (the Classic race has no card)
   lrOpenCard(2, 2, true);
 }
 function findDropSpot(kind, x, z, team) {
@@ -5664,12 +5940,12 @@ function startBattle(skipped) {
   // The two starting workers each side has always had, then the prizes.
   for (const team of [BLUE, RED]) { spawnWorker('truck', team); spawnWorker('digger', team); }
   if (!skipped && R.lastTeam !== undefined) {
-    const at = spotNear(R.lastTeam === BLUE ? -47 : 47, 0, R.lastTeam);
+    const hb = state.bases[R.lastTeam], at = spotNear(hb.x + (hb.x < 0 ? 15 : -15), 0, R.lastTeam);
     if (at) { makeTurret('gun', R.lastTeam, at[0], at[1]); tally[R.lastTeam].turrets++; } else state.cereal[R.lastTeam] += 25;
   }
   for (const c of R.rivals) burst(c.x, c.z, 0xef4136, 10, 9, 1.5);
   p.carry = null;
-  if (skipped) Object.assign(p, { x: -52, z: 0, vx: 0, vz: 0, heading: 0 }); // the old level 1 start
+  if (skipped) Object.assign(p, { x: spawnPt(BLUE, 0)[0], z: spawnPt(BLUE, 0)[1], vx: 0, vz: 0, heading: 0 }); // the old level 1 start
   cleanupRace();
   state.phase = 'battle'; state.time = 0; state.shake = skipped ? 0.3 : 1.6;
   const mine = tally[BLUE], bits = [];
@@ -5708,7 +5984,7 @@ function raceUpdate(dt) {
     if (n !== R.lastN) {
       R.lastN = n;
       const boxes = R.spots.length;
-      if (n > 0) { banner(String(n), boxes ? `${R.laps} laps. Drive through tokens for tools, over boxes to carry them.` : `${R.laps} laps. Drive through the tokens to win tools.`); sfx('tick'); } else { banner('GO!', boxes ? 'Gates in order. Z drops your box.' : 'Gates in order. Grab tokens on the way.'); bannerTimer = 1.4; sfx('respawn'); }
+      if (n > 0) { banner(String(n), R.classic ? `${R.laps} laps. Drive over boxes to carry them home.` : boxes ? `${R.laps} laps. Drive through tokens for tools, over boxes to carry them.` : `${R.laps} laps. Drive through the tokens to win tools.`); sfx('tick'); } else { banner('GO!', boxes ? 'Gates in order. Z drops your box.' : 'Gates in order. Grab tokens on the way.'); bannerTimer = 1.4; sfx('respawn'); }
     }
   }
   const go = racing && R.hold <= 0;
@@ -5749,7 +6025,7 @@ function raceUpdate(dt) {
     const rank = 1 + R.cars.filter((c) => c !== p && raceProg(c) > raceProg(p)).length;
     const txt = `Lap ${Math.min(R.laps, Math.floor(p.passed / N) + 1)}/${R.laps} · ${ordinal(rank)} of ${R.cars.length}${R.spots.length ? ` · Carrying: ${p.carry ? CRATE_NAMES[p.carry.kind] : 'nothing'}` : ''}`;
     if (txt !== R.hudText) { R.hudText = txt; $('raceLine').textContent = txt; }
-    slotsDraw(dt);
+    if (!R.classic) slotsDraw(dt);
     $('bDrop').disabled = !p.carry;
   }
   toastTimer -= dt;
@@ -5773,7 +6049,11 @@ const TOOLS = {
   truck: { name: 'Dump truck', icon: '🚚', col: 0xffc23d, btn: 'bTruck', key: 'KeyT', text: 'Hauls cereal home. More trucks, more cereal.' },
   digger: { name: 'Digger', icon: '🚜', col: 0xe8912d, btn: 'bDigger', key: 'KeyG', text: 'Scoops cereal out of the spilled bowls.' },
   rocket: { name: 'Rocket turret', icon: '🚀', col: 0xef4136, btn: 'bRocket', key: 'Digit2', text: 'A slow turret that hits hard from far away.' },
-  drones: { name: 'Drones', icon: '🛸', col: 0x7a6cf0, btn: 'bDrones', key: 'Digit3', text: 'Three little flyers that fight for you.' },
+  drones: { name: 'Gunner drones', icon: '🛸', col: 0x7a6cf0, btn: 'bDrones', key: 'Digit3', text: 'Three little gunners that zoom off and shoot. Always yours.' },
+  dr_shield: { name: 'Shield drones', icon: '🔰', col: 0x39c6d6, key: 'KeyN', text: 'Two drones hover beside your car, a turret or your toy box and soak the hits.' },
+  dr_repair: { name: 'Repair drones', icon: '🔧', col: 0x4fd16b, key: 'KeyN', text: 'Two drones that slowly mend your turrets, trucks, diggers and toy box.' },
+  dr_scout: { name: 'Scout drones', icon: '🔭', col: 0xffb13d, key: 'KeyN', text: 'Two fast little eyes. They show hidden enemies and let turrets see further.' },
+  dr_bomber: { name: 'Bomber drones', icon: '💣', col: 0xa77a52, key: 'KeyN', text: 'Two slow flyers that drop crumb bombs on turrets and toy boxes.' },
   upgrade: { name: 'Upgrade', icon: '⏫', col: 0x3ddc84, btn: 'bUpgrade', key: 'KeyU', text: 'Makes the turret next to you stronger.' },
   domino: { name: 'Dominoes', icon: '🧱', col: 0xc77d3a, btn: 'bDomino', key: 'KeyX', text: 'Line them up and tip them: the last one hits their toy box.' },
   trojan: { name: 'Trojan truck', icon: '🐴', col: 0xa05a2c, btn: 'bTrojan', key: 'KeyY', text: 'Steal an enemy truck. It drives home and goes bang.' },
@@ -5791,17 +6071,17 @@ const TOOLS = {
   sq_raiders: { name: 'Raiders', icon: '🏎', col: 0xff9633, text: 'Fast cars that go after enemy trucks.' },
   sq_foot: { name: 'Foot soldiers', icon: '🚶', col: 0xb98a4c, text: 'Loopers, pikemen, pea shooters and battery bots.' },
 };
-const KEY_TOOL = Object.fromEntries(Object.entries(TOOLS).filter(([, t]) => t.key).map(([id, t]) => [t.key, id]));
+const KEY_TOOL = Object.fromEntries(Object.entries(TOOLS).filter(([id, t]) => t.key && !id.startsWith('dr_')).map(([id, t]) => [t.key, id])); // (the drone types share the N key, which only cycles; N is not blocked by a missing type)
 const SQ_TOOL = { bombers: 'sq_bombers', boats: 'sq_boats', tanks: 'sq_tanks', raiders: 'sq_raiders', loopers: 'sq_foot', pikemen: 'sq_foot', peashooters: 'sq_foot', botsq: 'sq_foot' };
-const BASICS = ['gun', 'truck', 'digger']; // always on: a turret, and the two workers the economy needs
+const BASICS = ['gun', 'truck', 'digger', 'drones']; // always on: a turret, the two workers the economy needs, and Gunner drones (the drone TYPES are won in the race)
 // Per level: `pool` = a token each (what you can win), `must` = always on here (the level is not fair without it), `def` = the Skip race loadout, `ai` = the enemy's picks in order.
 const LOADOUTS = [
-  { pool: ['rocket', 'drones', 'upgrade', 'domino', 'trojan'], must: [], def: ['rocket', 'upgrade', 'drones', 'domino'], ai: ['rocket', 'upgrade', 'domino', 'trojan'] },
-  { pool: ['rocket', 'drones', 'upgrade', 'domino', 'trojan', 'staple', 'magnet', 'catapult', 'armour'], must: [], def: ['rocket', 'upgrade', 'staple', 'catapult'], ai: ['rocket', 'upgrade', 'domino', 'trojan'] },
-  { pool: ['rocket', 'drones', 'upgrade', 'domino', 'trojan', 'laser'], must: ['flare'], def: ['laser', 'rocket', 'upgrade', 'drones'], ai: ['laser', 'rocket', 'upgrade', 'trojan', 'domino'] },
-  { pool: ['rocket', 'drones', 'upgrade', 'domino', 'trojan'], must: ['boat'], def: ['rocket', 'upgrade', 'drones', 'trojan'], ai: ['rocket', 'upgrade', 'domino', 'trojan'] },
-  { pool: ['rocket', 'drones', 'upgrade', 'trojan', 'staple', 'catapult', 'armour', 'toaster'], must: [], def: ['rocket', 'upgrade', 'toaster', 'drones'], ai: ['toaster', 'rocket', 'upgrade', 'trojan', 'domino'] },
-  { pool: ['sq_bombers', 'sq_boats', 'sq_raiders', 'sq_foot', 'rocket', 'drones', 'upgrade', 'toaster'], must: ['sq_tanks'], def: ['sq_bombers', 'sq_raiders', 'upgrade', 'rocket'], ai: ['sq_bombers', 'sq_raiders', 'sq_foot', 'rocket', 'upgrade'] },
+  { pool: ['rocket', 'dr_shield', 'upgrade', 'domino', 'trojan', 'dr_repair'], must: [], def: ['rocket', 'upgrade', 'dr_shield', 'domino'], ai: ['rocket', 'upgrade', 'dr_shield', 'domino', 'trojan'] },
+  { pool: ['rocket', 'dr_shield', 'upgrade', 'domino', 'trojan', 'staple', 'magnet', 'catapult', 'armour', 'dr_bomber'], must: [], def: ['rocket', 'upgrade', 'staple', 'dr_shield'], ai: ['rocket', 'upgrade', 'dr_shield', 'domino', 'trojan'] },
+  { pool: ['rocket', 'dr_scout', 'upgrade', 'domino', 'trojan', 'laser', 'dr_repair'], must: ['flare'], def: ['laser', 'rocket', 'upgrade', 'dr_scout'], ai: ['laser', 'rocket', 'upgrade', 'dr_scout', 'trojan', 'domino'] },
+  { pool: ['rocket', 'dr_bomber', 'upgrade', 'domino', 'trojan', 'dr_shield'], must: ['boat'], def: ['rocket', 'upgrade', 'dr_bomber', 'trojan'], ai: ['rocket', 'upgrade', 'dr_bomber', 'domino', 'trojan'] },
+  { pool: ['rocket', 'dr_repair', 'upgrade', 'trojan', 'staple', 'catapult', 'armour', 'toaster', 'dr_shield'], must: [], def: ['rocket', 'upgrade', 'toaster', 'dr_repair'], ai: ['toaster', 'rocket', 'upgrade', 'dr_repair', 'trojan', 'domino'] },
+  { pool: ['sq_bombers', 'sq_boats', 'sq_raiders', 'sq_foot', 'rocket', 'dr_scout', 'upgrade', 'toaster', 'dr_repair'], must: ['sq_tanks'], def: ['sq_bombers', 'sq_raiders', 'upgrade', 'rocket'], ai: ['sq_bombers', 'sq_raiders', 'sq_foot', 'rocket', 'upgrade', 'dr_repair'] },
 ];
 const LR_MAX = 4, LR_BONUS = [40, 25, 12, 5], LR_AI_TOOLS = [4, 3, 2, 1]; // carry limit; starting cereal by finishing place; how many picks the enemy gets by its best racer's place
 // The circuits (corner points, rounded by trackFrom). The table is 150 x 96 and the toy boxes sit at x = +-62, so the tracks stay inside x +-47.
@@ -5904,17 +6184,77 @@ function lrIntro() {
   R.intro = true;
   $('lrLvl').textContent = `Level ${curLevel + 1} · ${LEVELS[curLevel].name}`;
   $('lrChips').innerHTML = LOADOUTS[curLevel].pool.map((id) => `<span><em>${TOOLS[id].icon}</em>${TOOLS[id].name}</span>`).join('');
+  lrModesDraw();
   $('lrIntro').hidden = false;
+}
+// --- the race choice (the player: "I did like the original races, and then I did like the extra ones, so maybe we could have the choice") ---
+// kitchen = the Kitchen Run (tokens win tools); classic = the old box race on the level's real table (boxes unfold into your base); skip = a ready-made loadout.
+// The choice is remembered. The Classic race needs a flat table with room for a circuit, so levels 4 (the sink) and 6 (the worktop) do not offer it.
+const RACE_MODES = ['kitchen', 'classic', 'skip'], MODE_KEY = 'bb-racemode-v1';
+const CLASSIC_LEVELS = [true, false, false, false, false, false]; // measured 28 Nov: only the breakfast table has a clear circuit (the old LR_TRACKS hit blocks on the real levels 2, 3 and 5: 20 to 50 circuit points inside obstacles; no loop of any size fits clear of the clutter)
+const CLASSIC_WHY = ['', 'This table is too crowded for a race circuit: only the breakfast table has one.', 'The drawer is too crowded (and dark) for a race circuit: only the breakfast table has one.', 'The sink is mostly water, so there is no dry circuit round it.', 'The hob is too crowded for a race circuit: only the breakfast table has one.', 'The giant worktop is too big for a box race: the Kitchen Run only.'];
+let raceMode = 'kitchen', classicNext = false;
+try { const m = localStorage.getItem(MODE_KEY); if (RACE_MODES.includes(m)) raceMode = m; } catch (e) { /* no storage: the choice lasts until the page closes */ }
+const classicOk = (i) => !!CLASSIC_LEVELS[i] && !LEVELS[i].finale;
+const curMode = () => (raceMode === 'classic' && !classicOk(curLevel) ? 'kitchen' : raceMode); // a remembered Classic choice falls back to the Kitchen Run where it does not exist
+function setRaceMode(m) {
+  if (m === 'classic' && !classicOk(curLevel)) return;
+  raceMode = m;
+  try { localStorage.setItem(MODE_KEY, m); } catch (e) { /* ignore */ }
+  lrModesDraw(); renderRaceLine();
+}
+const MODE_TEXT = {
+  kitchen: '<b>Kitchen Run</b>: race the 3 red cars over, under and through the kitchen. Drive through a <b>token</b> to win that tool. You can carry <b>4</b>: a 5th swaps out your oldest. Only the tools you win show up in the battle (Gunner drones are always yours). Finish high for bonus cereal.',
+  classic: '<b>Classic box race</b>: laps round this level\'s table against the 3 red cars. Drive over a <b>box</b> to carry it (you go a bit slower), press <b>Drop</b> (or Z) to leave it where you want it, and ram a car to knock its box off. When the first car finishes, every dropped box unfolds into a turret, a wall or a worker. You start with a ready-made set of tools.',
+  skip: '<b>Skip race</b>: no racing. You start the battle at once with a ready-made set of tools and a little cereal.',
+};
+function lrModesDraw() {
+  const R = state.race, hide = !R || R.mt || R.drift || MT.on;
+  $('lrModes').hidden = hide; $('lrModeNote').hidden = hide;
+  if (hide) { $('lrGo').textContent = 'GO!'; $('lrTitle').textContent = 'LOADOUT RACE'; $('lrText').innerHTML = MODE_TEXT.kitchen; $('lrChips').hidden = false; return; }
+  const m = curMode(), ok = classicOk(curLevel);
+  for (const b of $('lrModes').querySelectorAll('button')) { const on = b.dataset.mode === m; b.classList.toggle('sel', on); b.setAttribute('aria-checked', on ? 'true' : 'false'); }
+  $('lrModeClassic').setAttribute('aria-disabled', ok ? 'false' : 'true');
+  $('lrModeClassic').querySelector('span').textContent = ok ? 'Boxes become your base' : 'Not on this level';
+  $('lrModeNote').textContent = ok ? '' : CLASSIC_WHY[curLevel];
+  $('lrTitle').textContent = m === 'kitchen' ? 'LOADOUT RACE' : m === 'classic' ? 'CLASSIC BOX RACE' : 'SKIP THE RACE';
+  $('lrText').innerHTML = MODE_TEXT[m];
+  $('lrChips').hidden = m !== 'kitchen';
+  $('lrGo').textContent = m === 'skip' ? 'SKIP RACE' : 'GO!';
+}
+function classicCfg(i) { return i === 0 ? { laps: 2, classic: true } : { laps: LR_LAPS[i], track: LR_TRACKS[i], classic: true }; }
+function classicSpots(T) { // supply boxes along a circuit that has none of its own: 8 spots, beside the line, away from the start
+  const kinds = ['gun', 'truck', 'wall', 'rocket', 'digger', 'gun', 'wall', 'truck'];
+  return kinds.map((k, i) => { const j = Math.round((i + 0.5) * T.n / 8) % T.n, lat = (i % 2 ? 1 : -1) * 2.2; return [T.pts[j][0] + T.nor[j][0] * lat, T.pts[j][1] + T.nor[j][1] * lat, k]; });
+}
+function startClassic() { // GO! with the Classic race chosen: build the real level, with its box race
+  audioInit(); pendingLoad = null; classicNext = true;
+  $('lrIntro').hidden = true;
+  reset();
+}
+function lrGoClicked() {
+  const R = state.race;
+  if (!R) return;
+  audioInit();
+  const m = R.mt || R.drift || MT.on ? 'kitchen' : curMode();
+  if (m === 'skip') return skipRace();
+  if (m === 'classic') return startClassic();
+  R.intro = false; $('lrIntro').hidden = true;
+}
+function lrLoad(place, foe, skipped) { // what each side starts the battle with
+  const R = state.race, L = LOADOUTS[curLevel];
+  let picks = skipped || R.classic ? L.def.slice() : R.carried.slice(); // (the Classic race has no tokens: it gives the ready-made tools)
+  if (!picks.length) picks = [L.def[0]]; // never an empty bar
+  const tools = [...new Set([...BASICS, ...L.must, ...picks])];
+  const freeUp = place === 1 && !skipped ? 1 : 0;
+  if (freeUp && !tools.includes('upgrade')) tools.push('upgrade');
+  const ai = [...new Set([...BASICS, ...L.must, ...L.ai.slice(0, LR_AI_TOOLS[foe - 1])])];
+  return { tools, ai, freeUp, bonus: LR_BONUS[place - 1], aiBonus: LR_BONUS[foe - 1], place, picks };
 }
 function lrOpenCard(place, foe, skipped) {
   const R = state.race, L = LOADOUTS[curLevel];
-  let picks = skipped ? L.def.slice() : R.carried.slice();
-  if (!picks.length) picks = [L.def[0]]; // never an empty bar
-  const tools = [...BASICS, ...L.must, ...picks];
-  const freeUp = place === 1 && !skipped ? 1 : 0;
-  if (freeUp && !tools.includes('upgrade')) tools.push('upgrade');
-  const ai = [...BASICS, ...L.must, ...L.ai.slice(0, LR_AI_TOOLS[foe - 1])];
-  R.load = { tools, ai, freeUp, bonus: LR_BONUS[place - 1], aiBonus: LR_BONUS[foe - 1], place };
+  R.load = lrLoad(place, foe, skipped);
+  const { tools, ai, freeUp, picks } = R.load;
   state.phase = 'loadout';
   $('banner').hidden = true; bannerTimer = 0; $('toast').textContent = '';
   const tile = (id, cls, tag) => `<div class="tile ${cls}"><em>${TOOLS[id].icon}</em><div><b>${TOOLS[id].name}${tag ? `<u>${tag}</u>` : ''}</b><span>${TOOLS[id].text}</span></div></div>`;
@@ -5946,9 +6286,10 @@ function applyBar() {
   for (const [id, T] of Object.entries(TOOLS)) if (T.btn) $(T.btn).classList.toggle('off', !toolOn(id));
   for (const row of document.querySelectorAll('.controls > .row:not(.raceRow)')) row.classList.toggle('off', ![...row.querySelectorAll('button')].some((b) => !b.classList.contains('off')));
   if (state.finale) state.finale.ui = '';
+  droneUi();
 }
-$('lrGo').addEventListener('click', () => { const R = state.race; if (R) { R.intro = false; $('lrIntro').hidden = true; audioInit(); } });
-$('lrSkip').addEventListener('click', () => { audioInit(); skipRace(); });
+$('lrGo').addEventListener('click', lrGoClicked);
+for (const b of $('lrModes').querySelectorAll('button')) b.addEventListener('click', () => setRaceMode(b.dataset.mode));
 $('lrStart').addEventListener('click', lrStartGo);
 
 // ---------- The Kitchen Run (2 Nov 2026): the Loadout Race course, a toy obstacle course through a whole kitchen ----------
@@ -6861,7 +7202,7 @@ function update(dt) {
 
   if (state.water) { ferriesUpdate(dt); islandScoop(dt); dripsUpdate(dt); }
   if (state.hob) hobUpdate(dt);
-  if (state.finale) finaleUpdate(dt);
+  if (state.finale) finaleUpdate(dt); else if (bombs.length) bombsUpdate(dt); // (drone crumb bombs fall on every level)
   if (toasters.length) toastersUpdate(dt);
   // Player
   if (p.alive) {
@@ -6902,7 +7243,7 @@ function update(dt) {
       e.cool -= dt;
       // A catapult aims for their toy box when it can reach it: that's what it's for.
       const foeBase = state.bases[1 - e.team];
-      const t = e.type === 'catapult' && foeBase.hp > 0 && dist2(e, foeBase) < e.weapon.range ** 2 ? foeBase : nearestEnemy(e, e.weapon.range);
+      const t = e.type === 'catapult' && foeBase.hp > 0 && dist2(e, foeBase) < e.weapon.range ** 2 ? foeBase : turretTarget(e); // (turretTarget: a scout drone nearby lets a turret see a quarter further)
       if (t) {
         const head = e.mesh.getObjectByName('turret');
         if (head) head.rotation.y = -angleTo(e, t);
@@ -7055,6 +7396,7 @@ function render(dt) {
     e.mesh.position.set(e.x, (floats ? 0.4 + Math.sin(time * 6) * 0.15 : 0) + (state.water ? bridgeLift(e) + (onFerry(e) ? 0.9 : 0) : 0), e.z);
     e.mesh.rotation.y = -e.heading;
     if (e.hero) heroPose(e, dt, time); // level 6 gumball heroes
+    else if (e.dr) dronePose(e, time); // drone types: hover, rotors
     else if (e.fly) bomberPose(e, time); // level 6 bombers: altitude, bank, propeller
     else if (e.inf) infPose(e, time); // level 6 infantry
     if (e.flipT > 0) flipPose(e, dt); // level 6: flipped by Captain Teaspoon
@@ -7175,6 +7517,10 @@ const isUnlocked = () => true; // Harry: pick any level from the start (no locks
 const isPlayable = (i) => isUnlocked(i) && !LEVELS[i].soon;
 const starRow = (n) => [0, 1, 2].map((k) => `<span class="${k < n ? '' : 'off'}">\u2605</span>`).join('');
 const FAST_WIN = 480; // seconds: the "under 8 minutes" star
+function renderRaceLine() { // the title card's line about the race you will get (and the drones the race can win)
+  const types = LOADOUTS[curLevel].pool.filter((id) => id.startsWith('dr_')).map((id) => TOOLS[id].name.replace(' drones', '').toLowerCase());
+  $('lvlRace').textContent = `Your race: ${{ kitchen: 'Kitchen Run (tokens win tools)', classic: 'Classic box race (boxes unfold into your base)', skip: 'skip it (ready-made tools)' }[curMode()]}. You can change it on the next card. Gunner drones are always yours; the race can win you ${types.join(' and ')} drones.`;
+}
 function renderLevels() {
   $('levels').innerHTML = LEVELS.map((L, i) => {
     const cls = [i === curLevel ? 'cur' : '', !isUnlocked(i) ? 'locked' : '', L.soon ? 'soon' : ''].join(' ');
@@ -7186,6 +7532,7 @@ function renderLevels() {
   $('lvlSub').textContent = `Mealtime Mayhem \u00b7 Level ${curLevel + 1} \u00b7 ${L.name}`;
   $('lvlBlurb').textContent = L.blurb;
   $('lvlTips').innerHTML = L.tips.map((t) => `<li>${t}</li>`).join('');
+  renderRaceLine();
 }
 function selectLevel(i) {
   curLevel = i;
@@ -9400,8 +9747,8 @@ function mtAgain() { // the end card's PLAY AGAIN: the same track again
 }
 function mtIntro() {
   lrIntro();
-  const K = state.race && state.race.kr, p = $('lrIntro').querySelector('p:not(.sub)');
-  if (!MT.introHtml) MT.introHtml = p.innerHTML;
+  const K = state.race && state.race.kr, p = $('lrText');
+  if (!MT.introHtml) MT.introHtml = MODE_TEXT.kitchen;
   $('lrLvl').textContent = MT.ar ? 'My Track · on your table' : 'My Track · practice table';
   p.innerHTML = `<b>Your own track</b>: ${K ? K.laps : 3} laps against the 3 red cars. Stay on the road (off it, or off the table, and you are put back behind). Drive through a <b>token</b> to win that tool; you carry <b>4</b>. Then the battle, on the same table.`;
 }
@@ -9411,7 +9758,7 @@ function mtExit() {
   cleanupRace();
   if (MT.group) { scene.remove(MT.group); disposeTree(MT.group); MT.tex?.dispose(); MT.group = MT.prev = MT.line = null; }
   $('mtBar').hidden = true; document.body.classList.remove('mtrack');
-  if (MT.introHtml) $('lrIntro').querySelector('p:not(.sub)').innerHTML = MT.introHtml;
+  if (MT.introHtml) $('lrText').innerHTML = MT.introHtml;
   if (MT.prevLevel !== null) { curLevel = MT.prevLevel; MT.prevLevel = null; }
   MT.level = MT.loop = MT.fit = MT.cand = null;
   $('end').hidden = true; $('lrCard').hidden = true; $('banner').hidden = true;
