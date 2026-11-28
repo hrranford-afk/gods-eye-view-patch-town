@@ -59,6 +59,7 @@ body.noui #top,body.noui #bar,body.noui #info,body.noui #gpuInfo,body.noui #benc
 <script>if(/[?&]game=gift/.test(location.search))document.write('<script src="boat_drive.js"><\/script>');</script>
 <script>if(/[?&]game=gift/.test(location.search)&&!/[?&]waves=0/.test(location.search)||/[?&]waves=1/.test(location.search))document.write('<script src="sea_waves.js"><\/script>');</script>
 <script>if(/[?&]game=gift/.test(location.search)&&!/[?&]storm=0/.test(location.search))document.write('<script src="storm.js"><\/script>');</script>
+<script>if((/[?&]game=gift/.test(location.search)&&!/[?&]sound=0/.test(location.search))||/[?&]sound=1/.test(location.search))document.write('<script src="audio.js"><\/script><script src="audio_song.js"><\/script><script src="gift_sound.js"><\/script>');</script>   <!-- the Gift's sound (GIFT_SOUND.md): game=gift or &sound=1 only; the default page loads no audio -->
 <script>if(/[?&]cost=1/.test(location.search))document.write('<script src="tiers.js"><\/script><script src="cost_ladder.js"><\/script>');</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="li_sea.js"></script>

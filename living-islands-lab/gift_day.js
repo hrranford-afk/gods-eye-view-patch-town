@@ -1051,9 +1051,38 @@ function waitTick(dt) {
 }
 function waitReq(v) { G.waitReq = v; G.actAt = 0; }
 /* ---------------- audio: one fog horn, made in the browser ---------------- */
-function ensureAudio() { if (G.horn || !(window.AudioContext || window.webkitAudioContext)) return; try { G.horn = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { G.horn = null; } if (G.horn && G.horn.state === 'suspended') G.horn.resume().catch(() => { }); }
-function foghorn() {
-  toast('A fog horn, far out. Two long notes.', 5200); G.hornCount = (G.hornCount || 0) + 1;
+/* ---------------- SOUND (GIFT_SOUND.md): the one place that knows where the game keeps what the sound needs. gift_sound.js polls this five times a second and turns the answers into sound. Cheap, read only, and it never throws. ---------------- */
+const SND = { dock: null };
+const SEA_RAW = { calm: .12, fog: .12, swell: .45, squall: .5, after: .4, gale: .7, thunder: .8, winter: .75, wash: 1 };
+function soundGround(x, z) {   /* what a robot's tracks run on: the dock's planks, the yard's flagstones, sand low down, pebbles above it, grass higher still */
+  try { if (!SND.dock && PHYS() && PHYS().layout()) { const L = PHYS().layout(); SND.dock = L && L.dock && L.dock.root && L.dock.tip ? { ax: L.dock.root.x, az: L.dock.root.z, bx: L.dock.tip.x, bz: L.dock.tip.z } : null; }
+    const d = SND.dock; if (d) { const vx = d.bx - d.ax, vz = d.bz - d.az, l2 = vx * vx + vz * vz || 1, k = clamp(((x - d.ax) * vx + (z - d.az) * vz) / l2, 0, 1); if (Math.hypot(x - (d.ax + vx * k), z - (d.az + vz * k)) < 3) return 'plank'; }
+    const hh = C.H(x, z); return hh < .7 ? 'sand' : hh < 1.6 ? 'pebble' : 'grass'; } catch (e) { return 'pebble'; }
+}
+function soundProbe(o) {
+  if (!G.ready || !G.s || !C) return false; const s = G.s;
+  const li = C.li(), wx = weatherState(); o.day = dayNo(); o.seed = s.seed; o.tide = clamp((C.tide() + .9) / 2, 0, 1);
+  let sea = 'calm', ss = 0, wms = 0; try { sea = li.sea.name(); ss = li.sea.s(); } catch (e) { /* no wave sea */ } try { const w = li.weather && li.weather(); wms = (w && (w.windMs || (w.params && w.params.windMs))) || 0; } catch (e) { /* none */ }
+  const b0 = SEA_RAW[sea]; o.sea = .12 + ((b0 === undefined ? .12 : b0) - .12) * clamp(ss, 0, 1); o.windMs = wms; o.rain = wx === 'storm' ? .85 : wx === 'rain' ? .55 : wx === 'showers' ? .3 : 0;
+  let el = 30; try { el = ck() ? ck().light().elev : 30; } catch (e) { /* none */ } o.night = clamp((3 - el) / 12, 0, 1);
+  let q = 0, ph = 'none', pre = 0; try { const k = SHP() && root.__storm && root.__storm.state(); if (k) { ph = k.phase; q = k.quiet || 0; if (k.phase === 'run' && k.build > 0) pre = clamp(k.ts / k.build, 0, 1); } } catch (e) { /* none */ } o.storm = q; o.stormPhase = ph; o.stormPre = pre;
+  let n = 0; for (const k in s.stock) n += s.stock[k] || 0; o.stock = n;
+  let bs = -1, bid = '', hold = !!(G.hand && G.hand.down); try { const st = PHYS() && PHYS().state(); if (st) { if (st.ph && st.ph.b) { bs = st.ph.b.stage; bid = st.ph.b.id; } if (st.hold) hold = true; } } catch (e) { /* none */ } o.bStage = bs; o.bId = bid; o.holding = hold;
+  let pl = 0; try { pl = li.repair.count().fitted; } catch (e) { /* none */ } o.plank = pl; o.key = (s.letter1 ? 1 : 0) + (s.hutOpen ? 1 : 0); o.dlv = G.dlv ? G.dlv.phase : '';
+  let bm = '', bsp = 0; try { const bd = BDP() && BDP().state(); if (bd && bd.ready) { bm = bd.mode || ''; bsp = Math.abs(bd.u || 0); } } catch (e) { /* none */ } o.boat = bm; o.boatSpeed = bsp;
+  const R = o.robots;
+  try { const rt = C.li().campstart.rt(), sim = rt.sim(); if (R.length > sim.robots.length) R.length = sim.robots.length; sim.robots.forEach((r, i) => {
+    let kind = r.role === 'sorter' ? 'sorter' : 'hauler', work = false; const stt = r.state;
+    if (stt === 'task') { work = !r.tstall && (r.twork || r.tmove); kind = r.twork ? 'stacker' : 'hauler'; } else if (stt === 'out' || stt === 'carry' || stt === 'drop' || stt === 'work' || stt === 'sort') work = true;
+    const gx = work && r.moving ? soundGround(r.x, r.z) : '';
+    let e = R[i]; if (!e) e = R[i] = {}; e.kind = kind; e.work = work; e.moving = !!r.moving; e.battery = r.charge; e.state = r.charge < .22 ? 'tired' : isRaining() ? 'wet' : 'work'; e.ground = gx; }); } catch (e) { /* the yard is not built yet */ }
+  return true;
+}
+function ensureAudio() { if (root.LI_AUDIO && root.LI_AUDIO.playEvent) return;   /* the sound layer owns the one audio context (gift_sound.js); the old horn context is only for pages without it */
+  if (G.horn || !(window.AudioContext || window.webkitAudioContext)) return; try { G.horn = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { G.horn = null; } if (G.horn && G.horn.state === 'suspended') G.horn.resume().catch(() => { }); }
+function foghorn(viaSound) {
+  toast(viaSound && root.LI_AUDIO && root.LI_AUDIO.playEvent ? 'The ship sounds its horn, far out.' : 'A fog horn, far out. Two long notes.', 5200); G.hornCount = (G.hornCount || 0) + 1;
+  if (root.LI_AUDIO && root.LI_AUDIO.playEvent) { if (!viaSound) { try { root.LI_AUDIO.playEvent('horn', {}); } catch (e) { /* silent */ } } return; }   /* with the sound layer the delivery horn is played by gift_sound.js when the ship comes in; a fog horn plays here */
   const a = G.horn; if (!a || a.state !== 'running') return;
   try { for (let k = 0; k < 2; k++) { const t0 = a.currentTime + k * 3.2, g = a.createGain(), lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 420;
     g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(.22, t0 + .5); g.gain.setValueAtTime(.22, t0 + 1.9); g.gain.linearRampToValueAtTime(0, t0 + 2.8); g.connect(lp); lp.connect(a.destination);
@@ -1198,7 +1227,7 @@ function startDelivery() {
   G.s.shipSeen = true; const O = G.objs, S = G.spots; O.ship.visible = true; O.ship.userData.fade = 0; O.ship.position.set(S.ship.x, -.4, S.ship.z);
   const to = [S.tender.wp.x - S.ship.x, S.tender.wp.z - S.ship.z]; O.ship.rotation.y = Math.atan2(-to[1], to[0]); O.ship.scale.setScalar(0.1);
   G.dlv = { t: 0, phase: 'ship' };
-  focus(S.tender.wp.x, S.tender.wp.z, 56, undefined, .7); foghorn();
+  focus(S.tender.wp.x, S.tender.wp.z, 56, undefined, .7); foghorn(true);
 }
 function deliveryTick(dt) {
   const d = G.dlv; if (!d) return; const sp = G.fast || 1; dt *= sp; d.t += dt; const O = G.objs, S = G.spots, tide = C.tide();
@@ -1487,8 +1516,10 @@ function renderUi() {
     const mb = btn(G.menuOpen ? 'Close menu' : 'Menu', () => { G.menuOpen = !G.menuOpen; document.body.classList.toggle('gd-menuopen', G.menuOpen); G.sig = null; renderUi(); }); mb.id = 'gd-menu-btn'; R.appendChild(mb);
     const mn = h('div', 'gd-pill'); mn.id = 'gd-menu'; ['notes', 'cat', 'chart', 'sleep', 'wait'].forEach(k => { if (mk[k] && k !== main) mn.appendChild(mk[k]); }); mn.appendChild(sk);
     if (GIFT && Q0.get('physical') !== '0') { const eb = btn('Start: ' + ((G.easyNext === undefined ? !!s.easy : G.easyNext) ? 'Easy' : 'Normal'), easyToggle); eb.id = 'gd-easy-btn'; mn.appendChild(eb); }
+    try { if (root.LI_GSOUND && root.LI_GSOUND.panel) mn.appendChild(root.LI_GSOUND.panel()); } catch (e) { /* no sound panel */ }
     const dv = btn(document.body.classList.contains('gd-showdev') ? 'Hide test controls' : 'Test controls', () => { document.body.classList.toggle('gd-showdev'); G.sig = null; renderUi(); }); dv.id = 'gd-dev-btn'; mn.appendChild(dv); R.appendChild(mn);
   }
+  try { const sc = root.LI_GSOUND && root.LI_GSOUND.chip && root.LI_GSOUND.chip(); if (sc) R.appendChild(sc); } catch (e) { /* no chip */ }   /* the 'Sound on' chip lives at the foot of the top right column until the sound runs */
   const L = G.ui.left; L.innerHTML = '';
   const hasStock = s.robots.some(Boolean) || STOCKS.some(k => (s.stock[k.id] || 0) > 0), tot = STOCKS.reduce((a, k) => a + (s.stock[k.id] || 0), 0);
   if (G.leftCollapsed === undefined) G.leftCollapsed = GD_CLEAN && innerWidth < 600;
@@ -1714,6 +1745,7 @@ function init(ctx) {
   if (C) return G; C = ctx; THREE = ctx.THREE; buildDom(); wireInput();
   const w = document.getElementById('worldSel'); if (w) w.style.display = 'none';            /* the picker lists other worlds; the gift has one island */
   const wait = () => { let ok = false; try { const rt = C.li().campstart && C.li().campstart.rt(); ok = !!(C.W.camp && C.W.camp.fire && rt); } catch (e) { ok = false; } if (ok) start(); else setTimeout(wait, 300); }; wait();
+  try { if (root.LI_GSOUND && root.LI_GSOUND.attach) { root.LI_GSOUND.attach(o => { o.robots = o.robots || []; return soundProbe(o); }, { seed: ctx.seed }); } } catch (e) { G.err.push('sound ' + e.message); }   /* the sound layer (gift_sound.js), only when the page loaded it */
   root.__gift = {
     state: () => JSON.parse(JSON.stringify(G.s)), stage: () => stageOf(G.s), core: CORE, err: () => G.err.slice(), spots: () => G.spots && { crate: G.spots.crate, hut: G.spots.hut, tender: G.spots.tender, build: G.spots.build, stump: G.spots.stump, shore: G.spots.shore, wreck: G.spots.wreck, barrel: G.spots.barrel, finds: G.spots.finds.map(f => ({ id: f.id, x: f.x, z: f.z, taken: f.taken })), ship: G.spots.ship },
     targets: () => targets(), tap: (cx, cy) => onTap(cx, cy), act: id => activate(id), skipTo, card: () => G.cardOpen, closeCard, toast: () => G.toast, hint: () => hintFor(G.s), save: () => save(false), load: () => load(), wipe: wipeSave, saveOk: SAVE_OK,
