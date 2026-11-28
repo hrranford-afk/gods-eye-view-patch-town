@@ -4732,7 +4732,7 @@ function droneCycle() { // the type button / key N
 function droneUi() { // the label, the price and the type button
   if (!DRONES[state.droneSel] || !toolOn(state.droneSel)) state.droneSel = 'drones';
   const id = state.droneSel, own = droneOwned();
-  $('droneName').textContent = own.length > 1 ? DRONES[id].label : 'Drones';
+  $('droneName').textContent = id === 'drones' ? 'Drones' : DRONES[id].label; // (the basic ones stay 'Drones': 'Gunner' read too much like the Gun button)
   $('droneCost').textContent = DRONES[id].cost;
   $('bDroneType').hidden = own.length < 2;
   $('droneTypeIcon').textContent = TOOLS[id].icon;
