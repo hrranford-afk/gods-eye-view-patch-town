@@ -77,6 +77,72 @@ if (want('unlock') || want('noaudio')) {
     const t = await p.evaluate(() => { const s = document.querySelector('#gs-panel .gs-state'); return s ? s.textContent : null; });
     ok(!r.chip, 'no AudioContext: the chip stays hidden'); ok(errs.length === 0, 'no AudioContext: zero console errors' + (errs.length ? ': ' + errs[0] : '')); await p.close(); }
 }
+
+/* a spy on the real audio and song modules: every call the game makes is recorded (the sound still plays) */
+const SPY = () => { window.__ev = []; window.__sg = []; const A = LI_AUDIO, o = A.playEvent.bind(A), rw = A.robotWork.bind(A);
+  A.playEvent = (n, x) => { window.__ev.push(n + (x && x.pitch !== undefined ? ':' + x.pitch.toFixed(2) : '') + (x && x.ground ? '@' + x.ground : '')); return o(n, x); }; A.robotWork = (...a) => { window.__ev.push('robotWork:' + a[1] + ':' + a[2]); return rw(...a); };
+  ['cue', 'lighthouse', 'robotBeat', 'setStorm', 'setIsland', 'setWeekBeat', 'setTide'].forEach(k => { const f = LI_SONG[k]; LI_SONG[k] = (...a) => { window.__sg.push(k + (k === 'cue' || k === 'setWeekBeat' ? ':' + a[0] : '')); return f(...a); }; }); };
+const evCount = (p, name) => p.evaluate(nm => window.__ev.filter(e => e.split(/[:@]/)[0] === nm).length, name);
+const waitEv = (p, name, to) => p.waitForFunction(nm => window.__ev.some(e => e.split(/[:@]/)[0] === nm), name, { timeout: to || 120000 }).then(() => true, () => false);
+const params = p => p.evaluate(() => LI_AUDIO.stats().params);
+async function unlockAndSpy(p) { await p.click('#gs-chip'); await p.waitForFunction(() => LI_AUDIO.isRunning(), null, { timeout: 60000 }); await p.evaluate(SPY); }
+
+if (want('beds') || want('events') || want('song')) {
+  const { p, errs } = await open(GIFT + '&weather=rain', 834, 1062); await unlockAndSpy(p); await p.waitForTimeout(3000);
+  /* item 2: the beds follow the weather, the sky and the sea */
+  const b = await params(p);
+  ok(b.rain > 0.3 && b.wind > 0.05, 'beds: rain weather drives the rain and wind beds (rain ' + b.rain.toFixed(2) + ', wind ' + b.wind.toFixed(2) + ')');
+  ok(b.sea > 0.05 && b.sea < 0.4, 'beds: the sea bed stays gentle in the arrival bay (' + b.sea.toFixed(2) + ')');
+  const sea = await p.evaluate(() => ({ name: __li.sea.name(), s: __li.sea.s() })); ok(['squall', 'calm', 'after', 'fog'].includes(sea.name), 'beds: the wave sea is in a weather state the bed can read (' + sea.name + ' ' + sea.s.toFixed(2) + ')');
+  await p.evaluate(() => __gift.setHour(23.5)); await p.waitForFunction(() => LI_AUDIO.stats().params.night > 0.5, null, { timeout: 120000 }).then(() => ok(true, 'beds: night falls on the sky clock and the night bed (lighthouse hum) rises'), () => ok(false, 'beds: night bed did not rise'));
+  await p.evaluate(() => __gift.setHour(11)); await p.waitForFunction(() => LI_AUDIO.stats().params.night < 0.3, null, { timeout: 120000 }).then(() => ok(true, 'beds: and falls again by day'), () => ok(false, 'beds: night bed did not fall'));
+  /* item 3: events from real game state */
+  if (want('events')) {
+    await p.evaluate(() => __gift.addStock('planks', 2)); ok(await waitEv(p, 'crateThud'), 'events: stock added to the yard plays the crate thud');
+    await p.evaluate(() => { LI_PHYS.page.hold('test'); }); ok(await waitEv(p, 'holdLoop'), 'events: a held press plays the hold loop'); await p.evaluate(() => LI_PHYS.page.hold(null));
+    const hn = await evCount(p, 'holdLoop'); await p.waitForTimeout(3500); ok((await evCount(p, 'holdLoop')) - hn <= 1, 'events: let go and the hold loop stops');
+    const u0 = await evCount(p, 'uiTick'); await p.click('#gd-menu-btn'); await p.waitForTimeout(300); await p.click('#gd-menu-btn'); await p.waitForTimeout(300); ok((await evCount(p, 'uiTick')) - u0 >= 1, 'events: a tap on a button plays the UI tick');
+    await p.evaluate(() => LI_PHYS.page.forceBuild('cottage', 1)); await p.waitForTimeout(800); await p.evaluate(() => LI_PHYS.page.forceBuild('cottage', 2)); await p.waitForTimeout(1500);
+    ok((await evCount(p, 'plankFit')) >= 1, 'events: a build stage completes, the plank fits'); const w0 = await evCount(p, 'winch');
+    await p.evaluate(() => LI_PHYS.page.forceBuild('cottage', 3)); ok(await waitEv(p, 'winch'), 'events: the frame stage (lifting) plays the winch two-note after the plank'); await p.evaluate(() => LI_PHYS.page.forceBuild(null));
+    await p.evaluate(() => { __gift.letter1(); }); await p.waitForTimeout(500); await p.evaluate(() => __gift.clickBtn('Keep it')); ok(await waitEv(p, 'key'), 'events: lifting the lid and taking the brass key plays the key');
+  }
+  /* item 4: the song is fed from the game */
+  if (want('song')) {
+    const st = await p.evaluate(() => LI_SONG.stats()); ok(st.running && st.root >= 45 && st.root <= 52 && st.scale.length === 5, 'song: running with the island\'s scale and root (' + st.mood + ', root ' + st.root + ', ' + st.bpm + ' bpm)');
+    const sg = await p.evaluate(() => window.__sg); ok(sg.includes('setWeekBeat:tender') || st.week === 'tender', 'song: day 1 is tender\'s day (week beat ' + st.week + ')');
+    const tide = await p.evaluate(() => ({ s: LI_SONG.stats().tide, t: __li.tide ? 0 : 0 })); ok(tide.s >= 0 && tide.s <= 1, 'song: the tide level is fed (' + tide.s.toFixed(2) + ')');
+    const pl = await p.evaluate(() => ({ music: LI_AUDIO.stats().music, vol: LI_AUDIO.stats().master })); ok(Math.abs(pl.music - 0.35) < 0.01, 'song: music slider at its 0.35 default');
+    await p.evaluate(() => __gift.setHour(23.5)); const lh = await p.waitForFunction(() => window.__sg.includes('lighthouse'), null, { timeout: 180000 }).then(() => true, () => false); ok(lh, 'song: a lighthouse note at the sweep once night has fallen');
+    await p.evaluate(() => LI_AUDIO.mute(true)); await p.evaluate(() => { document.querySelector('#gd-menu-btn') && 0; }); }
+  ok(errs.length === 0, 'beds, events, song: zero console errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : '')); await p.close();
+}
+if (want('storm')) {
+  const { p, errs } = await open(GIFT + '&storm=1&stormsec=14&stormfast=8', 834, 1062); await unlockAndSpy(p);
+  const hum = await waitEv(p, 'rockHum', 240000); ok(hum, 'storm: the rock hum comes before the storm');
+  const roar = await waitEv(p, 'stormRoar', 400000); ok(roar, 'storm: then the roar');
+  const th = await waitEv(p, 'thunder', 600000); ok(th, 'storm: then thunder');
+  const ev = await p.evaluate(() => window.__ev), hp = ev.filter(e => e.startsWith('rockHum:')).map(e => +e.split(':')[1]);
+  ok(hp.length >= 1 && hp.every((v, i) => i === 0 || v >= hp[i - 1] - 1e-9), 'storm: the hum pitch only rises (' + hp.map(v => v.toFixed(2)).join(' ') + ')');
+  const sg = await p.evaluate(() => ({ calls: window.__sg.filter(x => x === 'setStorm').length, cue: window.__sg.filter(x => x === 'cue:thunder').length, dark: LI_SONG.stats().storm }));
+  ok(sg.calls >= 1 && sg.dark > 0.3, 'storm: the song is told (storm ' + sg.dark.toFixed(2) + ')'); const pr = await params(p); ok(pr.rain > 0.1 && pr.wind > 0.1 && pr.sea > 0.2, 'storm: wind, rain and an opened sea (' + pr.wind.toFixed(2) + ', ' + pr.rain.toFixed(2) + ', ' + pr.sea.toFixed(2) + ')');
+  ok(errs.length === 0, 'storm: zero console errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : '')); await p.close();
+}
+if (want('robots')) {
+  const { p, errs } = await open('?game=gift&glide=0&device=ipad&stage=yard', 834, 1062); await unlockAndSpy(p);
+  await p.evaluate(() => { __gift.startRobot(0); __gift.giveOrder(0, 'planks'); });
+  const rw = await p.waitForFunction(() => window.__ev.some(e => e.startsWith('robotWork:')), null, { timeout: 600000 }).then(() => true, () => false); ok(rw, 'robots: a working robot calls robotWork with a kind and a state');
+  const ev = await p.evaluate(() => window.__ev.filter(e => e.startsWith('robotWork:')).slice(0, 3)); ok(ev.every(e => /^robotWork:(hauler|sorter|stacker):(work|tired|wet)$/.test(e)), 'robots: kinds map to hauler, sorter or stacker (' + ev.join(', ') + ')');
+  const rb = await p.waitForFunction(() => window.__sg.includes('robotBeat'), null, { timeout: 60000 }).then(() => true, () => false); ok(rb, 'robots: and the song gets a robotBeat for it');
+  ok(errs.length === 0, 'robots: zero console errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : '')); await p.close();
+}
+if (want('smoke')) {
+  for (const [name, qs, w, h] of [['ipad 834x1062 touch', GIFT, 834, 1062], ['desktop 1280x720', '?game=gift&glide=0&device=desktop', 1280, 720], ['radeon 1280x720', '?game=gift&glide=0&device=radeon', 1280, 720]]) {
+    const { p, errs } = await open(qs, w, h); await p.click('#gs-chip'); await p.waitForFunction(() => LI_AUDIO.isRunning(), null, { timeout: 60000 }); await p.waitForTimeout(6000);
+    const r = await p.evaluate(() => ({ st: LI_AUDIO.stats(), core: LI_GSOUND.core().stats(), song: LI_SONG.stats(), gerr: __gift.err() }));
+    ok(r.st.state === 'running' && r.core.ticks > 3 && r.song.running && r.st.voices <= r.st.cap, name + ': running, ' + r.core.ticks + ' sound ticks, song running, ' + r.st.voices + ' of ' + r.st.cap + ' voices');
+    ok(errs.length === 0 && r.gerr.length === 0, name + ': zero console errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : '') + (r.gerr.length ? ' gift errs ' + r.gerr[0] : '')); await p.close(); }
+}
 await browser.close();
 console.log((fails ? 'FAIL' : 'PASS') + ' ' + (n - fails) + ' of ' + n);
 process.exit(fails ? 1 : 0);
