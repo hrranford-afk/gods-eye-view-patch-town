@@ -215,9 +215,9 @@
 
   /* ---------------------------------------------------------------- 5. ROBOTS: hauler, sorter, stacker ---------------------------------------------------------------- */
   const ROBOT = {
-    hauler: { tl: 1.15, ts: .40, tw: .22, th: .36, bw: .86, bh: .56, bd: .66, by: .80, hy: 1.27, hx: .06, arm: [.50, .46], pose: [-.55, .9, .5], col: [.72, .49, .13] },
-    sorter: { tl: .95, ts: .34, tw: .18, th: .34, bw: .66, bh: .74, bd: .56, by: .86, hy: 1.68, hx: .02, arm: [.62, .56], pose: [-.25, .6, .45], col: [.79, .46, .12] },
-    stacker: { tl: 1.35, ts: .48, tw: .26, th: .40, bw: 1.0, bh: .50, bd: .84, by: .82, hy: 1.32, hx: -.1, arm: [.55, .55], pose: [-.35, .65, .5], col: [.81, .54, .10] }
+    hauler: { tl: 1.15, ts: .40, tw: .22, th: .36, bw: .86, bh: .56, bd: .66, by: .80, hy: 1.27, hx: .06, arm: [.50, .46], pose: [-.55, .9, .5], col: [.74, .42, .11] },
+    sorter: { tl: .95, ts: .34, tw: .18, th: .34, bw: .66, bh: .74, bd: .56, by: .86, hy: 1.68, hx: .02, arm: [.62, .56], pose: [-.25, .6, .45], col: [.80, .39, .10] },
+    stacker: { tl: 1.35, ts: .48, tw: .26, th: .40, bw: 1.0, bh: .50, bd: .84, by: .82, hy: 1.32, hx: -.1, arm: [.55, .55], pose: [-.35, .65, .5], col: [.80, .46, .09] }
   };
   const ROBOT_NAMES = ['track', 'wheels', 'cleats', 'chassis', 'mudguard', 'body', 'seams', 'vents', 'rivets', 'cavity', 'neck', 'head', 'lensRim', 'visor', 'headBolts', 'arm', 'gripper', 'cable', 'toolbox', 'bin', 'counterweight', 'hatch', 'battery', 'lens', 'stencil', 'hose'];
   function batteryParts(b, S, wear, seed) {
@@ -259,11 +259,14 @@
     if (kind === 'hauler') { m.begin('toolbox'); m.use('metal', paintD).at(-.28, by + bh / 2 + .1, .12, 0, 0, 0, 1, 1, 1, () => { m.rbox(.24, .14, .26, .02, 1); m.use('metal', steel); m.at(0, .1, 0, 0, 0, 0, 1, 1, 1, () => m.rbox(.2, .018, .03, .006)); }); m.end(); }
     /* seams, stencil, vents */
     if (lod < 2) {
-      m.begin('seams'); m.use('matte', darkS);
-      for (const x of [-bw * .2, bw * .27]) m.at(x, by, -bd / 2 - .002, 0, 0, 0, 1, 1, 1, () => m.box(.008, bh * .82, .008, .2));
-      for (const x of [-bw * .36, bw * .36]) m.at(x, by, bd / 2 + .002, 0, 0, 0, 1, 1, 1, () => m.box(.008, bh * .82, .008, .2));
-      m.at(0, by - bh * .18, -bd / 2 - .002, 0, 0, 0, 1, 1, 1, () => m.box(bw * .9, .008, .008, .2)); m.at(0, by + bh * .3, bd / 2 + .002, 0, 0, 0, 1, 1, 1, () => m.box(bw * .9, .008, .008, .2));
-      m.at(bw / 2 + .002, by, 0, 0, 0, 0, 1, 1, 1, () => { m.box(.008, bh * .8, .008, .2); m.box(.008, .008, bd * .86, .2); }); m.end();
+      /* panel seams are shallow grooves in a darker shade of the body paint, thin, broken where they would cross (no black crosshair lines) */
+      m.begin('seams'); m.use('matte', () => mulc(base, .55));
+      const sw = .006, so = .0012;
+      for (const x of [-bw * .2, bw * .27]) m.at(x, by, -bd / 2 - so, 0, 0, 0, 1, 1, 1, () => m.box(sw, bh * .78, sw, .2));
+      for (const x of [-bw * .36, bw * .36]) m.at(x, by, bd / 2 + so, 0, 0, 0, 1, 1, 1, () => m.box(sw, bh * .78, sw, .2));
+      for (const x of [-bw * .405, bw * .345]) m.at(x, by - bh * .18, -bd / 2 - so, 0, 0, 0, 1, 1, 1, () => m.box(bw * .13, sw, sw, .2));
+      for (const x of [-bw * .18, bw * .18]) m.at(x, by + bh * .3, bd / 2 + so, 0, 0, 0, 1, 1, 1, () => m.box(bw * .24, sw, sw, .2));
+      m.at(bw / 2 + so, by, 0, 0, 0, 0, 1, 1, 1, () => { m.box(sw, bh * .8, sw, .2); for (const z of [-bd * .3, bd * .3]) m.at(0, bh * .12, z, 0, 0, 0, 1, 1, 1, () => m.box(sw, sw, bd * .24, .2)); }); m.end();
       m.begin('stencil'); m.use('matte', (x, y, z) => mulc([.80, .75, .60], .85 + .3 * S.N(x, y, z, 20)));
       m.at(-bw * .1, by - bh * .32, -bd / 2 - .004, 0, 0, 0, 1, 1, 1, () => { for (let i = 0; i < 3; i++) m.at(i * .05, 0, 0, 0, 0, .6, 1, 1, 1, () => m.box(.022, .09, .004, .2)); });
       m.end(); m.begin('vents'); m.use('matte', darkS); for (let i = 0; i < 4; i++) m.at(-bw / 2 - .003, by - .14 + i * .07, 0, 0, 0, 0, 1, 1, 1, () => m.box(.008, .025, bd * .6, .2)); m.end();
@@ -316,12 +319,27 @@
     const S = skins(o.seed * 5 + 3), wear = o.wear, nodes = {}, leather = S.paint([.44, .33, .20], wear * .8, { h: .3, grime: .4 }), knit = (x, y, z, nx, ny, nz, e, u) => { const rib = Math.floor(x * 70) % 2 === 0 ? 1 : .88; return mulc(mixc([.62, .56, .44], [.5, .44, .34], S.N(x, y, z, 5)), rib); };
     for (const name of ['handL', 'handR']) {
       const h = new MB(o.lod, o.seed + (name === 'handL' ? 1 : 2)), sgn = name === 'handL' ? 1 : -1, curl = o.curl === undefined ? .55 : o.curl;
-      h.begin(name); h.use('cloth', knit).at(-.3, 0, 0, 0, 0, PI / 2, 1, 1, 1, () => h.cyl(.06, .05, .45, 10, 3, 3));
-      h.use('rubber', () => [.46, .33, .24]).at(-.04, 0, 0, 0, 0, PI / 2, 1, 1, 1, () => h.cyl(.05, .056, .08, 10, 3));
-      h.use('matte', leather).at(.0, 0, 0, 0, 0, PI / 2, 1, 1, 1, () => h.cyl(.058, .06, .03, 10, 3)); h.use('matte', leather);
-      h.at(.07, 0, 0, 0, 0, 0, 1, 1, 1, () => h.rbox(.12, .045, .105, .018, 1));
-      for (let f = 0; f < 4; f++) { const z = (f - 1.5) * .027, len = [.052, .058, .054, .045][f]; h.at(.13, 0, z, 0, 0, -.2 * curl, 1, 1, 1, () => { h.at(len / 2, 0, 0, 0, 0, 0, 1, 1, 1, () => h.rbox(len, .026, .024, .01)); h.at(len, 0, 0, 0, 0, -curl * 1.0, 1, 1, 1, () => { h.at(len * .45, 0, 0, 0, 0, 0, 1, 1, 1, () => h.rbox(len * .9, .024, .022, .009)); }); }); }
-      h.at(.05, 0, -sgn * .06, 0, sgn * -.8, -.2, 1, 1, 1, () => { h.at(.03, 0, 0, 0, 0, 0, 1, 1, 1, () => h.rbox(.06, .03, .03, .01)); h.at(.06, 0, 0, 0, 0, -curl * .7, 1, 1, 1, () => h.at(.025, 0, 0, 0, 0, 0, 1, 1, 1, () => h.rbox(.05, .026, .026, .01))); });
+      const skin = () => [.70, .50, .38], P2 = Math.PI / 2;
+      h.begin(name);
+      /* knit sleeve with a ribbed turned-back edge, a short bare wrist, the glove's flared leather cuff, then palm, three-joint fingers and a thumb */
+      h.use('cloth', knit).at(-.43, 0, 0, 0, 0, P2, 1, 1, 1, () => h.cyl(.095, .08, .34, 12, 3, 3));
+      h.use('cloth', (x, y, z) => mulc(knit(x, y, z), .8)).at(-.255, 0, 0, 0, 0, P2, 1, 1, 1, () => h.cyl(.084, .084, .05, 12, 3, 1));
+      h.use('rubber', skin).at(-.19, 0, 0, 0, 0, P2, 1, 1, 1, () => h.cyl(.036, .034, .1, 9, 0, 1));
+      h.use('matte', leather).at(-.075, 0, 0, 0, 0, P2, 1, 1, 1, () => h.cyl(.043, .06, .13, 10, 2, 2));
+      h.use('matte', () => [.22, .15, .09]).at(-.14, 0, 0, 0, 0, P2, 1, 1, 1, () => h.cyl(.047, .047, .012, 10, 3, 1));
+      h.use('matte', leather); h.at(.065, 0, 0, 0, 0, 0, 1, 1, 1, () => h.rbox(.13, .05, .112, .02, 1));
+      h.at(.065, .028, 0, 0, 0, 0, 1, 1, 1, () => h.rbox(.1, .012, .09, .006));
+      for (let f = 0; f < 4; f++) {
+        const z = (f - 1.5) * .029, L = [.95, 1.08, 1.0, .82][f], r0 = .0138 - f * .0004, sp = (f - 1.5) * .05;
+        h.at(.125, .002, z, 0, sp, -.12 * curl, 1, 1, 1, () => {
+          const seg = (len, rr, next) => { h.at(len / 2, 0, 0, 0, 0, -P2, 1, 1, 1, () => h.cyl(rr * .9, rr, len, 6, 1, 1)); h.at(len, 0, 0, 0, 0, 0, 1, 1, 1, () => { if (o.lod === 0) h.sph(rr * .93, rr * .93, rr * .93, 5, 3); if (next) h.at(0, 0, 0, 0, 0, -curl * next[0], 1, 1, 1, next[1]); }); };
+          seg(.04 * L, r0, [1.0, () => seg(.032 * L, r0 * .93, [.8, () => seg(.026 * L, r0 * .86, null)])]);
+        });
+      }
+      h.at(.04, -.004, -sgn * .058, 0, sgn * -.75, -.18, 1, 1, 1, () => {
+        const seg = (len, rr, next) => { h.at(len / 2, 0, 0, 0, 0, -P2, 1, 1, 1, () => h.cyl(rr * .9, rr, len, 6, 1, 1)); h.at(len, 0, 0, 0, 0, 0, 1, 1, 1, () => { if (o.lod === 0) h.sph(rr * .93, rr * .93, rr * .93, 5, 3); if (next) h.at(0, 0, 0, 0, 0, -curl * next[0], 1, 1, 1, next[1]); }); };
+        seg(.042, .0165, [.7, () => seg(.034, .0150, null)]);
+      });
       h.use('matte', () => [.20, .14, .09]); h.at(.075, .024, 0, 0, 0, 0, 1, 1, 1, () => { if (o.lod < 2) for (let k = 0; k < 4; k++) h.at(0, 0, (k - 1.5) * .027, 0, 0, 0, 1, 1, 1, () => h.box(.1, .004, .004, .1)); });
       h.end(); nodes[name] = h.finish(); nodes[name].pivot = [0, 0, 0];
     }

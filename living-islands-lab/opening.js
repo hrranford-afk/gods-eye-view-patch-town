@@ -250,7 +250,7 @@
     const day = sm((s.sunElev + 6) / 10);
     return {
       sunDir: [sunDir[0] / l, sunDir[1] / l, sunDir[2] / l], sunElev: s.sunElev, sunI: s.sunI !== undefined ? s.sunI : day, hor: v.hor, zen: v.zen, cloud: v.cloud, fogC: v.fogC, sunCol: v.sunCol, deep: v.deep, shal: v.shal,
-      fog: s.fog, cover: s.cover, exposure: s.exposure !== undefined ? s.exposure : 1, rainbow: s.rainbow || 0, rays: (s.rays || 0) * sm((s.sunElev + 2) / 3), dark: s.dark || 0, rain: s.rain || 0, beam: s.beam || 0, windows: s.windows || 0,
+      fog: s.fog, cover: s.cover, exposure: s.exposure !== undefined ? s.exposure : 1, rainbow: s.rainbow || 0, rbAz: s.rbAz === undefined ? 220 : s.rbAz, rays: (s.rays || 0) * sm((s.sunElev + 2) / 3), dark: s.dark || 0, rain: s.rain || 0, beam: s.beam || 0, windows: s.windows || 0,
       stars: s.stars || 0, fade: s.fade || 0, lightning: s.lightning || 0, lens: s.lens || 0, smoke: s.smoke || 0
     };
   }
@@ -315,22 +315,22 @@
     const pos = [
       /* 1 night watch */ k(0, [40, 3.4, 150]), k(4.5, [50, 3.4, 116]), k(9, [58, 3.6, 92]),
       /* 2 first light (cut: a dissolve) */ k(9, [34, 3.9, 148], c()), k(13.5, [14, 20, 178]), k(20, [0, 58, 232]),
-      /* 3: from the land beside the quay: bays, hut, fire and the deck with its robots in one frame (a slow dolly), then a cut to 4, which follows the rope out */ k(20, up(jp(3, 13.2, 6.0), 1.6), c()), k(28, up(jp(5.5, 13.0, 5.9), 1.6)), k(35.99, up(jp(8, 12.8, 5.8), 1.6)), k(36, up(jp(24, -2.2, 3.7), .9), c()), k(38.5, up(jp(40, -2.6, 3.8), .9)), k(42.5, up(jp(52, -3, 3.9), .9)), k(46.99, up(jp(62, -3.4, 4.1), .9)),
+      /* 3: from the land beside the quay: bays, hut, fire and the deck with its robots in one frame (a slow dolly), then a cut to 4, which follows the rope out */ k(20, up(jp(-6, 10.4, 4.6), 1.4), c()), k(28, up(jp(-3, 10, 4.4), 1.4)), k(35.99, up(jp(0, 9.6, 4.2), 1.4)), k(36, up(jp(24, -2.2, 3.7), .9), c()), k(38.5, up(jp(40, -2.6, 3.8), .9)), k(42.5, up(jp(52, -3, 3.9), .9)), k(46.99, up(jp(62, -3.4, 4.1), .9)),
       /* 5 great wash */ k(47, [30, 24, 40], c()), k(52, [10, 19, 38]), k(55.5, [-28, 13, 26]), k(58.99, [-50, 11, 28]),
-      /* 6 wrack line */ k(59, up(camp.a, 1.2), c()), k(64.5, up(camp.b, 1.2)), k(69.99, up(camp.c, 1.2)),
+      /* 6 wrack line */ k(59, up(jp(2, 9.6, 0), 1.6), c()), k(64.5, up(jp(4, 9.5, 0), 1.6)), k(69.99, up(jp(6, 9.4, 0), 1.6)),
       /* 7 arrival */ k(70, up(jp(34, -22, 2.5), 0.5), c()), k(75.5, up(jp(18, -14, 2.5), 0.5)), k(80.99, up(jp(5, -7, 2.6), 0.5)),
       /* 8 first repair */ k(81, RP.cam, c()), k(86.4, [RP.cam[0] + RP.f[0] * .05, RP.cam[1], RP.cam[2] + RP.f[1] * .05]), k(90, [RP.cam[0] + RP.f[0] * .08, RP.cam[1], RP.cam[2] + RP.f[1] * .08])
     ];
     const tgt = [
       k(0, lampTop), k(4.5, [LH.x - 12, 12, LH.z + 30]), k(9, lampTop),
       k(9, lampTop, c()), k(13.5, [40, 6, -30]), k(20, [0, 0, -20]),
-      k(20, jp(7.5, 3.4, 1.9), c()), k(28, jp(10, 3.0, 1.9)), k(35.99, jp(13, 2.6, 1.9)), k(36, jp(36, -3, 2.2), c()), k(38.5, jp(58, -4, 1.8)), k(42.5, [LH.x - 20, 2.2, LH.z + 40]), k(46.99, [LH.x - 10, 4, LH.z + 20]),
+      k(20, jp(10.5, 8.8, 1.8), c()), k(28, jp(12.5, 8.4, 1.8)), k(35.99, jp(15, 7.0, 1.6)), k(36, jp(36, -3, 2.2), c()), k(38.5, jp(58, -4, 1.8)), k(42.5, [LH.x - 20, 2.2, LH.z + 40]), k(46.99, [LH.x - 10, 4, LH.z + 20]),
       k(47, [-20, 2, 18], c()), k(52, [-58, 3, 42]), k(55.5, at3(55.5, 1.4)), k(58.99, at3(58.99, 1.2)),
-      k(59, [hulk.x - d[0] * 1.5, 3.3, hulk.z - d[1] * 1.5], c()), k(64.5, [hulk.x + d[0] * 1.5, 3.4, hulk.z + d[1] * 1.5]), k(69.99, [hulk.x + d[0] * 3.5, 3.4, hulk.z + d[1] * 3.5]),
+      k(59, jp(22, 9.4, 2.0), c()), k(64.5, jp(24, 10.4, 2.0)), k(69.99, jp(26, 11.6, 2.1)),
       k(70, jp(2, 0, 3), c()), k(75.5, jp(1, 1, 3.3)), k(80.99, jp(0, 2, 3.4)),
       k(81, RP.tgt, c()), k(90, RP.tgt)
     ];
-    const fov = [k(0, 50), k(9, 50), k(9, 52, c()), k(20, 44), k(20, 66, c()), k(35.99, 62), k(36, 54, c()), k(46.99, 50), k(47, 46, c()), k(59, 46), k(59, 46, c()), k(70, 46), k(70, 48, c()), k(81, 50), k(81, 40, c()), k(90, 36)];
+    const fov = [k(0, 50), k(9, 50), k(9, 52, c()), k(20, 44), k(20, 68, c()), k(35.99, 64), k(36, 54, c()), k(46.99, 50), k(47, 46, c()), k(59, 46), k(59, 50, c()), k(70, 50), k(70, 48, c()), k(81, 50), k(81, 40, c()), k(90, 36)];
     const T = {
       seaSwell: [k(0, .10), k(30, .10), k(37, .35), k(44, .85), k(49, .3), k(53, 0), k(90, 0)],
       seaStorm: [k(0, 0), k(43, 0), k(47.5, .7), k(50.5, 1), k(57, .95), k(60, .35), k(63, 0), k(90, 0)],
@@ -348,7 +348,8 @@
       dark: [k(0, .5), k(20, 0), k(36, .1), k(47, .6), k(59, .5), k(59, .1, c()), k(66, 0), k(90, 0)],
       rain: [k(0, 0), k(47, .2), k(50, 1), k(57, .8), k(59, 0), k(59.01, 0, c()), k(90, 0)],
       rays: [k(0, 0), k(11, .3), k(17, .8), k(20, .6), k(36, .5), k(44, .2), k(47, 0), k(59, 0), k(59.01, .1, c()), k(70, .5), k(90, .5)],
-      rainbow: [k(0, 0), k(62, 0), k(66, .8), k(70, 1), k(78, .6), k(84, 0), k(90, 0)],
+      rainbow: [k(0, 0), k(60.5, 0), k(63.5, .9), k(66, 1), k(70, 1), k(78, .6), k(84, 0), k(90, 0)],
+      rbAz: [k(0, 220), k(59, 220), k(59, 60, c()), k(70, 60), k(70, 220, c()), k(90, 220)],   /* where the bow stands (azimuth): over the sea ahead of the camera in the wrack-line shot, behind the bow of the boat in the arrival */
       beam: [k(0, 1), k(9, 1), k(14, .5), k(18, .1), k(20, 0), k(40, .05), k(44, .7), k(47, 1), k(59, 1), k(59, .3, c()), k(62, 0), k(90, 0)],
       beamAz: [k(0, 45), k(90, 3645)],
       windows: [k(0, .8), k(9, .6), k(13, 0), k(20, .2), k(22, .8), k(47, .9), k(59, .2, c()), k(65, 0), k(90, 0)],

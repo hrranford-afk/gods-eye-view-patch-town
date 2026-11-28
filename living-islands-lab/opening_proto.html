@@ -47,6 +47,7 @@ canvas{display:block;width:100%;height:100%}
   <input id="scrub" type="range" min="0" max="90" step="0.01" value="0">
   <span id="tm">0.00 / 90.00</span>
   <select id="spd"><option>0.25</option><option>0.5</option><option selected>1</option><option>2</option><option>4</option></select>
+  <button id="bSound" title="Turn the sound on (browsers need a tap)">Sound on</button><button id="bMute" class="hide" title="Mute (M)">Mute</button><input id="mus" class="hide" type="range" min="0" max="0.6" step="0.01" value="0.2" title="Music volume" style="width:70px">
   <button id="bDbg" title="Debug camera (D): drag to look, W A S D move, Q E down up, shift faster">Debug camera</button>
   <button id="bCap" title="Captions (C)">Captions</button>
   <select id="tierSel"><option value="ipad">iPad tier</option><option value="desktop">Desktop tier</option><option value="radeon">Radeon tier</option><option value="max">MAX tier</option></select>
@@ -59,6 +60,9 @@ canvas{display:block;width:100%;height:100%}
 <script src="sea_proto/salvage_world.js"></script>
 <script src="details.js"></script>
 <script src="opening.js"></script>
+<script src="audio.js"></script>
+<script src="audio_song.js"></script>
+<script src="opening_sound.js"></script>
 <script>
 (function(){
 'use strict';
@@ -107,23 +111,34 @@ void seaAt(vec2 p0,float dist,out vec3 d,out vec3 n,out float J){
   d=vec3(dx,yy-uVK*uVort.w*e,dz);n=normalize(vec3(-hx,max(J,0.25),-hz));}
 `;
 const GLSL_SKY=`
-uniform vec3 uHor,uZen,uSunDir,uSunCol,uCloudC;uniform float uSunI,uCover,uRainbow,uRays,uFlash,uDark,uStars;uniform float uT2;
+uniform vec3 uHor,uZen,uSunDir,uSunCol,uCloudC;uniform float uSunI,uCover,uRainbow,uRays,uFlash,uDark,uStars,uRbAz;uniform float uT2;
 float h21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y);}
 float fbm(vec2 p){float a=.5,s=0.;for(int i=0;i<4;i++){s+=a*vn(p);p=p*2.03+7.1;a*=.5;}return s;}
+float fbmN(vec2 p,int lim){float a=.5,s=0.;for(int i=0;i<5;i++){if(i>=lim)break;s+=a*vn(p);p=p*2.03+7.1;a*=.5;}return s;}
 vec3 spectrum(float t){return clamp(vec3(1.5-abs(t*4.0-3.0)*.7,1.5-abs(t*4.0-2.0)*.7,1.5-abs(t*4.0-1.0)*.7)-.25,0.,1.)*vec3(1.0,.95,1.0);}
+/* the sky. clouds: 0 none, 1 flat tint, 2 full (5 octaves, a cumulus deck, a stretched high streak layer, sun-lit gold rims over violet bases: the ChatGPT palette), 3 cheaper copy for the sea reflection */
 vec3 skyCol(vec3 d,float clouds){
   float y=max(d.y,0.0);vec3 c=mix(uHor,uZen,pow(y,0.5));float sd=max(dot(d,uSunDir),0.0);
   c+=uSunCol*(pow(sd,1200.0)*6.0+pow(sd,10.0)*0.12*uSunI+pow(sd,3.0)*0.04*uSunI);
-  if(clouds>.5){vec2 q=d.xz/(max(d.y,0.0)+0.18)*0.55+vec2(uT2*0.004,0.);float n=fbm(q*1.7);float n2=fbm((q+normalize(uSunDir.xz+vec2(1e-4))*0.07)*1.7);
-    float m=smoothstep(1.0-uCover,1.0-uCover+0.28,n)*smoothstep(0.0,0.14,d.y);
-    float shade=clamp(0.62+5.0*(n-n2),0.12,1.25);
-    vec3 cc=uCloudC*(0.22+0.55*shade+1.1*pow(sd,2.0)*uSunI*shade);c=mix(c,cc,m*(0.7+0.3*uCover));}
+  c+=uHor*vec3(1.0,.8,.7)*exp(-y*9.0)*0.35*(0.3+uSunI);   /* a warm band on the horizon */
+  if(clouds>.5){int lim=clouds>2.5?3:5;vec2 sx=normalize(uSunDir.xz+vec2(1e-4));
+    vec2 q=d.xz/(max(d.y,0.0)+0.16)*0.5+vec2(uT2*0.004,0.);float n=fbmN(q*1.5,lim);float n2=fbmN((q+sx*0.05)*1.5,lim);
+    float m=smoothstep(1.0-uCover-0.04,1.0-uCover+0.24,n)*smoothstep(0.0,0.10,d.y);
+    float lit=clamp(0.5+7.0*(n2-n),0.0,1.0);                      /* sun-facing edge */
+    float core=smoothstep(0.0,0.35,n-(1.0-uCover));              /* thicker = darker belly */
+    vec3 shadowC=uCloudC*vec3(0.50,0.46,0.70)*(0.55+0.2*uSunI);
+    vec3 litC=uCloudC*vec3(1.0,0.90,0.85)+uSunCol*(0.10+0.35*pow(sd,2.0))*uSunI;
+    vec3 cc=mix(shadowC,litC,clamp(lit*(1.0-0.55*core)+0.25*pow(sd,3.0),0.0,1.0));
+    cc+=uSunCol*0.18*uSunI*pow(sd,6.0)*(1.0-core);                /* silver lining toward the sun */
+    c=mix(c,cc,m*(0.72+0.28*uCover));
+    if(clouds<2.5){}else{vec2 q2=vec2(d.x*0.55+uT2*0.002,d.z*3.2)/(max(d.y,0.0)+0.30);float hs=fbm(q2*2.2+3.0);float ci=smoothstep(0.52,0.80,hs)*smoothstep(0.02,0.22,d.y)*(0.30+0.30*uCover)*(1.0-0.7*m);
+      c=mix(c,uCloudC*vec3(1.0,.86,.84)*(0.55+0.7*uSunI*(0.3+pow(sd,2.0)))+uSunCol*0.04*uSunI*pow(sd,3.0),ci);}}
   else c=mix(c,uCloudC*mix(.85,.45,uDark),uCover*0.30*(1.0-y));
   if(uStars>0.0&&d.y>0.0){vec2 sp=d.xz/(d.y+0.25)*110.0;float st=h21(floor(sp));float tw=step(0.993,st)*smoothstep(0.0,0.3,d.y)*(0.5+0.5*h21(floor(sp)+3.1));c+=vec3(.8,.85,1.)*tw*uStars*0.9;}
   if(uRays>0.0){float ang=atan(d.x-uSunDir.x,d.z-uSunDir.z);float rr=vn(vec2(ang*7.0,uT2*0.03));c+=uSunCol*uRays*pow(sd,2.0)*smoothstep(0.35,0.9,rr)*0.22*smoothstep(-0.05,0.25,d.y+0.05);}
-  if(uRainbow>0.0){float a=acos(clamp(dot(d,-uSunDir),-1.0,1.0));float t=(a-0.6632)/(0.7330-0.6632);
-    float band=smoothstep(0.0,0.08,t)*(1.0-smoothstep(0.92,1.0,t));c+=spectrum(1.0-t)*band*uRainbow*0.45*smoothstep(0.0,0.06,d.y)*(0.6+0.4*uSunI);}
+  if(uRainbow>0.0){float ra=radians(uRbAz);vec3 rb=vec3(sin(ra)*0.829,-0.559,-cos(ra)*0.829);float a=acos(clamp(dot(d,rb),-1.0,1.0));   /* a low arc: the bow is centred 34 degrees under the horizon at the film's own azimuth (uRbAz), not on the real antisolar point */float t=(a-0.6458)/(0.7592-0.6458);
+    float band=smoothstep(0.0,0.08,t)*(1.0-smoothstep(0.92,1.0,t));c+=spectrum(1.0-t)*band*uRainbow*1.5*smoothstep(0.0,0.06,d.y)*(0.6+0.4*uSunI);}
   c+=uFlash*vec3(0.55,0.62,0.9)*(0.35+0.6*(1.0-y));
   return c;}
 vec3 tone(vec3 c,float e){c*=e;c=(c*(2.51*c+0.03))/(c*(2.43*c+0.59)+0.14);return pow(clamp(c,0.,1.),vec3(1.0/2.2));}
@@ -143,10 +158,12 @@ void main(){
     g+=dd*(uChopKA*2.0*fd*0.55*exp(1.4*(sin(ph)-1.0))*cos(ph));}
   N=normalize(N+vec3(-g.x,0.0,-g.y));
   float ndv=max(dot(N,V),0.0);float fres=0.02+0.98*pow(1.0-ndv,5.0);
-  vec3 R=reflect(-V,N);R.y=abs(R.y);vec3 sk=skyCol(R,float(CLOUDS));
+  vec3 R=reflect(-V,N);R.y=abs(R.y);vec3 sk=skyCol(R,float(CLOUDS)*3.0);
   float lift=clamp(0.5+0.5*vP.y/max(uHs,0.05)*0.55,0.0,1.0);
   vec3 body=mix(uDeep,uShal,pow(lift,2.5)*0.8+0.05)*(0.35+0.9*uSunI*max(uSunDir.y,0.1)+0.25*max(dot(N,uSunDir),0.0));
   body+=uShal*0.5*pow(max(dot(V,-uSunDir),0.0),3.0)*pow(lift,3.0)*uSunI*0.5;
+  {float cp=0.6*vn(vP.xz*0.012+7.0)+0.4*vn(vP.xz*0.05);body=mix(body*vec3(0.80,0.92,1.10),body*vec3(1.12,1.05,0.86),smoothstep(0.35,0.65,cp)*0.55);}   /* slow patches of colour, current against current */
+  body+=uShal*vec3(0.35,1.0,0.9)*pow(lift,3.0)*0.22*(0.3+uSunI);   /* light through the crests */
   body*=mix(1.0,mix(0.30,1.0,smoothstep(0.08,0.70,lift)),clamp(uFoam,0.0,1.0))*(1.0-0.30*uDark);
   /* the shore: depth of water over the ground, from the ground texture (a flat 3.4 m shelf round each island window is far too deep to tint) */
   float gh=texture2D(uGround,(vP.xz-uGB.xy)/uGB.z).r*16.0-6.0;float dpt=vP.y-gh;float shal=exp(-max(dpt,0.0)*1.1)*step(-3.0,gh);
@@ -159,13 +176,13 @@ void main(){
     col+=vec3(1.0,.78,.45)*uBeam*cone*(gl*1.4+0.04*far)*far;}
   float fold=smoothstep(uFoamT-0.02,uFoamT-0.34,vJ);
   float crestH=smoothstep(0.58,0.95,lift);
-  float n1=vn(vP.xz*1.25+uT*0.09),n2=vn(vP.xz*4.3-uT*0.14);float nzz=0.6*n1+0.4*n2;
+  vec2 qw=vec2(dot(vP.xz,W),dot(vP.xz,Wp));float n1=vn(vec2(qw.x*0.40-uT*0.30,qw.y*2.4)),n2=vn(vec2(qw.x*1.0-uT*0.45,qw.y*6.5)+11.0);float nzz=0.6*n1+0.4*n2;   /* foam cells are stretched along the wind: streaks, not a sheet */
   float cap=fold*crestH*smoothstep(0.50,0.78,nzz)*uFoam;
   float trail=fold*smoothstep(0.38,0.75,lift)*smoothstep(0.58,0.88,n2)*0.30*uFoam;
   float foam=max(cap,trail);
   foam=max(foam,uCrest*smoothstep(0.55,0.9,lift)*smoothstep(0.35,0.7,nzz)*0.9);   /* the Great Wash crest: a timed foam boost on the highest water */
   if(uStreak>0.0){vec2 q=vec2(dot(vP.xz,W),dot(vP.xz,Wp));float st=0.55*vn(vec2(q.x*0.035-uT*0.05,q.y*1.3))+0.45*vn(vec2(q.x*0.09+uT*0.02,q.y*3.4));
-    foam=max(foam,smoothstep(0.66,0.84,st)*uStreak*0.30*(0.45+0.55*smoothstep(0.35,0.85,lift)));}
+    foam=max(foam,smoothstep(0.62,0.82,st)*uStreak*0.55*(0.45+0.55*smoothstep(0.35,0.85,lift)));}
   if(uVK>0.0){vec2 rv=vP.xz-uVort.xy;float r=length(rv);float th=atan(rv.y,rv.x);float arms=sin(3.0*th+6.5*log(r+1.0)-uT*0.9),arms2=sin(5.0*th+9.0*log(r+1.0)-uT*1.3);
     float fnl=exp(-(r*r)/(uVort.z*uVort.z*1.3));col=mix(col,uShal*vec3(.9,1.5,1.7)*(0.30+0.25*smoothstep(0.0,uVort.z,r)),uVK*fnl*0.55);   /* the funnel is lit teal from the inside, not black */
     float ring=exp(-pow((r-uVort.z*0.95)/(uVort.z*0.16),2.0))*uVK;
@@ -179,7 +196,7 @@ void main(){
   gl_FragColor=vec4(tone(col,uExp),1.0);}`;
 const SKY_VS=`varying vec3 vD;void main(){vD=position;gl_Position=projectionMatrix*viewMatrix*vec4(position+cameraPosition,1.0);gl_Position.z=gl_Position.w*0.9999;}`;
 const SKY_FS=`precision highp float;`+GLSL_SKY+`uniform vec3 uFogC;uniform float uExp;varying vec3 vD;
-void main(){vec3 d=normalize(vD);vec3 c=skyCol(d,float(CLOUDS));c=mix(c,uFogC,smoothstep(0.35,0.0,d.y)*0.5);gl_FragColor=vec4(tone(c,uExp),1.0);}`;
+void main(){vec3 d=normalize(vD);vec3 c=skyCol(d,float(CLOUDS)*2.0);c=mix(c,uFogC,smoothstep(0.35,0.0,d.y)*0.5);gl_FragColor=vec4(tone(c,uExp),1.0);}`;
 const SPRAY_VS=GLSL_COMMON+`attribute vec4 aS;uniform float uAmt,uT,uPxScale,uFoamT;uniform vec2 uWind;varying float vA;
 void main(){float life=fract(aS.x+uT*(0.25+0.5*aS.w));float r=18.0+aS.y*aS.y*80.0;float a=aS.z*6.2832;vec2 p0=uCam.xz+vec2(cos(a),sin(a))*r;
   vec3 d;vec3 n;float J;seaAt(p0,r,d,n,J);float on=smoothstep(uFoamT+0.05,uFoamT-0.15,J)*uAmt;
@@ -205,7 +222,7 @@ scene.add(filmCam);
 let camHelper=null;
 const U={uT:{value:0},uT2:{value:0},uW:{value:[]},uW2:{value:[]},uMesh:{value:new THREE.Vector2()},uVort:{value:new THREE.Vector4(O.VORT.x,O.VORT.z,O.VORT.R,O.VORT.depth)},uVK:{value:0},uLevel:{value:0},uCam:{value:new THREE.Vector3()},
   uHor:{value:new THREE.Vector3()},uZen:{value:new THREE.Vector3()},uSunDir:{value:new THREE.Vector3(0,1,0)},uSunCol:{value:new THREE.Vector3(3,2,1)},uCloudC:{value:new THREE.Vector3()},
-  uSunI:{value:1},uCover:{value:.5},uRainbow:{value:0},uRays:{value:0},uFlash:{value:0},uDark:{value:0},uStars:{value:0},
+  uSunI:{value:1},uCover:{value:.5},uRainbow:{value:0},uRbAz:{value:220},uRays:{value:0},uFlash:{value:0},uDark:{value:0},uStars:{value:0},
   uDeep:{value:new THREE.Vector3()},uShal:{value:new THREE.Vector3()},uFogC:{value:new THREE.Vector3()},uFog:{value:.001},uFoamT:{value:.3},uFoam:{value:.4},uStreak:{value:0},uExp:{value:1},
   uChopKA:{value:.01},uPix:{value:.001},uHs:{value:1},uWindA:{value:0},uWind:{value:new THREE.Vector2()},uAmt:{value:1},uPxScale:{value:1},uCol:{value:new THREE.Vector3(.92,.95,.96)},uCrest:{value:0},
   uGround:{value:null},uGB:{value:new THREE.Vector3()},uLamp:{value:new THREE.Vector3()},uBeamDir:{value:new THREE.Vector3(1,0,0)},uBeam:{value:0}};
@@ -238,14 +255,35 @@ const WOOD=[.46,.34,.22],WOODD=[.30,.22,.15],WOODL=[.60,.47,.32],ROPEC=[.72,.62,
 
 /* ---- islands: terrain from the seed 9001 field, vertex colours from the ground class, pines scattered on turf ---- */
 const GCOL={0:[.80,.72,.54],2:[.55,.53,.50],3:[.34,.45,.24],4:[.52,.44,.38]};
+/* ground colour: sand dry above and wet and dark near the water, grass in three greens with yellow tufts, rock by slope with lichen, dune grass on the high sand (no flat orange). Values are TUNING. */
+const vnz=(x,z)=>{const xi=Math.floor(x),zi=Math.floor(z),fx=x-xi,fz=z-zi,u=fx*fx*(3-2*fx),v=fz*fz*(3-2*fz),h=(a,b)=>hash((xi+a)*73+(zi+b)*179,41);return lerp(lerp(h(0,0),h(1,0),u),lerp(h(0,1),h(1,1),u),v);};
+const fbz=(x,z)=>.5*vnz(x,z)+.27*vnz(x*2.1+5,z*2.1+3)+.15*vnz(x*4.3+9,z*4.3+1)+.08*vnz(x*8.7+2,z*8.7+6);
+const mixc=(a,b,t)=>[lerp(a[0],b[0],t),lerp(a[1],b[1],t),lerp(a[2],b[2],t)];
+function groundColour(x,z,h,cl,slope){
+  const n=fbz(x*.09,z*.09),n2=fbz(x*.31+40,z*.31),n3=fbz(x*.9,z*.9+7);let c;
+  const SAND=mixc([.62,.57,.46],[.72,.66,.52],n2),WET=mixc([.34,.31,.28],[.42,.38,.34],n3),ROCK=mixc([.40,.39,.38],[.56,.54,.50],n2),GR=mixc(mixc([.22,.36,.17],[.34,.44,.20],n),[.46,.45,.22],clamp((n2-.62)*4,0,1));
+  const DUNE=mixc(SAND,mixc(GR,[.50,.48,.28],clamp(n3*1.4-.3,0,1)*.7),clamp((h-1.1)*.55+(n-.5)*1.8,0,.92));
+  if(cl===0){c=DUNE;const wet=sm(1-(h+.1)/1.15);c=mixc(c,WET,wet*.9);const rip=.5+.5*Math.sin(x*1.7+z*.9+n*9);c=c.map(v=>v*(1-.07*rip*(wet+.3)));
+    const dry=clamp((h-.7)/1.6,0,1)*clamp(n3*2-.55,0,1)*.35;c=c.map(v=>v*(1-dry*.3));}
+  else if(cl===2)c=mixc(ROCK,[.60,.58,.34],clamp((n3-.7)*3,0,.5));
+  else if(cl===3)c=mixc(GR,ROCK,clamp((slope-.5)*2.2,0,.8));
+  else c=mixc(mixc([.44,.35,.26],[.52,.43,.32],n2),WET,sm(1-(h+.1)/1.0)*.8);
+  if(cl!==2&&slope>.8)c=mixc(c,ROCK,clamp((slope-.8)*1.8,0,.7));
+  return c;}
+/* ground material: Lambert with vertex colours, plus fine world-space grain in the fragment (so a 3 m mesh does not look smooth) */
+const GROUNDM=new THREE.MeshLambertMaterial({vertexColors:true});
+GROUNDM.onBeforeCompile=sh=>{sh.vertexShader='varying vec3 vWP;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvWP=(modelMatrix*vec4(transformed,1.0)).xyz;');
+  sh.fragmentShader='varying vec3 vWP;float gh(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}float gn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(gh(i),gh(i+vec2(1,0)),f.x),mix(gh(i+vec2(0,1)),gh(i+vec2(1,1)),f.x),f.y);}\n'+sh.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\n{float g=0.6*gn(vWP.xz*1.9)+0.4*gn(vWP.xz*6.3+3.0);diffuseColor.rgb*=0.82+0.36*g;}');};
 let islandMeshes=[];
 function buildIslands(){islandMeshes.forEach(m=>{scene.remove(m);m.geometry.dispose();});islandMeshes=[];const st=TC.islStep;
   for(const I of FIELD.list){const R=Math.ceil(128*I.sx*1.42/st)*st,nn=Math.round(2*R/st)+1,pos=[],col=[],idx=[],cx=Math.round(I.cx/st)*st,cz=Math.round(I.cz/st)*st;
-    for(let j=0;j<nn;j++)for(let i=0;i<nn;i++){const x=cx-R+i*st,z=cz-R+j*st;let h=FIELD.groundAt(x,z);const cl=FIELD.groundClass(x,z),c=GCOL[cl]||GCOL[0],v=.92+.16*hash((x*7.1+z*13.3)*4|0,77),under=h<-0.1;h=Math.max(h,-6);
-      let k=under?.55:1;if(cl===4&&h>3)k*=.9+.1*Math.min(1,h/10);pos.push(x,h,z);col.push(c[0]*v*k,c[1]*v*k,c[2]*v*k*(under?1.1:1));}
+    for(let j=0;j<nn;j++)for(let i=0;i<nn;i++){const x=cx-R+i*st,z=cz-R+j*st;let h=FIELD.groundAt(x,z);const cl=FIELD.groundClass(x,z),under=h<-0.1;
+      const gx=FIELD.groundAt(x+st,z)-FIELD.groundAt(x-st,z),gz=FIELD.groundAt(x,z+st)-FIELD.groundAt(x,z-st),slope=Math.hypot(gx,gz)/(2*st);
+      const c=under?[.30,.34,.32]:groundColour(x,z,h,cl,slope);h=Math.max(h,-6);
+      let k=under?(.8+.2*clamp((h+6)/6,0,1)):1;if(cl===4&&h>3)k*=.9+.1*Math.min(1,h/10);pos.push(x,h,z);col.push(c[0]*k,c[1]*k,c[2]*k*(under?1.1:1));}
     for(let j=0;j<nn-1;j++)for(let i=0;i<nn-1;i++){const a=j*nn+i,b=a+1,c2=a+nn,d=c2+1;idx.push(a,c2,b,b,c2,d);}
     const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));g.setIndex(idx);g.computeVertexNormals();
-    const m=new THREE.Mesh(g,LAMB);m.frustumCulled=false;scene.add(m);islandMeshes.push(m);}}
+    const m=new THREE.Mesh(g,GROUNDM);m.frustumCulled=false;scene.add(m);islandMeshes.push(m);}}
 /* the static placeholders (one merged mesh) and the parts that change with the film */
 const G={};   /* named groups */
 function buildStatics(){
@@ -264,11 +302,11 @@ function buildStatics(){
     M.cyl(L.x,y0+13.1,L.z,2.5,.35,[.2,.2,.2]);M.cyl(L.x,y0+14.9,L.z,1.3,2.2,[.15,.15,.16]);M.cone(L.x,y0+16.6,L.z,1.9,1.5,[.25,.12,.10]);
     Gl.cyl(L.x,y0+14.3,L.z,1.1,1.0,[1,.82,.5]);}
   G.static=M.mesh(LAMB);scene.add(G.static);G.glow=Gl.mesh(GLOWM);scene.add(G.glow);
-  buildDetails();
+  buildDetails();buildWrackFore();
 }
 /* ---- the DETAIL KIT (details.js): jetty, bays, hut, washing line, fire, barrels, lanterns, hulk and robots are real pieces now ---- */
 const KIT=D.makeKit(THREE),DL=TIERN==='ipad'?1:0,HERO=0;   /* detail level of the props: lod 1 on the iPad tier (TUNING, unmeasured), lod 0 elsewhere; hero pieces always lod 0 */
-const HYAW=.55;
+const HYAW=.55,PI_2=Math.PI/2;
 const CAMPU={hut:[12.5,19.5],fire:[7,13.6],wash:[0.5,15.8],barrels:[11,13.2],people:[5.5,13.0]};
 function jframe(obj,u,w,y,dyaw){const p=jw(u,w);obj.position.set(p[0],y,p[1]);obj.rotation.y=JYAW+(dyaw||0);return obj;}
 function buildDetails(){
@@ -292,6 +330,23 @@ function buildDetails(){
   /* the hulk: a rusted trawler aground, listing toward the sea, keel buried */
   {const H=LAYOUT.hulk,pl=D.build(KIT,'hulk',{seed:5,wear:.7,lod:DL}),g=FIELD.groundAt(H.x,H.z);G.hulkTilt=new THREE.Group();G.hulkTilt.rotation.x=-.3;G.hulkTilt.add(pl);G.hulk=new THREE.Group();G.hulk.add(G.hulkTilt);G.hulk.position.set(H.x,Math.max(g,.2)-1.0,H.z);G.hulk.rotation.y=JYAW+HYAW;scene.add(G.hulk);}
 }
+
+/* ---- the wrack line in the foreground of shot 6 (PLACEHOLDER shapes, but many and worn): timber, a crate with glass, a rusted barrel, rope, a metal sheet, kelp and rocks, laid on the beach in front of the camera in the jetty frame ---- */
+function buildWrackFore(){const M=new Merger(),I=(u,w)=>jw(u,w);const items=[
+  ['crate',7.4,11.4],['barrel',9.4,8.6],['planks',9.6,10.4],['sheet',11.4,12.0],['rope',8.2,12.9],['rock',5.2,15.0],['rock',8.6,6.6],['rock',13.8,6.2],['plank',12.8,9.8],['crate',13.2,11.0],['kelp',10.4,9.2],['kelp',12.4,13.2],['kelp',7.0,13.4],
+  ['bottles',7.9,10.9],['bottles',10.5,11.2],['plank',6.4,11.8],['plank',14.2,11.2],['planks',15.6,13.4],['sheet',16.8,14.4],['barrel',15.2,8.2],['kelp',15.0,10.4],['rock',17.6,10.2]];
+  const GLASS=[.25,.52,.36],TIM=[[.52,.40,.28],[.40,.31,.22],[.62,.52,.40],[.70,.62,.50]];
+  items.forEach((it,k)=>{const [ty,u,w]=it,p=I(u,w),g=FIELD.groundAt(p[0],p[1]);if(g>3.4||g<-.4)return;const y=g,yw=hash(k,11)*TAU,jt=a=>(hash(k,a)-.5);
+    if(ty==='crate'){M.box(p[0],y+.32,p[1],.78,.62,.62,yw,[.46,.38,.26],.05,jt(2)*.2);for(let i=0;i<4;i++)M.box(p[0],y+.1+i*.16,p[1],.8,.02,.64,yw,[.30,.24,.17],.05,jt(2)*.2);for(const sx of[-.34,.34])M.box(p[0]+Math.cos(yw)*sx,y+.32,p[1]-Math.sin(yw)*sx,.06,.66,.66,yw,[.34,.27,.18],.05,jt(2)*.2);for(let i=0;i<3;i++)M.cyl(p[0]+(i-1)*.18,y+.7,p[1]+jt(5+i)*.2,.05,.2,GLASS);}
+    else if(ty==='barrel'){M.cyl(p[0],y+.34,p[1],.34,.9,[.50,.27,.16],yw,0,PI_2);M.cyl(p[0],y+.34,p[1],.355,.07,[.34,.18,.12],yw,0,PI_2);}
+    else if(ty==='planks'){for(let i=0;i<4;i++)M.box(p[0]+jt(3+i)*.3,y+.05+i*.04,p[1]+(i-1.5)*.16,2.4-i*.2,.05,.2,yw+jt(9+i)*.3,TIM[(i+k)%4],.0,jt(2+i)*.12);}
+    else if(ty==='plank'){M.box(p[0],y+.08,p[1],2.0+hash(k,4),.05,.22,yw,TIM[k%4],0,jt(3)*.3);M.box(p[0]+.3,y+.04,p[1]+.3,1.4,.05,.18,yw+.7,TIM[(k+1)%4],0,.04);}
+    else if(ty==='sheet'){M.box(p[0],y+.22,p[1],1.5,.03,.95,yw,[.50,.27,.17],.35,jt(3)*.2);M.box(p[0]+.9,y+.05,p[1]+.5,.9,.03,.6,yw+1,[.38,.22,.15],0,.0);}
+    else if(ty==='rope'){for(let i=0;i<5;i++)M.add(GC,p[0],y+.04+i*.05,p[1],.34-i*.02,.05,.34-i*.02,0,ROPEC);M.box(p[0]+.5,y+.04,p[1],1.2,.04,.07,yw,ROPEC);}
+    else if(ty==='kelp'){for(let i=0;i<6;i++)M.sph(p[0]+jt(3+i)*.9,y+.05,p[1]+jt(9+i)*.7,.28+hash(k,i)*.25,[.22+.1*hash(k,i+5),.24,.12],.3);}
+    else if(ty==='bottles'){for(let i=0;i<7;i++)M.cyl(p[0]+jt(3+i)*1.1,y+.04,p[1]+jt(9+i)*.9,.032,.15,GLASS,0,0,PI_2*(1+jt(i)));}
+    else if(ty==='rock'){M.sph(p[0],y+.2,p[1],.7+hash(k,2)*.5,[.34,.34,.33],.7);M.sph(p[0]+.5,y+.1,p[1]-.3,.4,[.44,.43,.38],.7);M.sph(p[0]-.1,y+.55,p[1]+.1,.3,[.36,.40,.20],.5);}});
+  G.wrackFore=M.mesh(LAMB);scene.add(G.wrackFore);}
 /* ---- robots: the detail kit's three old machines (hauler, sorter, stacker), lamp brightness set per frame with userData.setLens ---- */
 const mkRobot=(kind,seed,scale,hero)=>{const g=D.build(KIT,kind,{seed,wear:.62,lod:hero?HERO:DL,lens:1,hatch:0});g.scale.setScalar(scale||1);scene.add(g);return g;};
 let robots={};
@@ -310,9 +365,24 @@ function buildActors(){
 }
 /* the arrival boat's bow (PLACEHOLDER), a child of the camera for shot 7 */
 function buildBow(){const M=new Merger();
-  M.box(0,-1.1,-1.8,1.0,.1,3.0,0,WOODD);M.box(-.55,-.78,-1.7,.08,.5,3.2,0,[.55,.35,.22],0,0,.15);M.box(.55,-.78,-1.7,.08,.5,3.2,0,[.55,.35,.22],0,0,-.15);
-  M.box(0,-.65,-3.25,.12,.8,.4,0,[.55,.35,.22],.5);M.box(0,-.85,-2.3,1.0,.06,.25,0,WOODL);M.box(0,-.6,-3.1,.14,.45,.14,0,[.4,.28,.18]);
-  for(let i=0;i<3;i++)M.add(GC,0,-1.0+i*.05,-1.5,.24-i*.03,.05,.24-i*.03,0,ROPEC);M.box(.3,-.92,-1.9,.4,.12,.3,.4,[.55,.5,.38]);
+  /* a weathered rowing boat bow, seen from over the stem: clinker (lapped) planks in chipped blue-grey paint over bare wood, a darker waterline, an iron-banded stem with a ring, gunwale rails, a thwart, floorboards, cleats and a rope coil with its tail over the side */
+  const PAINT=[[.34,.47,.52],[.30,.42,.47],[.40,.50,.52]],BARE=[.52,.38,.25],WORN=[.44,.32,.21],IRON=[.22,.17,.14];
+  for(const sd of [-1,1]){for(let i=0;i<4;i++){const y=-1.0+i*.17,x=sd*(.38+i*.065),pitch=0;
+      for(let j=0;j<3;j++){const z0=-.4-j*1.0,len=1.05,chip=hash(i*7+j+(sd>0?3:0),9)>.62;
+        M.box(x,y,z0-(j*.07),.045,.19,len,sd*(.06+.02*j),chip?BARE:PAINT[(i+j)%3],pitch,sd*(-.22+.03*i),.14);}}
+    M.box(sd*.62,-.37,-1.45,.07,.07,3.0,sd*.05,[.40,.29,.19],0,0,.1);                /* the gunwale rail */
+    M.box(sd*.56,-.45,-1.45,.04,.05,3.0,sd*.05,WORN,0,0,.1);}
+  for(let j=0;j<7;j++)M.box(0,-1.12+(j%2)*.012,-.2-j*.5,1.02,.04,.46,0,j%3?WORN:[.40,.30,.2],0,0,.15);          /* floorboards */
+  M.box(0,-.62,-.55,1.28,.06,.3,0,[.5,.38,.26]);M.box(0,-.54,-.3,1.28,.05,.1,0,WORN);                             /* thwart */
+  /* stem, forefoot, iron strap and ring */
+  M.box(0,-.62,-3.32,.13,.95,.2,0,[.36,.26,.17],.42);M.box(0,-.98,-3.0,.14,.34,.42,0,[.30,.22,.15],.9);M.box(0,-.36,-3.42,.11,.28,.14,0,[.4,.28,.18],.2);
+  M.box(0,-.7,-3.3,.16,.5,.04,0,IRON,.42);M.box(0,-.52,-3.4,.17,.05,.16,0,IRON,.3);M.add(GC,0,-.56,-3.5,.045,.03,.045,0,IRON,Math.PI/2);
+  M.box(.0,-1.18,-2.6,.9,.07,2.4,0,[.12,.17,.18],0,0,.05);                                                          /* the dark waterline */
+  /* deck plate at the bow, cleats, a bailer */
+  M.box(0,-.52,-2.65,.8,.04,.8,0,[.46,.34,.22],0,0,.1);for(const sd of [-1,1])M.box(sd*.3,-.45,-2.5,.14,.06,.05,0,IRON);
+  M.box(-.3,-.8,-1.1,.22,.18,.22,0,[.42,.42,.38]);
+  /* rope coil (six turns), its tail over the starboard gunwale and a knot */
+  for(let i=0;i<6;i++)M.add(GC,.12,-1.0+i*.05,-1.45,.26-i*.02,.05,.26-i*.02,0,i%2?ROPEC:[.62,.52,.34]);M.box(.42,-.72,-1.9,.55,.05,.06,.5,ROPEC);M.box(.74,-.78,-2.05,.05,.38,.05,0,ROPEC);M.box(.62,-.96,-2.1,.12,.12,.12,.4,[.55,.45,.3]);
   G.bow=M.mesh(LAMB);G.bow.frustumCulled=false;filmCam.add(G.bow);
   const l=new THREE.Mesh(new THREE.SphereGeometry(.08,8,6),new THREE.MeshBasicMaterial({color:0xffcc77,fog:false}));l.position.set(.42,-.75,-1.4);filmCam.add(l);G.bowLamp=l;}
 /* the night boat (PLACEHOLDER) and the buoy at the end of the mooring rope */
@@ -438,7 +508,7 @@ function actors(t,st){
   /* the parked robot on the apron during the storm */
   {const R3=robots.park,q=jw(4,4.6),g=FIELD.groundAt(q[0],q[1]);R3.position.set(q[0],Math.max(DECK,g),q[1]);R3.rotation.y=JYAW-Math.PI/2;R3.visible=t>=46&&t<80;lensOf(R3,.45);}
   /* still robots on the beach after the wash (lamps dark) */
-  const sp=(u,w)=>{const p=jw(u,w);return [p[0],p[1]];},s1=sp(14.4,13.4),s2=sp(17.6,12.4),s3=sp(15.6,15.2);
+  const sp=(u,w)=>{const p=jw(u,w);return [p[0],p[1]];},s1=sp(12.6,9.0),s2=sp(16.4,8.4),s3=sp(19.4,11.4);
   const stills=[[robots.still1,s1[0],s1[1],JYAW+2.3],[robots.still2,s2[0],s2[1],JYAW+.5],[robots.still3,s3[0],s3[1],JYAW+3.6]];
   for(const [r,x,z,yw] of stills){const g=FIELD.groundAt(x,z);r.position.set(x,Math.max(g,.15)-.02,z);r.rotation.y=yw;r.visible=t>=59&&t<70.5;lensOf(r,.04);}
   /* the repair robot (shot 8): the hatch is open from 81 s, the battery slides in at 85.4 s with the hands on it, the lens lights at 86.4 s with the relay cue; the hands let go only after the shot's last stills */
@@ -448,7 +518,7 @@ function actors(t,st){
     const hl=hands.getObjectByName('handL'),hr=hands.getObjectByName('handR');
     hl.position.set(-.2,by-.03,bz+.32+wd*.6);hl.rotation.set(.0,Math.PI/2,.35);hr.position.set(.22,by-.03,bz+.32+wd*.6);hr.rotation.set(.0,Math.PI/2,.35);}
   /* people: scenery silhouettes at the camp during the working quay */
-  robots.people.visible=t>=19&&t<47;
+  robots.people.visible=t>=19&&t<47;G.wrackFore.visible=t>=55;
   /* the boat of the night watch (rides the sea), hidden once the day comes; the buoy at the end of the mooring rope */
   {const bp=LAYOUT.boat;if(t<20){placeBody(G.boat,bp[0],bp[1],1.2,4.4,1.6,t,.15);G.boat.visible=true;}else G.boat.visible=false;}
   {const bu=jw(62,-9);const h=CLOCK.height(bu[0],bu[1],t);G.buoy.position.set(bu[0],h+.1,bu[1]);G.buoy.visible=t>=19&&t<50.4;
@@ -475,7 +545,7 @@ function renderAt(t,dt){
   U.uCrest.value=clamp(st.crest/6.5,0,1)*.6;
   /* the sky and light */
   U.uHor.value.fromArray(Look.hor);U.uZen.value.fromArray(Look.zen);U.uCloudC.value.fromArray(Look.cloud);U.uFogC.value.fromArray(Look.fogC);U.uDeep.value.fromArray(Look.deep);U.uShal.value.fromArray(Look.shal);U.uSunCol.value.fromArray(Look.sunCol);
-  U.uSunDir.value.fromArray(Look.sunDir);U.uSunI.value=Look.sunI;U.uCover.value=Look.cover;U.uRainbow.value=Look.rainbow;U.uRays.value=Look.rays;U.uDark.value=Look.dark;U.uStars.value=Look.stars;U.uFog.value=Look.fog;U.uExp.value=Look.exposure;
+  U.uSunDir.value.fromArray(Look.sunDir);U.uSunI.value=Look.sunI;U.uCover.value=Look.cover;U.uRainbow.value=Look.rainbow;U.uRbAz.value=Look.rbAz;U.uRays.value=Look.rays;U.uDark.value=Look.dark;U.uStars.value=Look.stars;U.uFog.value=Look.fog;U.uExp.value=Look.exposure;
   const fl=O.flashAt(DIR,t);U.uFlash.value=fl*.8;
   /* lamp and beam */
   const LH=LAYOUT.lighthouse,lampY=LH.baseY+14.3,baz=st.beamAz*DEG,bd=[Math.sin(baz),-Math.cos(baz)];
@@ -494,7 +564,7 @@ function renderAt(t,dt){
   /* lights: the salvage world's own hemisphere and sun, dimmed for night */
   const nightK=sm((st.sunElev+10)/11),fogTone=tone(Look.fogC,Look.exposure);
   if(SALV.w){SALV.w.updateLights({hor:Look.hor,zen:Look.zen,sunI:Math.max(Look.sunI,.05),sunEl:st.sunElev,fogC:Look.fogC,fog:Look.fog},U.uSunDir.value);
-    const L=SALV.w.lights;L.hemi.intensity*=(.18+.82*nightK)*(1+fl*.6);L.sun.intensity*=nightK*(1-Look.dark*.3);L.sun.color.setRGB(Look.sunCol[0]/3,Look.sunCol[1]/3,Look.sunCol[2]/3).addScalar(.08);
+    const L=SALV.w.lights;L.hemi.intensity*=(.18+.82*nightK)*(1+fl*.6);L.sun.intensity*=nightK*(1-Look.dark*.3);{const sr=Look.sunCol[0]/3,sg=Look.sunCol[1]/3,sb=Look.sunCol[2]/3,lu=(sr+sg+sb)/3;L.sun.color.setRGB(lerp(sr,lu,.35),lerp(sg,lu,.35),lerp(sb,lu,.35)).addScalar(.08);}
     scene.fog.color.setRGB(fogTone[0],fogTone[1],fogTone[2]);scene.fog.density=Look.fog;}
   /* actors, staged raft, wrack, salvage */
   actors(t,st);
@@ -531,18 +601,23 @@ function sync(){el('bPlay').textContent=DIR.playing?'Pause':(DIR.ended?'Replay':
   const sb=el('shots');if(!sb.children.length){DIR.shots.forEach((s,i)=>{const b=document.createElement('button');b.textContent=(i+1)+'  '+(capTxt[s.id]||s.id)+'   '+s.t0+' to '+s.t1+' s   (frame '+s.frame+')';b.onclick=()=>{DIR.skipTo(i);force();};sb.appendChild(b);});}
   const si=DIR.shotAt(DIR.t);[...sb.children].forEach((b,i)=>b.classList.toggle('on',i===si));
   el('cap').style.display=capsOn?'block':'none';if(capsOn&&si>=0)el('cap').textContent=capTxt[DIR.shots[si].id]||'';}
-function force(){sync();renderAt(DIR.t,0);}
+const SND=window.LI_OPENING_SOUND.create(DIR,{audio:window.LI_AUDIO,song:window.LI_SONG,musicVolume:0.2});   /* sound track of the film (opening_sound.js); silent until the Sound on tap */
+function force(){SND.seek(DIR.t);sync();renderAt(DIR.t,0);}
 const cuesSeen=[];DIR.onCue((nm,arg,t)=>{cuesSeen.unshift(t.toFixed(1)+' s  '+nm+(arg!==undefined?' '+arg:''));if(cuesSeen.length>7)cuesSeen.pop();});
 if(UI){
   el('bPlay').onclick=()=>{if(DIR.playing)DIR.pause();else DIR.play();sync();};
   el('bSkip').onclick=()=>{DIR.skip();force();};el('bPrev').onclick=()=>{DIR.prevShot();force();};
   el('scrub').oninput=e=>{DIR.seek(parseFloat(e.target.value));force();};
   el('spd').onchange=e=>{DIR.setSpeed(parseFloat(e.target.value));};
-  el('bDbg').onclick=()=>{setDbg(!dbg);};el('bCap').onclick=()=>{capsOn=!capsOn;sync();};
+  el('bDbg').onclick=()=>{setDbg(!dbg);};
+  el('bSound').onclick=()=>{if(SND.state.on){SND.disable();el('bSound').textContent='Sound on';el('bSound').classList.remove('on');el('bMute').classList.add('hide');el('mus').classList.add('hide');}
+    else{SND.enable();el('bSound').textContent='Sound off';el('bSound').classList.add('on');el('bMute').classList.remove('hide');el('mus').classList.remove('hide');}};
+  el('bMute').onclick=()=>{const m=SND.mute(!LI_AUDIO.isMuted());el('bMute').classList.toggle('on',m);el('bMute').textContent=m?'Muted':'Mute';};
+  el('mus').oninput=e=>SND.setMusic(parseFloat(e.target.value));el('bCap').onclick=()=>{capsOn=!capsOn;sync();};
   el('tierSel').value=TC.name;el('tierSel').onchange=e=>{location.search='?'+new URLSearchParams(Object.assign(Object.fromEntries(Q),{tier:e.target.value,t:DIR.t.toFixed(2),freeze:DIR.playing?'0':'1'})).toString();};
   window.addEventListener('keydown',e=>{if(/INPUT|SELECT/.test(e.target.tagName)&&e.key!==' ')return;const k=e.key.toLowerCase();
     if(k===' '){e.preventDefault();el('bPlay').click();}else if(k===']')el('bSkip').click();else if(k==='[')el('bPrev').click();else if(k==='arrowright'&&!dbg){DIR.seek(DIR.t+1);force();}else if(k==='arrowleft'&&!dbg){DIR.seek(DIR.t-1);force();}
-    else if(k==='c'){capsOn=!capsOn;sync();}else if(k==='d'&&!pressed.d0){setDbg(!dbg);}if('wasdqe'.includes(k)&&k.length===1)pressed[k]=true;if(k==='shift')pressed.shift=true;});
+    else if(k==='c'){capsOn=!capsOn;sync();}else if(k==='m'&&SND.state.on){el('bMute').click();}else if(k==='d'&&!pressed.d0){setDbg(!dbg);}if('wasdqe'.includes(k)&&k.length===1)pressed[k]=true;if(k==='shift')pressed.shift=true;});
   window.addEventListener('keyup',e=>{const k=e.key.toLowerCase();delete pressed[k];if(k==='shift')pressed.shift=false;});
 }
 function setDbg(on){dbg=on;if(on){const p=filmCam.position;dbgPose.x=p.x;dbgPose.y=p.y;dbgPose.z=p.z;const f=new THREE.Vector3();filmCam.getWorldDirection(f);dbgPose.yaw=Math.atan2(-f.x,-f.z);dbgPose.pitch=Math.asin(f.y);}sync();}
@@ -563,7 +638,7 @@ if(Q.get('speed'))DIR.setSpeed(parseFloat(Q.get('speed')));
 if(Q.get('debug')==='1')setDbg(true);
 let last=performance.now(),frames=0,ema=16,statT=0;
 function frame(now){const dt=Math.min((now-last)/1000,.2);last=now;frames++;window.__oframes=frames;ema=ema*.93+dt*1000*.07;
-  if(!FREEZE){DIR.update(dt);}
+  if(!FREEZE){DIR.update(dt);SND.step(DIR.t,DIR.playing,DIR.speed);}
   renderAt(DIR.t,FREEZE?0:dt);
   if(UI){el('scrub').value=DIR.t;el('tm').textContent=DIR.t.toFixed(2)+' / '+DIR.duration.toFixed(2);
     if(now-statT>300){statT=now;sync();const ri=renderer.info.render;const s=lastStats.salv;
@@ -573,7 +648,7 @@ function frame(now){const dt=Math.min((now-last)/1000,.2);last=now;frames++;wind
 sync();
 if(Q.get('autoplay')==='1'&&!FREEZE){DIR.play();sync();}
 requestAnimationFrame(frame);
-window.__opening={dir:DIR,film:FILM,layout:LAYOUT,field:FIELD,clock:()=>CLOCK,state:()=>lastStats,renderAt,seek:t=>{DIR.seek(t);renderAt(t,0);},ready:true,errors:[],G,robots,STAGED,renderer,scene,camera:filmCam,tier:TC.name,info:()=>({tri:renderer.info.render.triangles,calls:renderer.info.render.calls,ms:ema})};
+window.__opening={dir:DIR,film:FILM,layout:LAYOUT,field:FIELD,clock:()=>CLOCK,state:()=>lastStats,renderAt,seek:t=>{DIR.seek(t);renderAt(t,0);},ready:true,sound:SND,errors:[],G,robots,STAGED,renderer,scene,camera:filmCam,tier:TC.name,info:()=>({tri:renderer.info.render.triangles,calls:renderer.info.render.calls,ms:ema})};
 })();
 </script>
 </body>
