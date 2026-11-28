@@ -52,6 +52,9 @@ canvas { display: block; position: fixed; inset: 0; width: 100%; height: 100%; }
 .pips span { width: 14px; height: 14px; border-radius: 50%; background: #9a8f80; border: 2px solid var(--paper); }
 .banner { position: fixed; z-index: 4; left: 50%; top: 32%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; font-family: var(--display); color: var(--gold, #ffc23d); text-shadow: 0 3px 0 #1c1712; font-size: clamp(26px, 5vw, 46px); line-height: 1.05; max-width: 90vw; }
 .banner small { display: block; margin-top: 10px; font-family: var(--body); font-weight: 700; font-size: clamp(16px, 2.6vw, 22px); line-height: 1.3; color: #fff8ec; text-shadow: 0 2px 0 #1c1712; }
+.cmdTag { position: fixed; z-index: 3; transform: translate(-50%, -100%); background: #ff5a4a; color: #fff8ec; font: 700 11px/1 var(--body, system-ui); letter-spacing: 0.04em; padding: 3px 7px; border-radius: 9px; border: 2px solid #1c1712; pointer-events: none; white-space: nowrap; }
+.cmdFloat { position: fixed; z-index: 3; transform: translate(-50%, -100%); background: #fff8ec; color: #9c1c14; font: 700 13px/1.1 var(--body, system-ui); padding: 5px 10px; border-radius: 12px; border: 2px solid #ff5a4a; box-shadow: 0 2px 0 #1c1712; pointer-events: none; white-space: nowrap; }
+.bossArrow.cmdArrow { border-left-width: 10px; border-right-width: 10px; border-bottom: 18px solid #ff5a4a; }
 .bossArrow { position: fixed; z-index: 3; width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-bottom: 26px solid #c8281f; filter: drop-shadow(0 2px 0 #1c1712); pointer-events: none; }
 .toast { font-family: var(--display); font-size: 14px; color: var(--paper); text-shadow: 0 2px 0 var(--ink); min-height: 18px; text-align: center; }
 
@@ -158,6 +161,9 @@ button.mode[aria-disabled="true"] { opacity: 0.4; cursor: default; }
 </div>
 <div class="banner" id="banner" hidden></div>
 <div class="bossArrow" id="bossArrow" hidden></div>
+<div class="cmdTag" id="cmdTag" hidden>COMMANDER</div>
+<div class="cmdFloat" id="cmdFloat" hidden></div>
+<div class="bossArrow cmdArrow" id="cmdArrow" hidden></div>
 <div class="bossArrow" id="mixArrow" hidden style="border-bottom-color:#ff9f1c"></div>
 <div class="gateArrow" id="gateArrow" hidden></div>
 <div class="bossbar" id="bossbar" hidden><b id="bossName">THE STAPLER</b><div class="bar"><i id="bossHp"></i></div></div>
@@ -1514,6 +1520,7 @@ const ENEMY_TYPES = {
   dscout: { model: 'dscout', speed: 34, hp: 28, weapon: 'mg', reward: 3, sq: true, dr: 'scout' },
   dbomber: { model: 'dbomber', speed: 11, hp: 55, weapon: 'mg', reward: 4, sq: true, dr: 'bomber' },
   raider: { model: 'racer', speed: 26, hp: 38, weapon: 'raid', reward: 3 }, // fast: sent after your trucks
+  commander: { model: 'racer', speed: 21, hp: 80, weapon: 'mg', reward: 8, cmd: true }, // the visible enemy commander (see "Visible enemy commander"): one car, its own brain
   hijacker: { model: 'racer', speed: 22, hp: 45, weapon: 'raid', reward: 5 }, // sneaks up on a truck of yours and drives it home as a trojan
   layer: { model: 'mech', speed: 9, hp: 120, weapon: 'mg', reward: 8 }, // lays a domino run towards your toy box
   // Level 6 squadrons (sq: built from shared shapes by squadModel). Bombers fly.
@@ -2011,13 +2018,13 @@ function nearestOpen(i, j, grid = closed) {
 let astar = null; // level 6's reusable search buffers
 let pathBudget = 2; // level 6: route searches left this tick (update() refills it)
 // A* over the grid; returns waypoints (world x,z), smoothed to the corners that matter.
-function findPath(sx, sz, gx, gz, grid = closed) {
+function findPath(sx, sz, gx, gz, grid = closed, extra = null) { // extra: optional per-cell added cost (the commander uses it to keep off your turrets' range)
   const closed = grid;
   if (navDirty) navBuild();
   const [si, sj] = nearestOpen(...cellOf(sx, sz), closed), [gi, gj] = nearestOpen(...cellOf(gx, gz), closed);
   const start = sj * GW + si, goal = gj * GW + gi;
   // Level 6 (stage 3, the big grid): reuse the buffers, expand each cell once and ignore float32 rounding "improvements" (they made the search churn for ever).
-  const fin = !!state.level.finale, eps = fin ? 1e-3 : 0;
+  const fin = !!state.level.finale, eps = fin || extra ? 1e-3 : 0; // (extra costs are floats too: same rounding guard)
   if (fin && (!astar || astar.n !== GW * GD)) astar = { n: GW * GD, g: new Float32Array(GW * GD), from: new Int32Array(GW * GD), done: new Uint8Array(GW * GD) };
   const g = fin ? astar.g.fill(Infinity) : new Float32Array(GW * GD).fill(Infinity), from = fin ? astar.from.fill(-1) : new Int32Array(GW * GD).fill(-1), done = fin ? astar.done.fill(0) : null;
   const heap = [[0, start]];
@@ -2034,7 +2041,7 @@ function findPath(sx, sz, gx, gz, grid = closed) {
       const a = ni + di, b = nj + dj;
       if (a < 0 || b < 0 || a >= GW || b >= GD || closed[b * GW + a]) continue;
       if (di && dj && (closed[nj * GW + a] || closed[b * GW + ni])) continue; // no corner cutting
-      const m = b * GW + a, cost = g[n] + (di && dj ? 1.414 : 1);
+      const m = b * GW + a, cost = g[n] + (di && dj ? 1.414 : 1) + (extra ? extra[m] : 0);
       if (cost < g[m] - eps) { g[m] = cost; from[m] = n; push(cost + Math.hypot(gi - a, gj - b), m); }
     }
   }
@@ -2105,9 +2112,10 @@ function spawnUnit(type, team, x, z) {
   const u = {
     kind: 'unit', type, team, x, z, vx: 0, vz: 0, heading: team === BLUE ? 0 : Math.PI, r: v.r * 0.9, fly: !!t.fly,
     hp: t.hp, maxHp: t.hp, speed: t.speed, turn: v.turn, grip: v.grip, accel: v.accel, weapon: WEAPONS[t.weapon],
-    cool: Math.random() * 0.5, reward: t.reward, mesh: t.sq ? squadModel(t.model, team) : buildModel(t.model, team, 0.9), think: 0, goal: null,
+    cool: Math.random() * 0.5, reward: t.reward, mesh: t.sq ? squadModel(t.model, team) : t.cmd ? commanderModel() : buildModel(t.model, team, 0.9), think: 0, goal: null,
   };
   if (t.inf) { u.inf = true; u.armor = t.armor; u.floats = !!t.floats; } // level 6 infantry
+  if (t.cmd) { u.cmd = true; u.r = 1.75; u.stats = { speed: t.speed, accel: t.speed * 2.2, turn: u.turn, grip: u.grip }; } // the enemy commander
   if (t.dr) { u.dr = t.dr; u.fly = true; u.alt = 0; u.slot = Math.random() * 6; u.guard = null; } // a drone type: flies, has its own brain (droneThink)
   entities.push(u);
   return u;
@@ -2176,6 +2184,7 @@ function reset() {
   if (state.finale) finaleBegin();
   $('bossbar').hidden = true; $('bossHp').style.width = '100%';
   setVehicle('racer');
+  cmdReset(); // the enemy commander starts when the battle does
   state.load = state.aiLoad = null; state.freeUp = 0; state.droneSel = 'drones'; state.aiDroneAt = 0;
   if (pendingLoad) { applyLoad(pendingLoad); pendingLoad = null; }
   applyBar();
@@ -2501,6 +2510,7 @@ function hurt(e, dmg, byTeam, weapon) {
   if (e.hp <= 0 || (e.kind === 'player' && !e.alive) || e.air) return; // a car in the air (off a toaster) can't be hit
   if (e.kind === 'bag') return bagHurt(e, dmg, byTeam, weapon); // level 6: the Baguette's engine and carriages
   if (e.armor) dmg = Math.max(1, dmg - e.armor); // the Stapler's armour soaks small hits: guns barely scratch it
+  if (e.cmd && e.shieldT > state.time) { if (weapon && Math.random() < 0.4) burst(e.x, e.z, 0xaee8ff, 2, 4, 1.8); return; } // the commander's start-of-level shield
   if (e.fly && weapon && !weapon.homing) dmg *= 0.5; // level 6: a flying baguette shrugs off half of any bullet; rocket turrets (homing) are the answer to bombers
   if (weapon?.vsCar && (e.kind === 'player' || e.kind === 'worker' || (e.kind === 'unit' && !e.inf && !e.fly))) dmg *= weapon.vsCar; // level 6 pikemen: extra damage to cars
   if (state.finale?.cover && finaleCovered(e)) dmg *= 0.75; // level 6 battle plan: a defence that guessed the lane right takes 25% less there
@@ -2559,6 +2569,7 @@ function hurt(e, dmg, byTeam, weapon) {
     bossShield(false); banner(e.type === 'duck' ? 'DUCK SUNK!' : e.type === 'rcar' ? 'REMOTE CAR CRASHED!' : e.type === 'toaster' ? 'TOASTER TANK POPPED!' : 'STAPLER JAMMED!', 'Their shield is down: go and smash their toy box');
   }
   if (e.kind === 'boat') burst(e.x, e.z, 0x9fe0ff, 14, 9, 1); // sinks in a splash
+  if (e.cmd) cmdDied(e);
   if (e.kind === 'unit') makeSpill(e.x, e.z, Math.round(e.reward * 1.5));
   if (e.kind === 'turret') makeSpill(e.x, e.z, 12);
   if (e.kind === 'worker') { makeSpill(e.x, e.z, Math.round(e.load) + 5); if (e.team === BLUE) { toast(`Lost a ${e.role}!`); if (e.role === 'truck') state.trucksLost++; } }
@@ -3219,6 +3230,8 @@ const redHome = () => { const b = state.bases[RED]; return state.finale ? [[b.x 
 function commanderBuild(ramp) {
   const T = aiTime();
   if (T < 60) return false; // a quiet first minute
+  const C = cmdOn() ? state.cmd : null; // the visible commander does the jobs this decides (level 6 and My Track still build on the spot)
+  if (C && ((C.job && !C.job.soft) || !C.u)) return false; // busy (driving to a job) or down: nothing new is decided, but cars and drones still get bought
   const cereal = state.cereal, mine = redTurrets();
   const bare = outposts.filter((o) => o.owner === RED && !mine.some((t) => dist2(t, o) < 100));
   const homeCount = state.finale ? mine.filter((t) => dist2(t, state.bases[RED]) < 35 * 35).length : mine.filter((t) => t.x > 38).length;
@@ -3234,6 +3247,7 @@ function commanderBuild(ramp) {
     if (need > state.clips[RED]) type = 'gun'; // no paperclips for a rocket yet
     else state.clips[RED] -= need;
     cereal[RED] -= 25;
+    if (C) { cmdAssign({ k: 'turret', type, x: spot[0], z: spot[1], cost: 25, clips: need, up: ramp > 0.7 && aiHas('upgrade') }); return false; } // paid now; the turret appears when the commander has driven there
     const t = makeTurret(type, RED, spot[0], spot[1]);
     if (ramp > 0.7 && aiHas('upgrade')) levelUp(t);
     if (dist2(t, state.player) < 40 * 40) toast('They built a turret!');
@@ -3242,11 +3256,15 @@ function commanderBuild(ramp) {
   const weak = mine.filter((t) => t.level < 3).sort((x, y) => x.level - y.level)[0];
   if (weak && aiHas('upgrade') && T > 90 && cereal[RED] >= 60 && Math.random() < 0.25 + ramp * 0.3) {
     cereal[RED] -= 20 + weak.level * 15;
-    levelUp(weak);
+    if (C) cmdAssign({ k: 'upgrade', tur: weak, cost: 20 + weak.level * 15 });
+    else levelUp(weak);
+    return false;
   }
+  if (C) cmdMaybeClaim(T);
   return false;
 }
 function commander(dt) {
+  cmdTick(dt); // the visible commander: spawn, respawn
   state.aiClock -= dt;
   if (state.aiClock > 0) return;
   state.aiClock = 1;
@@ -3260,7 +3278,13 @@ function commander(dt) {
   // Level 5: the enemy builds a toaster launcher in its lane for its waves to jump from (it saves up for it first).
   if (state.level.toaster && !state.finale && aiHas('toaster') && T > 40 && !toasters.some((t) => t.team === RED)) { // (level 6 has ready-made toasters instead)
     const spot = [[34, 0], [36, 6], [36, -6]].find(([x, z]) => !toasterSpot(x, z));
-    if (spot && state.cereal[RED] >= TOASTER.cost) { state.cereal[RED] -= TOASTER.cost; makeToaster(RED, spot[0], spot[1]); if (dist2({ x: spot[0], z: spot[1] }, state.player) < 50 * 50) toast('They built a toaster launcher!'); }
+    const C = cmdOn() ? state.cmd : null;
+    if (C && ((C.job && !C.job.soft) || !C.u)) { /* the commander is busy or down: the launcher waits for it */ }
+    else if (spot && state.cereal[RED] >= TOASTER.cost) {
+      state.cereal[RED] -= TOASTER.cost;
+      if (C) cmdAssign({ k: 'toaster', x: spot[0], z: spot[1], cost: TOASTER.cost });
+      else { makeToaster(RED, spot[0], spot[1]); if (dist2({ x: spot[0], z: spot[1] }, state.player) < 50 * 50) toast('They built a toaster launcher!'); }
+    }
     else if (spot && state.time < 150) return;
   }
   const roll = Math.random();
@@ -3269,7 +3293,7 @@ function commander(dt) {
   const heavyClips = state.level.heavyClips || 0; // the enemy's tanks cost paperclips too
   if (want === 'heavy' && state.clips[RED] < heavyClips) want = 'buggy';
   const price = { scout: 8, buggy: 14, heavy: 24 }[want];
-  const army = entities.filter((e) => e.kind === 'unit' && e.team === RED && !e.sq && !e.dr && e.type !== 'drone').length; // squadron members and drones have their own budget
+  const army = entities.filter((e) => e.kind === 'unit' && e.team === RED && !e.sq && !e.dr && !e.cmd && e.type !== 'drone').length; // squadron members and drones have their own budget
   // A small army early on (3, then 5), growing to 14 late: it should build up, not rush.
   // The rusher (level 5) builds a bigger army, earlier, and holds it at a rally point until a wave is ready.
   const rusher = !!state.level.rules.rusher;
@@ -3280,6 +3304,255 @@ function commander(dt) {
     const u = state.finale ? spawnUnit(want, RED, ...spawnPt(RED, 12)) : spawnUnit(want, RED, 54, (Math.random() - 0.5) * 12);
     if (rusher) { u.hold = true; u.rally = [42 + Math.random() * 6, (Math.random() - 0.5) * 18]; }
   }
+}
+
+// ---------- The visible enemy commander (levels 1 to 5) ----------
+// The player: "there is no actual enemy you are playing against... their turrets just magically appear."
+// commanderBuild still DECIDES (same costs, limits, ramp, quiet first minute) and the cereal is paid at the decision, but the work is a JOB
+// done by a red car on the table: it drives to the spot, stops, a little crate unfolds for ~2.4 s, and only then does the turret appear.
+// One job at a time. Soft jobs (a raid, claiming a cap) give way when a build is decided. Down for 12 s when shot (jobs wait, nothing new is decided).
+// Level 6 (squads, army cap, ceasefire) and My Track keep the old instant build: cmdOn() is false there.
+let CMD_OFF = /[?&]nocmd\b/.test(location.search); // ?nocmd: the old invisible commander (test_commander.js compares the two)
+const CMD = { shield: 60, respawn: 12, buildT: 2.4, upT: 1.8, heal: 14, giveUp: 45, danger: 7 };
+const cmdOn = () => !CMD_OFF && !state.finale && !state.level?.finale && !MT.on && state.phase === 'battle';
+let cmdCost = null; // extra route cost per cell: your turrets' reach (the commander drives round it when it can)
+const cmdV = new THREE.Vector3();
+function commanderModel() { // a bigger, coral car (the Baron's colour) with a flag and a baguette on the roof; every added shape is shared
+  const g = buildModel('racer', RED, 1.15);
+  g.children[0].material.color.setHex(0xff5a4a);
+  part(g, 'cmdPole', () => new THREE.CylinderGeometry(0.05, 0.05, 2.4, 6), 'cmdDark', () => mat(0x1c1712), -1.3, 2.3, 0.7);
+  part(g, 'cmdFlag', () => new THREE.BoxGeometry(0.9, 0.6, 0.05), 'cmdCream', () => mat(0xfff8ec), -1.75, 3.15, 0.7);
+  part(g, 'cmdBag', () => new THREE.CylinderGeometry(0.3, 0.3, 2.4, 8).rotateX(Math.PI / 2), 'cmdCrust', () => mat(0xd9a55b), -0.2, 2.1, 0);
+  const b = part(g, 'cmdBubble', () => new THREE.SphereGeometry(2.6, 14, 10), 'cmdBubbleM', () => new THREE.MeshBasicMaterial({ color: 0xaee8ff, transparent: true, opacity: 0.25, depthWrite: false }), 0, 1.2, 0);
+  b.name = 'bubble'; b.visible = false;
+  return g;
+}
+function cmdMarker() { // the little crate that unfolds where a turret is about to appear (made once a level, shapes shared)
+  const g = new THREE.Group();
+  const box = new THREE.Mesh(shared('cmdMarkBox', () => new THREE.BoxGeometry(3.2, 2.2, 3.2)), crateMat(RED)); box.position.y = 1.1; g.add(box);
+  const ring = new THREE.Mesh(shared('cmdMarkRing', () => new THREE.RingGeometry(3.4, 4.2, 28).rotateX(-Math.PI / 2)), basicMat(0xffd166, 0.7)); ring.position.y = 0.12; g.add(ring);
+  g.visible = false; scene.add(g);
+  return g;
+}
+function cmdReset() {
+  if (state.cmd?.marker) scene.remove(state.cmd.marker);
+  state.cmd = null;
+  for (const id of ['cmdTag', 'cmdFloat', 'cmdArrow']) $(id).hidden = true;
+}
+function cmdSpawn(first) {
+  const C = state.cmd, sp = spawnPt(RED, 8);
+  const u = spawnUnit('commander', RED, sp[0], sp[1]);
+  u.mode = 'idle'; u.think = 0; u.target = null; u.shieldT = first ? state.time + CMD.shield : 0; u.bubble = u.mesh.getObjectByName('bubble');
+  C.u = u; C.path = null; C.repath = 0; C.building = false; C.status = 'waiting';
+  if (!first) { toast('The commander is back'); banner('The commander is back', ''); bannerTimer = 3; sfx('raid'); }
+}
+function cmdTick(dt) { // every frame, from commander(): make it, bring it back
+  if (!cmdOn()) return;
+  let C = state.cmd;
+  if (!C) {
+    const b = state.bases[RED];
+    C = state.cmd = { u: null, deadT: 0, job: null, path: null, pi: 0, repath: 0, gx: 0, gz: 0, px: b.x - 11 * Math.sign(b.x || 1), pz: b.z + 7, patX: 0, patZ: 0, patrolT: 18, modeT: 0, marker: cmdMarker(), label: '', labelT: 0, lx: 0, lz: 0, lpt: { x: 0, z: 0 }, building: false, status: 'waiting', claimAt: 60, built: 0 };
+    cmdSpawn(true);
+  }
+  if (!C.u && (C.deadT -= dt) <= 0) cmdSpawn(false);
+}
+function cmdDied(e) { // called from hurt()
+  const C = state.cmd;
+  if (!C || C.u !== e) return;
+  C.u = null; C.deadT = CMD.respawn; C.marker.visible = false; C.building = false; C.labelT = 0; C.status = 'down'; C.path = null;
+  banner('COMMANDER DOWN!', `Their builders stop for ${CMD.respawn} seconds`); bannerTimer = 3;
+}
+function cmdAssign(job) { const C = state.cmd; job.phase = 'go'; job.t = 0; job.w = 0; job.chk = 0; C.job = job; C.path = null; C.repath = 0; }
+function cmdRefund(job) { // a job that cannot be done: the cereal comes back
+  const C = state.cmd; state.cereal[RED] += job.cost || 0; state.clips[RED] += job.clips || 0;
+  C.job = null; C.building = false; C.marker.visible = false; C.labelT = 0;
+}
+function cmdDanger() { // fill cmdCost: cells inside the reach of your turrets and toy box cost extra to route through
+  const n = GW * GD;
+  if (!cmdCost || cmdCost.length !== n) cmdCost = new Float32Array(n); else cmdCost.fill(0);
+  for (const e of entities) {
+    if (e.team !== BLUE || e.hp <= 0 || !(e.kind === 'turret' || e.kind === 'base') || e.type === 'wall' || e.type === 'magnet' || !e.weapon) continue;
+    const R = e.weapon.range + 3, [i0, j0] = cellOf(e.x - R, e.z - R), [i1, j1] = cellOf(e.x + R, e.z + R);
+    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
+      const cx = i * CELL - W / 2 + CELL / 2, cz = j * CELL - D / 2 + CELL / 2;
+      if ((cx - e.x) ** 2 + (cz - e.z) ** 2 < R * R) cmdCost[j * GW + i] = CMD.danger;
+    }
+  }
+}
+function cmdGo(u, gx, gz, stop, dt, ignore) { // drive to a point by a route that avoids your turrets' reach
+  const C = state.cmd;
+  if ((C.repath -= dt) <= 0 || Math.abs(C.gx - gx) + Math.abs(C.gz - gz) > 3) {
+    C.repath = 2.5; C.gx = gx; C.gz = gz; C.pi = 0;
+    if (navDirty) navBuild();
+    cmdDanger();
+    C.path = findPath(u.x, u.z, gx, gz, closed, cmdCost);
+  }
+  const P = C.path;
+  if (!P || !P.length) { steer(u, gx, gz, stop, dt, u.stats, ignore); return; } // no route known: plain steer (it looks for one itself)
+  while (C.pi < P.length - 1 && (P[C.pi][0] - u.x) ** 2 + (P[C.pi][1] - u.z) ** 2 < 6.25) C.pi++;
+  const last = C.pi === P.length - 1;
+  steer(u, P[C.pi][0], P[C.pi][1], last ? stop : 0.4, dt, u.stats, ignore);
+}
+function cmdSafe(x, z) { // nobody of yours near a spot: your turrets' reach, your cars
+  for (const e of entities) {
+    if (e.team !== BLUE || e.hp <= 0) continue;
+    if ((e.kind === 'turret' || e.kind === 'base') && e.weapon && e.type !== 'wall' && (e.x - x) ** 2 + (e.z - z) ** 2 < (e.weapon.range + 6) ** 2) return false;
+    if ((e.kind === 'unit' || (e.kind === 'player' && e.alive)) && !e.fly && (e.x - x) ** 2 + (e.z - z) ** 2 < 400) return false;
+  }
+  return true;
+}
+function cmdMaybeClaim() { // idle and a bottle cap is not theirs: go and stand on it (soft job: a build decision takes over)
+  const C = state.cmd, u = C.u;
+  if (!u || C.job || u.mode === 'flee' || state.time < C.claimAt) return;
+  C.claimAt = state.time + 25;
+  let best = null, bd = 80 * 80;
+  for (const o of outposts) {
+    if (o.owner === RED || (o.cmdBad || 0) > state.time || !cmdSafe(o.x, o.z)) continue;
+    const d = dist2(u, o);
+    if (d < bd) { bd = d; best = o; }
+  }
+  if (best) cmdAssign({ k: 'claim', o: best, cost: 0, soft: true });
+}
+function cmdRaidCue() { // a raid or a hijacker has just been sent: the commander sometimes rides along (a short one, only when healthy)
+  const C = state.cmd, u = C?.u;
+  if (!cmdOn() || !u || (C.job && !C.job.soft) || u.mode === 'flee' || u.hp < u.maxHp * 0.7 || aiTime() < 120 || Math.random() < 0.5) return;
+  cmdAssign({ k: 'raid', cost: 0, soft: true, tr: null, pick: 0 });
+}
+const cmdLabel = (C, text, x, z, t) => { C.label = text; C.lx = x; C.lz = z; C.lpt.x = x; C.lpt.z = z; C.labelT = t; };
+function cmdThink(u, dt) {
+  const C = state.cmd;
+  if (!C || C.u !== u) return;
+  u.bubble.visible = u.shieldT > state.time;
+  // it shoots what comes near, like any car
+  u.cool -= dt;
+  if ((u.think -= dt) <= 0) { u.think = 0.35; u.target = nearestEnemy(u, u.weapon.range); }
+  const t = u.target;
+  if (t && t.hp > 0 && !(t.kind === 'player' && !t.alive) && u.cool <= 0 && dist2(u, t) < u.weapon.range * u.weapon.range) { u.cool = u.weapon.rate * 1.6; fire(u, t, u.weapon); }
+  // it mends at its toy box
+  if (u.hp < u.maxHp && dist2(u, state.bases[RED]) < 225) u.hp = Math.min(u.maxHp, u.hp + CMD.heal * dt);
+  // hurt: back to the box (the job waits)
+  if (u.mode !== 'flee' && u.hp < u.maxHp * 0.4) { u.mode = 'flee'; C.building = false; C.marker.visible = false; C.labelT = 0; if (C.job) C.job.phase = 'go'; }
+  if (u.mode === 'flee') {
+    C.status = 'retreating';
+    cmdGo(u, C.px, C.pz, 2.5, dt);
+    if (u.hp >= u.maxHp * 0.9) u.mode = 'idle';
+    return;
+  }
+  if (C.job) { cmdJob(u, C.job, dt); return; }
+  C.status = 'waiting';
+  if (u.mode === 'patrol') { // a short wander near the box
+    cmdGo(u, C.patX, C.patZ, 2, dt);
+    if ((C.patX - u.x) ** 2 + (C.patZ - u.z) ** 2 < 10 || (C.modeT -= dt) <= 0) { u.mode = 'idle'; C.patrolT = 18 + Math.random() * 14; }
+    return;
+  }
+  if ((C.px - u.x) ** 2 + (C.pz - u.z) ** 2 > 16) { cmdGo(u, C.px, C.pz, 2.5, dt); return; }
+  drive(u, 0, 0, 0, dt, u.stats);
+  if ((C.patrolT -= dt) <= 0) {
+    u.mode = 'patrol'; C.modeT = 14;
+    C.patX = C.px - 4 + (Math.random() - 0.5) * 22; C.patZ = Math.max(-D / 2 + 9, Math.min(D / 2 - 9, C.pz + (Math.random() - 0.5) * 30));
+  }
+}
+function cmdJob(u, job, dt) {
+  const C = state.cmd;
+  if (job.k === 'raid') return cmdRaid(u, job, dt);
+  let gx, gz, stop, near, ignore = null;
+  if (job.k === 'claim') { gx = job.o.x; gz = job.o.z; stop = 0.5; near = job.o.r * 0.8; }
+  else if (job.k === 'upgrade') { gx = job.tur.x; gz = job.tur.z; stop = 4.5; near = 6; ignore = job.tur; }
+  else { gx = job.x; gz = job.z; stop = job.k === 'toaster' ? 7 : 5; near = stop + 1.4; }
+  // is the job still possible? (checked twice a second)
+  if ((job.chk -= dt) <= 0 && job.phase === 'go') {
+    job.chk = 0.5;
+    const bad = job.k === 'turret' ? canPlace(job.x, job.z, RED) : job.k === 'toaster' ? toasterSpot(job.x, job.z) : job.k === 'upgrade' ? (job.tur.hp <= 0 || job.tur.level >= 3) : job.k === 'claim' ? job.o.owner === RED : false;
+    if (bad) { if (job.k === 'claim') C.job = null; else cmdRefund(job); return; }
+  }
+  if (job.phase === 'go') {
+    C.status = job.k === 'claim' ? 'taking a cap' : job.k === 'upgrade' ? 'driving to upgrade' : 'driving to build';
+    job.t += dt;
+    cmdGo(u, gx, gz, stop, dt, ignore);
+    if (job.t > CMD.giveUp) { if (job.k === 'claim') { job.o.cmdBad = state.time + 60; C.job = null; } else cmdRefund(job); return; }
+    if ((gx - u.x) ** 2 + (gz - u.z) ** 2 < near * near) {
+      job.phase = 'work'; job.w = 0;
+      if (job.k === 'turret' || job.k === 'toaster') {
+        C.building = true; C.marker.position.set(job.x, state.ledge ? ledgeLift({ x: job.x, z: job.z }) : 0, job.z); C.marker.visible = true;
+        cmdLabel(C, job.k === 'toaster' ? 'They are building a toaster launcher!' : 'They are building a turret!', job.x, job.z, CMD.buildT + 0.3);
+        sfx('tick');
+      } else if (job.k === 'upgrade') cmdLabel(C, 'They are upgrading a turret!', job.tur.x, job.tur.z, CMD.upT + 0.3);
+    }
+    return;
+  }
+  // work: stand still, the crate unfolds
+  drive(u, 0, 0, 0, dt, u.stats);
+  job.w += dt;
+  if (job.k === 'claim') {
+    C.status = 'taking a cap';
+    if (job.o.owner === RED) C.job = null; else if (job.w > 14 || dist2(u, job.o) > job.o.r * job.o.r) { if (job.w > 14) job.o.cmdBad = state.time + 40; C.job = null; }
+    return;
+  }
+  if (job.k === 'upgrade') {
+    C.status = 'upgrading';
+    if (job.tur.hp <= 0) { cmdRefund(job); return; }
+    if (job.w > 0.5 && Math.random() < dt * 5) burst(job.tur.x, job.tur.z, 0xffc23d, 2, 5, 3);
+    if (job.w >= CMD.upT) {
+      levelUp(job.tur); burst(job.tur.x, job.tur.z, 0xffc23d, 14, 11, 3);
+      if (dist2(job.tur, state.player) < 3600) sfx('build');
+      cmdLabel(C, 'They upgraded a turret!', job.tur.x, job.tur.z, 1.4); C.job = null;
+    }
+    return;
+  }
+  C.status = 'building';
+  const f = Math.min(1, job.w / CMD.buildT), mk = C.marker;
+  mk.scale.set(0.5 + 0.5 * f, 0.4 + 0.6 * f + Math.sin(job.w * 14) * 0.05, 0.5 + 0.5 * f); mk.rotation.y += dt * 2.2;
+  if (job.w < CMD.buildT) return;
+  C.building = false; mk.visible = false;
+  const x = job.x, z = job.z;
+  if (job.k === 'toaster') {
+    if (toasterSpot(x, z)) { cmdRefund(job); return; }
+    makeToaster(RED, x, z);
+  } else {
+    if (canPlace(x, z, RED)) { cmdRefund(job); return; }
+    const tur = makeTurret(job.type, RED, x, z);
+    if (job.up) levelUp(tur);
+  }
+  burst(x, z, COLORS[RED], 14, 12, 2); burst(x, z, 0xfff8ec, 8, 9, 2);
+  if (dist2({ x, z }, state.player) < 3600) sfx('build');
+  cmdLabel(C, job.k === 'toaster' ? 'They built a toaster launcher!' : 'They built a turret!', x, z, 1.4);
+  C.built++; C.job = null;
+}
+function cmdRaid(u, job, dt) { // ride after one of your trucks for a bit, and shoot (the generic aim does the shooting)
+  const C = state.cmd;
+  C.status = 'raiding';
+  if (!job.tr || job.tr.hp <= 0 || (job.pick -= dt) <= 0) {
+    job.pick = 1; job.tr = null; let bd = 1e9;
+    for (const e of entities) if (e.kind === 'worker' && e.team === BLUE && e.role === 'truck' && e.hp > 0 && !e.trojan) { const d = dist2(u, e); if (d < bd) { bd = d; job.tr = e; } }
+  }
+  job.t += dt;
+  if (!job.tr || job.t > 22) { C.job = null; return; }
+  if (u.hp < u.maxHp * 0.6 && dist2(u, state.player) < 400) { C.job = null; return; }
+  cmdGo(u, job.tr.x, job.tr.z, 8, dt);
+}
+// HUD, once a frame from render(): a "Commander" tag over the car (an arrow at the screen edge when it is off-camera), and the label at the build spot
+function cmdHud(dt) {
+  const C = state.cmd, u = C?.u, tag = $('cmdTag'), arrow = $('cmdArrow'), fl = $('cmdFloat');
+  const on = !!u && u.hp > 0 && u.mesh.visible && state.phase === 'battle' && !state.over;
+  if (on) {
+    cmdV.set(u.x, 4, u.z).project(camera);
+    const off = cmdV.z > 1 || cmdV.x < -0.96 || cmdV.x > 0.96 || cmdV.y < -0.9 || cmdV.y > 0.9;
+    tag.hidden = off; arrow.hidden = !off;
+    if (!off) { tag.style.left = `${(cmdV.x + 1) / 2 * innerWidth}px`; tag.style.top = `${(1 - cmdV.y) / 2 * innerHeight}px`; }
+    else {
+      const k = 0.88 / Math.max(Math.abs(cmdV.x), Math.abs(cmdV.y), 0.01), ax = cmdV.x * k, ay = cmdV.y * k, s = cmdV.z > 1 ? -1 : 1;
+      arrow.style.left = `${(ax * s + 1) / 2 * innerWidth - 10}px`; arrow.style.top = `${(1 - ay * s) / 2 * innerHeight - 9}px`;
+      arrow.style.transform = `rotate(${Math.atan2(cmdV.x * s, cmdV.y * s)}rad)`;
+    }
+  } else { tag.hidden = true; arrow.hidden = true; }
+  if (C && C.labelT > 0 && state.phase === 'battle' && !state.over && (!state.level.dark || isLit(C.lpt))) {
+    C.labelT -= dt;
+    cmdV.set(C.lx, 9, C.lz).project(camera);
+    const off = cmdV.z > 1 || Math.abs(cmdV.x) > 1.05 || Math.abs(cmdV.y) > 1.05;
+    if (fl.textContent !== C.label) fl.textContent = C.label;
+    fl.hidden = off;
+    if (!off) { fl.style.left = `${(cmdV.x + 1) / 2 * innerWidth}px`; fl.style.top = `${(1 - cmdV.y) / 2 * innerHeight}px`; }
+  } else fl.hidden = true;
 }
 
 // ---------- The enemy's tricks: a domino run at your toy box, and hijacking your trucks ----------
@@ -3310,7 +3583,7 @@ function enemyTricks() {
   if (gumball) {
     const spot = gumball.spot ||= { x: gumball.x + 6 * (gumball.s || 1), z: gumball.z, ready: true };
     if (state.cereal[RED] >= 40 && gumball.cool[RED] <= 0 && state.time > 45 && (!state.finale || state.time >= (gumball.redNext || 0)) && !entities.some((e) => e.presser === spot && e.hp > 0)) {
-      const car = entities.filter((e) => e.kind === 'unit' && e.team === RED && e.hp > 0 && !e.plan && !e.presser && !e.fly && !e.hero).sort((a, b) => dist2(a, spot) - dist2(b, spot))[0];
+      const car = entities.filter((e) => e.kind === 'unit' && e.team === RED && e.hp > 0 && !e.plan && !e.presser && !e.fly && !e.hero && !e.cmd).sort((a, b) => dist2(a, spot) - dist2(b, spot))[0];
       if (car && Math.random() < 0.02) car.presser = spot;
     }
     for (const e of entities) if (e.presser === spot && e.hp > 0 && dist2(e, spot) < 49) { e.presser = null; if (state.finale) gumball.redNext = state.time + 35 + Math.random() * 35; if (gumball.cool[RED] <= 0) spinGumball(RED); } // (level 6: the enemy spins every 35 to 70 s)
@@ -3324,7 +3597,7 @@ function enemyTricks() {
   if (run && state.finale) redPressGreat(run); // level 6: a heavy squad is sent to press the Great Run button now and then
   else if (run && run.ready && state.time > 100 && !entities.some((e) => e.presser === run && e.hp > 0)) {
     // Send a Monster buggy if they have one; otherwise the nearest cars until they weigh enough together.
-    const cars = entities.filter((e) => e.kind === 'unit' && e.team === RED && e.hp > 0 && !e.plan && e.type !== 'hijacker').sort((a, b) => dist2(a, run) - dist2(b, run));
+    const cars = entities.filter((e) => e.kind === 'unit' && e.team === RED && e.hp > 0 && !e.plan && e.type !== 'hijacker' && !e.cmd).sort((a, b) => dist2(a, run) - dist2(b, run));
     const big = cars.find((e) => weightOf(e) >= BUTTON_WEIGHT);
     let crew = big ? [big] : [], w = big ? weightOf(big) : 0;
     for (const c of cars) { if (w >= BUTTON_WEIGHT) break; if (!crew.includes(c)) { crew.push(c); w += weightOf(c); } }
@@ -3344,6 +3617,7 @@ function enemyTricks() {
     (state.finale ? spawnUnit('hijacker', RED, ...spawnPt(RED, 20)) : spawnUnit('hijacker', RED, 54, (Math.random() - 0.5) * 20)).sneak = !!sneaky;
     // Sneaky enemy: after 4:00, with two trucks or more, a second hijacker follows the first.
     if (sneaky && state.time > 240 && state.cereal[RED] >= 25 && workersOf(BLUE, 'truck').filter((t) => !t.trojan).length > 1) { state.cereal[RED] -= 25; spawnUnit('hijacker', RED, 54, (Math.random() - 0.5) * 20).sneak = true; }
+    cmdRaidCue();
     toast('A hijacker is after your trucks!');
   }
 }
@@ -3408,6 +3682,7 @@ function hijackerThink(u, dt) {
 
 // ---------- Unit brains ----------
 function unitThink(u, dt) {
+  if (u.cmd) return cmdThink(u, dt); // the visible enemy commander
   if (u.dr) return droneThink(u, dt); // drone types: shield, repair, scout, bomber
   if (u.fly) return bomberThink(u, dt); // level 6 bombers fly: no routes, no walls
   if (u.hero) return heroThink(u, dt); // level 6 gumball heroes and the Stand Mixer
@@ -3622,6 +3897,7 @@ function spawnRaid() {
   const n = lo + Math.floor(Math.random() * (hi - lo + 1));
   const sneaky = !!state.level.rules.sneaky;
   for (let i = 0; i < n; i++) { const u = spawnUnit('raider', RED, 54, (i - (n - 1) / 2) * 5); u.raid = true; u.sneak = sneaky; }
+  cmdRaidCue();
   if (sneaky) toast('Raiders are sneaking in the dark! Guard your trucks'); // no siren: you have to listen for them
   else { toast('Raid incoming!'); sfx('raid'); }
 }
@@ -4625,6 +4901,7 @@ function turretTarget(e) {
 // The enemy builds drones too (fairness): Gunners now and then, and the types its loadout has (aiHas).
 function aiDrones() {
   if (aiTime() < 75 || state.time < (state.aiDroneAt || 0)) return false;
+  if (cmdOn() && state.cmd && !state.cmd.u) return false; // the commander is down: nothing is bought until it is back
   if (state.finale?.stage === 'buildup') return false;
   state.aiDroneAt = state.time + 20 + Math.random() * 8;
   const mine = (id) => entities.filter((e) => e.team === RED && e.hp > 0 && e.type === DRONES[id].unit).length;
@@ -7373,7 +7650,8 @@ function update(dt) {
   const count = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
   const eco = (t) => `${count(workersOf(t, 'truck').length, 'truck')} · ${count(workersOf(t, 'digger').length, 'digger')}`;
   $('ecoBlue').textContent = eco(BLUE);
-  $('ecoRed').textContent = eco(RED);
+  const cm = state.cmd; // the commander's marker: what it is doing now
+  $('ecoRed').textContent = eco(RED) + (cm ? ` · Commander: ${cm.u ? cm.status : `down ${Math.ceil(cm.deadT)}s`}` : '');
   for (const [t, id] of [[BLUE, 'pctBlue'], [RED, 'pctRed']]) $(id).textContent = `${Math.max(0, Math.ceil(state.bases[t].hp / state.bases[t].maxHp * 100))}%`;
   $('hpRed').style.width = `${Math.max(0, state.bases[RED].hp / state.bases[RED].maxHp) * 100}%`;
   [...$('pips').children].forEach((el, i) => { el.style.background = ['#9a8f80', '#2f7df6', '#ef4136'][outposts[i].owner + 1]; });
@@ -7488,6 +7766,7 @@ function render(dt) {
       arrow.style.transform = `rotate(${Math.atan2(v.x, v.y)}rad)`;
     }
   } else arrow.hidden = true;
+  cmdHud(dt);
   raceArrow();
   mixArrowDraw();
   if (state.finale) { finaleDraw(dt, time); if (state.finale.ending) endingDraw(dt, time); }
