@@ -5,13 +5,13 @@
   'use strict';
   var AC = root.AudioContext || root.webkitAudioContext;
   var clamp01 = function (v, d) { v = +v; return v !== v ? (d || 0) : (v < 0 ? 0 : v > 1 ? 1 : v); };
-  var rnd = Math.random;
+  var rng = Math.random, rnd = function () { return rng(); };   /* rng is Math.random unless setSeed is called */
   var VOICE_CAP = 24;
   var CAPS = { robot: 6, thunder: 2, key: 2, ui: 4, gull: 2, music: 3, other: 8 };
   var S = {
     ctx: null, master: null, comp: null, post: null, fx: null, mus: null, beds: null, running: false, muted: false,
     vol: { master: 0.7, fx: 1, music: 0 }, p: { sea: 0, wind: 0, rain: 0, night: 0 },
-    voices: [], robots: {}, timer: 0, nextGull: 0, nextCricket: 0, nextChord: 0, listening: false, applied: { sea: -1, wind: -1, rain: -1, night: -1 }
+    ambient: true, voices: [], robots: {}, timer: 0, nextGull: 0, nextCricket: 0, nextChord: 0, listening: false, applied: { sea: -1, wind: -1, rain: -1, night: -1 }
   };
 
   /* ---------- noise buffers, one set per context ---------- */
@@ -210,8 +210,8 @@
     for (id in S.robots) { r = S.robots[id]; if (r.state === 'off') continue;
       if (r.next < now - 0.5) r.next = now + 0.02;
       while (r.next < now + 0.12) { play(r.kind, { state: r.state, wear: r.wear }, r.next); r.next += interval(r); } }
-    if (p.night < 0.6 && now > S.nextGull) { S.nextGull = now + (8 + rnd() * 17) / (0.4 + 0.6 * (1 - p.wind)); if (rnd() < 0.8 && S.vol.fx > 0) play('gull', {}); }
-    if (p.night > 0.4 && now > S.nextCricket) { S.nextCricket = now + 0.5 + rnd() * 2.5 / p.night; play('cricket', {}); }
+    if (S.ambient && p.night < 0.6 && now > S.nextGull) { S.nextGull = now + (8 + rnd() * 17) / (0.4 + 0.6 * (1 - p.wind)); if (rnd() < 0.8 && S.vol.fx > 0) play('gull', {}); }
+    if (S.ambient && p.night > 0.4 && now > S.nextCricket) { S.nextCricket = now + 0.5 + rnd() * 2.5 / p.night; play('cricket', {}); }
     if (S.vol.music > 0.01 && !S.noChord && now > S.nextChord) { S.nextChord = now + 12; S.chordN = (S.chordN || 0) + 1; play('chord', { n: S.chordN }); }
   }
   function startTimer() { if (!S.timer) S.timer = setInterval(tick, 50); }
@@ -240,6 +240,9 @@
     /* additive hooks for audio_song.js: the live context and music bus; chordBed(false) silences the plain chord bed so the song can take over */
     hook: function () { return { ctx: S.ctx, bus: S.mus, running: API.isRunning() }; },
     chordBed: function (on) { S.noChord = !on; },
+    /* additive: ambient(false) stops the random gulls and crickets (the film places its own); setSeed(n) makes this module's randomness repeatable. Defaults change nothing. */
+    ambient: function (on) { S.ambient = on === undefined ? true : !!on; return S.ambient; },
+    setSeed: function (n) { var a = (+n | 0) || 1; rng = function () { a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; return true; },
     voices: voiceCount,
     robotInterval: function (kind, battery, state) { var b = clamp01(battery, 1); return (BASE[kind] || 1.5) * (1 + 2.2 * (1 - b) * (1 - b)) * (state === 'wet' ? 1.25 : 1); },
     events: function () { return Object.keys(E).concat(Object.keys(ALIAS)); },

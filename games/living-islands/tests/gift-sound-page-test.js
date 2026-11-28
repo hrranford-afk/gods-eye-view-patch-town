@@ -118,14 +118,14 @@ if (want('beds') || want('events') || want('song')) {
   ok(errs.length === 0, 'beds, events, song: zero console errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : '')); await p.close();
 }
 if (want('storm')) {
-  const { p, errs } = await open(GIFT + '&storm=1&stormsec=14&stormfast=8', 834, 1062); await unlockAndSpy(p);
+  const { p, errs } = await open(GIFT + '&storm=1&stormsec=40&stormfast=2', 834, 1062); await unlockAndSpy(p);
   const hum = await waitEv(p, 'rockHum', 240000); ok(hum, 'storm: the rock hum comes before the storm');
-  const roar = await waitEv(p, 'stormRoar', 400000); ok(roar, 'storm: then the roar');
+  const roar = await waitEv(p, 'stormRoar', 400000); { const e0 = await p.evaluate(() => window.__ev.map(e => e.split(/[:@]/)[0])); ok(e0.indexOf('rockHum') >= 0 && e0.indexOf('rockHum') < e0.indexOf('stormRoar'), 'storm: the hum is heard before the roar'); } ok(roar, 'storm: then the roar');
   const th = await waitEv(p, 'thunder', 600000); ok(th, 'storm: then thunder');
-  const ev = await p.evaluate(() => window.__ev), hp = ev.filter(e => e.startsWith('rockHum:')).map(e => +e.split(':')[1]);
-  ok(hp.length >= 1 && hp.every((v, i) => i === 0 || v >= hp[i - 1] - 1e-9), 'storm: the hum pitch only rises (' + hp.map(v => v.toFixed(2)).join(' ') + ')');
+  const ev = await p.evaluate(() => window.__ev), hp = ev.filter(e => e.startsWith('rockHum:')).map(e => parseFloat(e.split(':')[1]));
+  ok(hp.length >= 1 && hp.every((v, i) => i === 0 || v >= hp[i - 1] - 1e-9), 'storm: the hum pitch only rises (' + hp.map(v => v.toFixed(2)).join(' ') + '; raw ' + ev.filter(e => e.startsWith('rockHum')).slice(0, 4).join(' ') + ')');
   const sg = await p.evaluate(() => ({ calls: window.__sg.filter(x => x === 'setStorm').length, cue: window.__sg.filter(x => x === 'cue:thunder').length, dark: LI_SONG.stats().storm }));
-  ok(sg.calls >= 1 && sg.dark > 0.3, 'storm: the song is told (storm ' + sg.dark.toFixed(2) + ')'); const pr = await params(p); ok(pr.rain > 0.1 && pr.wind > 0.1 && pr.sea > 0.2, 'storm: wind, rain and an opened sea (' + pr.wind.toFixed(2) + ', ' + pr.rain.toFixed(2) + ', ' + pr.sea.toFixed(2) + ')');
+  ok(sg.calls >= 1 && sg.dark > 0.3, 'storm: the song is told (storm ' + sg.dark.toFixed(2) + ')'); await p.waitForFunction(() => LI_AUDIO.stats().params.rain > 0.1, null, { timeout: 60000 }).catch(() => 0); const pr = await params(p); ok(pr.rain > 0.1 && pr.wind > 0.1 && pr.sea > 0.2, 'storm: wind, rain and an opened sea (' + pr.wind.toFixed(2) + ', ' + pr.rain.toFixed(2) + ', ' + pr.sea.toFixed(2) + ')');
   ok(errs.length === 0, 'storm: zero console errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : '')); await p.close();
 }
 if (want('robots')) {

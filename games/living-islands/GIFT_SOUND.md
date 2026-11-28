@@ -17,3 +17,6 @@ The page's robots are carriers with a role. Role `sorter` is the audio's `sorter
 
 ## Week beats (the calendar has no weekday names)
 The game calendar has twelve 30-day months and no weekdays, so the sound cuts the day count into weeks of seven: days 1 to 3 of a week are tender's day (the song's opening phrase), days 4 and 5 low-tide days (the quiet middle), days 6 and 7 lighthouse days (the variation). Day 1 is tender's day.
+
+## audio.js additive change (asked for by the opening film)
+`LI_AUDIO.ambient(on)` (default true) turns audio.js's own random gulls and crickets off and on, and `LI_AUDIO.setSeed(n)` makes its randomness (those, robot jitter, noise buffers made afterwards) repeatable. Nothing else changed; with the defaults the behaviour is as before. The only edit to audio.js in this job.

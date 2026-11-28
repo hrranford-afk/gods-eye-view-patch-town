@@ -110,5 +110,11 @@ const perWindow = (list, sec) => { let worst = 0; for (const c of list) worst = 
 { const F = fakes(), core = G.create({ A: Object.assign(F.A, { playEvent: () => { throw new Error('boom'); }, robotWork: () => { throw new Error('boom'); } }), S: F.S, seed: 1 }), s = base(); F.setRun(true); let threw = null;
   try { run(F, core, s, 0, 3, 0.2, (q) => { q.stock++; q.robots = [{ kind: 'hauler', work: true, moving: true, battery: .5, state: 'work', ground: 'sand' }]; }); } catch (e) { threw = e; } ok(!threw, 'audio calls that throw never reach the game'); }
 
+/* 9. audio.js additive: ambient(on) and setSeed(n); defaults unchanged */
+{ const vm = require('vm'), fs = require('fs'), win = { addEventListener() { }, removeEventListener() { } }; vm.runInNewContext(fs.readFileSync(new URL('../audio.js', import.meta.url), 'utf8'), { window: win, setInterval: () => 0, clearInterval() { }, Math });
+  const A = win.LI_AUDIO; ok(typeof A.ambient === 'function' && typeof A.setSeed === 'function', 'audio.js has ambient() and setSeed()');
+  ok(A.ambient() === true && A.ambient(false) === false && A.ambient(true) === true, 'ambient is on by default, can be switched off and on');
+  ok(A.setSeed(42) === true, 'setSeed accepts a seed');
+  const old = ['init', 'unlock', 'isRunning', 'setSeaEnergy', 'setWind', 'setRain', 'setNight', 'robotWork', 'robotStop', 'playEvent', 'setMasterVolume', 'setEffectsVolume', 'setMusicVolume', 'mute', 'isMuted', 'voices', 'stats', 'renderOffline', 'hook', 'chordBed']; ok(old.every(k => typeof A[k] === 'function'), 'every earlier function is still there'); }
 console.log((fails ? 'FAIL' : 'PASS') + ' ' + (n - fails) + ' of ' + n);
 process.exit(fails ? 1 : 0);
