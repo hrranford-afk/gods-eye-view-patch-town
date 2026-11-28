@@ -643,14 +643,50 @@ $('look').addEventListener('click', function () { applyLook(!pretty); this.textC
 
 /* ---------- slow-motion replay (deliberate only) ---------- */
 var replaySpeed = 0.25, ff = false;
+var hitRep = null;                                      /* the replay of the hit: the same replay, but the first part runs fast and only the last shot is slow */
+var DISABLE_IN_REPLAY = ['fire', 'rebuild', 'ground', 'tide', 'pieces', 'modeTopple', 'modeKeep', 'keepDone'];
+function beginReplay(msg) {
+  ses.startReplay(); acc = 0; JX.reset(); bellSeen = 0; popPct = 0; $('replay').textContent = 'Stop replay'; $('replay').classList.add('on'); status(msg);
+  DISABLE_IN_REPLAY.forEach(function (id) { var e = $(id); if (e) e.disabled = true; });
+}
 $('replay').addEventListener('click', function () {
   if (!ses || loading) return;
   if (ses.replay) { ff = true; status('Skipping to the end of the replay...'); return; }
   if (!ses.events.length) { status('Nothing to replay yet: fire a few shots first.', 2000); return; }
-  ses.startReplay(); acc = 0; JX.reset(); bellSeen = 0; popPct = 0; $('replay').textContent = 'Stop replay'; $('replay').classList.add('on'); status('REPLAY at 1/4 speed (same scene, same shots)');
-  ['fire', 'rebuild', 'ground', 'tide', 'pieces', 'modeTopple', 'modeKeep', 'keepDone'].forEach(function (id) { var e = $(id); if (e) e.disabled = true; });
+  beginReplay('REPLAY at 1/4 speed (same scene, same shots)');
 });
-function replayEnded() { $('replay').textContent = 'Replay slow'; $('replay').classList.remove('on'); ff = false; ['fire', 'rebuild', 'ground', 'tide', 'pieces', 'modeTopple', 'modeKeep', 'keepDone'].forEach(function (id) { var e = $(id); if (e) e.disabled = false; }); status('Replay finished: back to live (same state as before)', 2500); }
+/* Replay the hit: offered when the bell has fallen (Topple) or on three stars (Keep). It rebuilds the scene as the replay does, runs the early shots fast, then plays the last shot at a quarter speed with a close camera, then skips to the end so the scene is back in its final state. Slow motion only ever happens here and in the drawer's Replay slow. */
+function hitBtnUI() {
+  var b = $('hitReplay'), show = false;
+  if (ses && !loading) {
+    if (hitRep) { show = true; b.textContent = 'Skip replay'; }
+    else if (!ses.replay) { show = keepMode ? !!(roundOver && roundOver.over === 'result' && roundOver.stars === 3) : !!ses.bellDown; b.textContent = 'Replay the hit'; }
+  }
+  b.classList.toggle('show', show);
+}
+$('hitReplay').addEventListener('click', function () {
+  if (!ses || loading) return;
+  if (hitRep) { ff = true; status('Skipping to the end of the replay...'); return; }
+  if (ses.replay || !ses.events.length) return;
+  var ev = ses.events, i, shotStep = 0, lim = keepMode ? 1e9 : ses.bellDownAt, bi = 0, fl = ses.bellFlags;
+  for (i = ev.length - 1; i >= 0; i--) if (ev[i].t === 'shot' && ev[i].s <= lim) { shotStep = ev[i].s; break; }
+  for (i = 1; i < fl.length; i++) if ((fl[i] || 0) > (fl[bi] || 0)) bi = i;
+  var f = ses.sim.fort;
+  hitRep = { phase: 'seek', seekTo: Math.max(0, shotStep - 24), stopAt: keepMode ? shotStep + 150 : Math.max(ses.bellDownAt, shotStep) + 50, bellIdx: bi, shotStep: shotStep, saved: { az: orb.az, el: orb.el, dist: orb.dist, tx: orb.tx, ty: orb.ty, tz: orb.tz }, az: orb.az + 0.55, fx: f ? f.design.cx : orb.tx, fy: f ? f.design.baseY + 1 : orb.ty, fz: f ? f.design.cz : orb.tz, keepEnd: $('keepEnd').style.display };
+  $('keepEnd').style.display = 'none'; drawerOpen(false);
+  beginReplay('Rewinding to the last shot...');
+});
+function hitCam(dt) {                                   /* the close camera: follow the bell (Topple) or the shot in the air (Keep) at about half your distance (4 to 8 m), a little turned from your view */
+  var h = hitRep, f = ses.sim.fort, r, k = 1 - Math.exp(-dt * 3.5);
+  if (keepMode) { var q = ses.sim.ammoQ; r = q.length ? q[q.length - 1] : null; if (r && !r.dead && r.cx !== undefined && ses.sim.steps >= h.shotStep) { h.fx = r.cx; h.fy = r.cy; h.fz = r.cz; } }
+  else if (f && f.bells[h.bellIdx] && f.bells[h.bellIdx].cx !== undefined) { r = f.bells[h.bellIdx]; h.fx = r.cx; h.fy = r.cy; h.fz = r.cz; }
+  orb.tx += (h.fx - orb.tx) * k; orb.ty += (h.fy - orb.ty) * k; orb.tz += (h.fz - orb.tz) * k; orb.dist += (Math.max(4, Math.min(8, h.saved.dist * 0.55)) - orb.dist) * k; orb.el += (0.32 - orb.el) * k; orb.az += (h.az - orb.az) * k;
+}
+function replayEnded() {
+  $('replay').textContent = 'Replay slow'; $('replay').classList.remove('on'); ff = false; DISABLE_IN_REPLAY.forEach(function (id) { var e = $(id); if (e) e.disabled = false; });
+  if (hitRep) { var sv = hitRep.saved; orb.az = sv.az; orb.el = sv.el; orb.dist = sv.dist; orb.tx = sv.tx; orb.ty = sv.ty; orb.tz = sv.tz; $('keepEnd').style.display = hitRep.keepEnd; hitRep = null; }
+  hitBtnUI(); status('Replay finished: back to live (same state as before)', 2500);
+}
 
 /* ---------- performance panel ---------- */
 var P = { frame: [], phys: [], steps: [], tris: 0, calls: 0 };
@@ -673,12 +709,12 @@ function stepOnce() {
   return ses.step();
 }
 /* a bell that has just fallen: a ring wave and glow; in Topple the confetti and the flash for the win (the primary bell, or every bell of a Grand fort) */
-function bellFx() {
+function bellFx(silent) {
   var f = ses.sim.fort, fl = ses.bellFlags, i, r, w;
   if (!f || !fl) return;
   for (i = 0; i < f.bells.length; i++) {
     if (!fl[i] || (bellSeen & (1 << i))) continue;
-    bellSeen |= 1 << i; r = f.bells[i]; if (r.cx === undefined || !JX.on) continue;
+    bellSeen |= 1 << i; r = f.bells[i]; if (silent || r.cx === undefined || !JX.on) continue;
     if (keepMode) { JX.bellRing(r.cx, r.cy, r.cz, true); continue; }
     if (ses.bellDown) { JX.win(r.cx, r.cy, r.cz, f.bells.length > 1 ? 130 : 100); JX.pop(f.bells.length > 1 ? 'Every bell is down!' : 'Bell down!', r.cx, r.cy + 0.6, r.cz); }
     else { JX.bellRing(r.cx, r.cy, r.cz, true); JX.confetti(r.cx, r.cy, r.cz, 30); JX.pop('Bell down!', r.cx, r.cy + 0.6, r.cz); }
@@ -699,7 +735,14 @@ function frame(now) {
     if (ses.settling) { ses.settleChunk(20); status('Settling...'); acc = 0; }
     else if (ses.replay) {
       if (ff) { var c = 0; while (ses.replay && c++ < 40) stepOnce(); if (!ses.replay) replayEnded(); }
-      else { acc += dt * replaySpeed; while (acc >= DT && n < 3 && ses.replay) { physMs += stepOnce(); acc -= DT; n++; } if (!ses.replay) replayEnded(); }
+      else if (hitRep && hitRep.phase === 'seek') {      /* the early shots, fast (about 40 ms of physics a frame) */
+        var tq0 = performance.now(); while (ses.replay && ses.sim.steps < hitRep.seekTo && performance.now() - tq0 < 40) physMs += stepOnce();
+        bellFx(true);
+        if (!ses.replay) replayEnded();
+        else if (ses.sim.steps >= hitRep.seekTo) { hitRep.phase = 'slow'; acc = 0; JX.reset(); bellFx(true); popPct = stripPct; status('REPLAY OF THE HIT at 1/4 speed', 2500); }
+        else status('Rewinding to the last shot... ' + Math.round(100 * ses.sim.steps / Math.max(1, hitRep.seekTo)) + '%');
+      }
+      else { acc += dt * replaySpeed; while (acc >= DT && n < 3 && ses.replay) { physMs += stepOnce(); acc -= DT; n++; } if (hitRep && ses.replay && ses.sim.steps >= hitRep.stopAt) { ff = true; status('The hit is over: catching up to the end...'); } if (!ses.replay) replayEnded(); }
     } else {
       acc += dt; if (burstLeft > 0) { burstGap -= dt; if (burstGap <= 0) { fireNow(); burstLeft--; burstGap = ammoKind === 'rod' ? 0.28 : 0.1; } }
       if (firing) { fireCool -= dt; var gap = 1 / KINDS[ammoKind].rate; while (fireCool <= 0) { fireNow(); fireCool += gap; if (fireCool < -1) fireCool = 0; } }
@@ -711,8 +754,8 @@ function frame(now) {
     if (pretty) { var tt = now / 1000; seaPretty.uniforms.time.value = tt; skyMesh.position.copy(cam.position); waveCloth(flagCloth, tt); mill.userData.sails.rotation.z = -tt * 0.5; }
     armAnim = Math.max(0, armAnim - dt * 5); armPivot.rotation.x = aim.elev + 0.6 - armAnim * 0.9;
     if (flyRound && !drag) orb.az += Math.min(dtms / 1000, 0.5) * 0.22;
-    drawBodies(sim, ses.replay ? acc / DT : Math.min(1, acc / DT)); updateTrails(sim); placeCam(); bellFx(); JX.update(dt, cvs.height, now / 1000); JX.applyShake(dt);
-    scoreT += dtms; if (scoreT > 250) { scoreT = 0; scoreUI(); }
+    drawBodies(sim, ses.replay ? acc / DT : Math.min(1, acc / DT)); updateTrails(sim); if (hitRep && hitRep.phase === 'slow') hitCam(dt); placeCam(); bellFx(false); JX.update(dt, cvs.height, now / 1000); JX.applyShake(dt);
+    scoreT += dtms; if (scoreT > 250) { scoreT = 0; scoreUI(); hitBtnUI(); }
     renderer.render(scene, cam);
     pushStat(P.frame, dtms); pushStat(P.phys, physMs); pushStat(P.steps, n);
     if (benchHook) benchHook.post(dtms, physMs, n);
@@ -812,7 +855,7 @@ $('shots').value = shotsMax; setShotsLabel(); document.body.classList.toggle('ke
 await build(start); setPiecesLabel();
 applyLook(pretty); $('look').textContent = 'Look: ' + (pretty ? 'Pretty' : 'Plain'); $('look').classList.toggle('on', pretty);
 recolor(tideNow, groundMode); placeCam(); requestAnimationFrame(frame);
-window.__rubble = { juice: JX, orb: orb, cam: cam, get ses() { return ses; }, site: site, THREE: THREE, P: P, build: build, fire: function (k, n) { ammoKind = k; for (var i = 0; i < (n || 1); i++) fireNow(); }, aim: aim, aimUpdate: aimUpdate, setAmmo: function (k) { ammoKind = k; syncAmmo(); aimUpdate(); }, perfText: perfText, renderer: renderer, applyLook: applyLook, look: function () { return pretty; }, benchRun: benchRun, tier: function () { return tier; }, quickAim: quickAim, fly: function () { return flyRound; }, aimLine: function () { return { on: aimHelp, visible: arcLine.visible, pts: arcLine.geometry.attributes.position.count, meter: document.getElementById('pbox').style.display, fill: document.getElementById('pbar').firstChild.style.width }; }, trails: function () { return { on: trailsOn, visible: trailLines.visible, drawn: trailGeo.drawRange.count }; }, keep: function () { return { on: keepMode, shotsMax: shotsMax, over: roundOver, best: bestGet() }; }, setMode: setMode, done: function () { $('keepDone').click(); } };
+window.__rubble = { juice: JX, hit: function () { return hitRep ? { phase: hitRep.phase, seekTo: hitRep.seekTo, stopAt: hitRep.stopAt, shotStep: hitRep.shotStep, speed: replaySpeed, ff: ff, dist: orb.dist, steps: ses.sim.steps, saved: hitRep.saved } : null; }, hitShown: function () { return $('hitReplay').classList.contains('show'); }, orb: orb, cam: cam, get ses() { return ses; }, site: site, THREE: THREE, P: P, build: build, fire: function (k, n) { ammoKind = k; for (var i = 0; i < (n || 1); i++) fireNow(); }, aim: aim, aimUpdate: aimUpdate, setAmmo: function (k) { ammoKind = k; syncAmmo(); aimUpdate(); }, perfText: perfText, renderer: renderer, applyLook: applyLook, look: function () { return pretty; }, benchRun: benchRun, tier: function () { return tier; }, quickAim: quickAim, fly: function () { return flyRound; }, aimLine: function () { return { on: aimHelp, visible: arcLine.visible, pts: arcLine.geometry.attributes.position.count, meter: document.getElementById('pbox').style.display, fill: document.getElementById('pbar').firstChild.style.width }; }, trails: function () { return { on: trailsOn, visible: trailLines.visible, drawn: trailGeo.drawRange.count }; }, keep: function () { return { on: keepMode, shotsMax: shotsMax, over: roundOver, best: bestGet() }; }, setMode: setMode, done: function () { $('keepDone').click(); } };
 })();
 </script>
 </body></html>
