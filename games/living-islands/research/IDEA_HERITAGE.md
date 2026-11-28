@@ -24,5 +24,6 @@ A running record so every idea can be traced and credited. Sources: OWNER (the o
 | Four stock bays (planks, rope, glass, metal) | OWNER (asked where wood is stored); CAIRN built; CHATGPT drew them in frame 03 |
 | Storm types and storm damage | OWNER (26 Nov, 'a lot of different types'; waves that destroy things); plan: CAIRN |
 | The island's rhythms form a song; everything has a timing so the work looks like a dance without anyone dancing (one shared island clock for sound and animation) | OWNER (27 Nov); the robot-sound seed: TOWN (qwen3.8); the generative engine: CAIRN |
+| More robot families, met further on (the old crew in the film; the collectors in the game) | OWNER (28 Nov); film robots: CAIRN detail kit from the owner's reaction to the film; collectors: earlier CAIRN and hardware work |
 
 Not yet traced: the first idea of the helper and the New Life Inheritance twist (see STORY_REVISION_V2 and GIFT_STORY_SOURCES).
