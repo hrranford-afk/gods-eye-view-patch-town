@@ -1,0 +1,71 @@
+{
+ "when": "2026-11-28T10:07:51.811Z",
+ "results": [
+  {
+   "name": "juice.js hot paths (probe, update, applyShake) contain no new, no array or object literals, no closures",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "Juice is on by default in the Pretty look (button says so), both effect objects exist and are hidden while idle",
+   "ok": true,
+   "detail": "{\"on\":true,\"shake\":true,\"btn\":\"Juice: on\",\"pretty\":true,\"objs\":true,\"hidden\":true}"
+  },
+  {
+   "name": "real shots make impact events: dust and brick chips spawned (2 impacts, 31 particles)",
+   "ok": true,
+   "detail": "{\"events\":2,\"spawned\":31,\"rings\":0,\"shakes\":2,\"confetti\":0,\"pops\":0,\"flashes\":0,\"maxLive\":31}"
+  },
+  {
+   "name": "particle pool is capped at 640 (most seen live: 640) after asking for 60 x (dust + chips + 140 confetti)",
+   "ok": true,
+   "detail": "{\"max\":640,\"cap\":640,\"rings\":10}"
+  },
+  {
+   "name": "camera shake: starts at 0.06 m at most, fades to nothing within about a second, and the Camera shake switch turns it off",
+   "ok": true,
+   "detail": "{\"live0\":0.06,\"after\":0,\"peak\":0.006648189501740032,\"btnOff\":\"Camera shake: off\",\"offLive\":0,\"btnOn\":\"Camera shake: on\"}"
+  },
+  {
+   "name": "no per-frame allocation: the heap grew 70 KB over 3000 busy updates (limit 100 KB, steady state after warm-up, forced gc first: true)",
+   "ok": true,
+   "detail": "{\"grew\":72036,\"gc\":true}"
+  },
+  {
+   "name": "the bell falls in Topple: ring waves (7), confetti (100), a screen flash (1) and a pop-up (Bell down!,+4%,Bell down!)",
+   "ok": true,
+   "detail": "{\"down\":true,\"st\":{\"events\":16,\"spawned\":13029,\"rings\":102,\"shakes\":26,\"confetti\":11680,\"pops\":3,\"flashes\":2,\"maxLive\":640},\"pop\":[\"Bell down!\",\"+4%\",\"Bell down!\"],\"flash\":true}"
+  },
+  {
+   "name": "score pop-ups appear as the knocked-out percent climbs (3 pop-ups so far)",
+   "ok": true,
+   "detail": "{\"pops\":3}"
+  },
+  {
+   "name": "Keep the bell, three stars: confetti (120) and a flash (1) come with the result card",
+   "ok": true,
+   "detail": "{\"st\":{\"events\":0,\"spawned\":120,\"rings\":4,\"shakes\":0,\"confetti\":120,\"pops\":1,\"flashes\":1,\"maxLive\":120},\"txt\":\"The bell is still standing! ★★★ Knocked out 80 percent of the base with 3 of 6 shots. A new best for this fort. Three stars need the bell standing and over 80 percent. Rebuild Look around\"}"
+  },
+  {
+   "name": "Plain look: Juice is off (button: Juice: off), real hits make no effects, and switching to Pretty turns it on",
+   "ok": true,
+   "detail": "[{\"on\":false,\"btn\":\"Juice: off\"},{\"ev\":0,\"sp\":0,\"vis\":false,\"ev0\":2,\"onAgain\":true}]"
+  },
+  {
+   "name": "iPad tier, 4000 pieces: juice idle costs 0 draw calls, juice busy at most 2 more (limit 4); triangles 61718 off, 61718 idle, 61738 busy (160 particles, 3 rings live)",
+   "ok": true,
+   "detail": "{\"n\":4000,\"off\":{\"tris\":61718,\"calls\":8,\"pts\":0},\"idle\":{\"tris\":61718,\"calls\":8,\"pts\":0},\"busy\":{\"calls\":10,\"tris\":61738,\"pts\":160,\"rings\":3}}"
+  },
+  {
+   "name": "INFO juice cost on the iPad tier at 4000 pieces (software GL, counts only)",
+   "ok": true,
+   "detail": "{\"n\":4000,\"off\":{\"tris\":61718,\"calls\":8,\"pts\":0},\"idle\":{\"tris\":61718,\"calls\":8,\"pts\":0},\"busy\":{\"calls\":10,\"tris\":61738,\"pts\":160,\"rings\":3}}"
+  },
+  {
+   "name": "zero console errors and zero page errors (juice test)",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "errors": []
+}

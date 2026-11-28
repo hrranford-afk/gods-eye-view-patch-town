@@ -39,7 +39,9 @@ body.keepmode #keepDone{display:inline-block}
 #flash{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle,rgba(255,244,214,.85),rgba(255,214,140,.55));opacity:0;z-index:7}
 #flash.go{animation:flash .9s ease-out}
 @keyframes flash{0%{opacity:.9}100%{opacity:0}}
-.pop{position:fixed;left:0;top:0;pointer-events:none;font:800 24px system-ui,sans-serif;color:#fff6e4;text-shadow:0 2px 0 #7a3d12,0 0 10px rgba(0,0,0,.6);z-index:6;opacity:0;white-space:nowrap}
+.pop{position:fixed;left:0;top:0;pointer-events:none;font:800 26px system-ui,sans-serif;color:#fff6e4;text-shadow:0 2px 0 #7a3d12,0 0 10px rgba(0,0,0,.6);z-index:6;opacity:0;white-space:nowrap;transform:translate(var(--x,0),var(--y,0))}
+.pop.go{animation:popup 1.3s ease-out forwards}
+@keyframes popup{0%{opacity:0;transform:translate(var(--x),var(--y)) translate(-50%,0) scale(.6)}14%{opacity:1;transform:translate(var(--x),var(--y)) translate(-50%,-12px) scale(1.2)}100%{opacity:0;transform:translate(var(--x),var(--y)) translate(-50%,-80px) scale(1)}}
 #dock{position:fixed;left:8px;right:8px;bottom:8px;display:flex;flex-direction:column;gap:6px;z-index:5;pointer-events:none}
 #dock>*{pointer-events:auto}
 #dockTop{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
@@ -161,6 +163,7 @@ body.keepmode #ammo .am .tag{display:block}
 <script src="terrain.js"></script>
 <script src="fort.js"></script>
 <script src="sim_terrain.js"></script>
+<script src="juice.js"></script>
 <script type="module">
 import RAPIER from './vendor/rapier-0.21-compat/rapier.mjs';
 (async function () {
@@ -289,8 +292,9 @@ function waveCloth(o, t) {
 }
 /* the look switch: sky, fog, light, sea, textures, bell shine, decor */
 var lookMats = [];
+function setJuice(on) { JX.on = on; $('juice').textContent = 'Juice: ' + (on ? 'on' : 'off'); $('juice').classList.toggle('on', on); }
 function applyLook(on) {
-  pretty = on;
+  pretty = on; setJuice(on);
   scene.background = on ? null : new THREE.Color(0xa9d3e4);
   scene.fog = on ? new THREE.Fog(0xe9c2aa, 50, 170) : new THREE.Fog(0xa9d3e4, 45, 140);
   skyMesh.visible = on; decor.visible = on;
@@ -359,6 +363,8 @@ function updateTrails(sim) {
   }
   trailGeo.setDrawRange(0, nseg * 2); trailGeo.attributes.position.needsUpdate = true; trailGeo.attributes.color.needsUpdate = true; trailLines.visible = nseg > 0;
 }
+/* juice (dust, chips, bell rings, confetti, pop-ups, flash, shake): juice.js. Looks only, never touches a body. */
+var JX = window.RJuice.make(THREE, scene, cam, { ground: function (x, z) { return site.H(x, z); } }), bellSeen = 0, popPct = 0;
 var hooks = {
   add: function (rec) {
     var k = rec.kind, s = free[k].length ? free[k].pop() : nextSlot[k]++; if (s >= CAP[k]) { rec.slot = -1; return; }
@@ -382,7 +388,7 @@ function drawBodies(sim, alpha) {
       var cq = rec.cq, pq = rec.pq, dot = cq[0] * pq[0] + cq[1] * pq[1] + cq[2] * pq[2] + cq[3] * pq[3], sg = dot < 0 ? -1 : 1, l;
       tq[0] = pq[0] + (cq[0] * sg - pq[0]) * alpha; tq[1] = pq[1] + (cq[1] * sg - pq[1]) * alpha; tq[2] = pq[2] + (cq[2] * sg - pq[2]) * alpha; tq[3] = pq[3] + (cq[3] * sg - pq[3]) * alpha;
       l = Math.sqrt(tq[0] * tq[0] + tq[1] * tq[1] + tq[2] * tq[2] + tq[3] * tq[3]) || 1; tq[0] /= l; tq[1] /= l; tq[2] /= l; tq[3] /= l;
-      writeM(IM[rec.kind].instanceMatrix.array, rec.slot * 16, rec.px + (rec.cx - rec.px) * alpha, rec.py + (rec.cy - rec.py) * alpha, rec.pz + (rec.cz - rec.pz) * alpha, tq); touched[rec.kind] = 1; rec.final = false;
+      writeM(IM[rec.kind].instanceMatrix.array, rec.slot * 16, rec.px + (rec.cx - rec.px) * alpha, rec.py + (rec.cy - rec.py) * alpha, rec.pz + (rec.cz - rec.pz) * alpha, tq); touched[rec.kind] = 1; rec.final = false; if (JX.on) JX.probe(rec);
     } else if (!rec.final) { writeM(IM[rec.kind].instanceMatrix.array, rec.slot * 16, rec.cx, rec.cy, rec.cz, rec.cq); touched[rec.kind] = 1; rec.final = true; }
   }
   for (a in touched) IM[a].instanceMatrix.needsUpdate = true;
@@ -418,7 +424,7 @@ function build(p, again) {
   return new Promise(function (res) { setTimeout(function () {
     var t0 = performance.now();
     if (!ses) ses = SIM.makeSession(RAPIER, site, cfgBase()); else if (again) ses.rebuild({}); else ses.rebuild(cfgBase());
-    ses.buildMs = performance.now() - t0; settleT0 = performance.now(); builtKey = shape + '|' + p + '|' + rubble + '|' + keepMode; colTide = 99;
+    ses.buildMs = performance.now() - t0; settleT0 = performance.now(); builtKey = shape + '|' + p + '|' + rubble + '|' + keepMode; colTide = 99; JX.reset(); bellSeen = 0; popPct = 0;
     /* the settle phase: a slice of it every frame so the page stays alive; shots wait for 'Ready' */
     (function slice() {
       var done = ses.settleChunk(25);
@@ -462,7 +468,7 @@ var scoreT = 0;
 var stripPct = 0;
 function stripUI(pct, bd, nb, down, l3, v3, l4, v4, stars) {
   var el = $('score');
-  el.style.display = 'flex'; stripPct = pct;
+  el.style.display = 'flex'; stripPct = pct; popFor(pct);
   el.innerHTML = '<div class="pill"><small>Knocked out</small><b>' + pct.toFixed(0) + '%</b></div>' +
     '<div class="pill' + (down ? ' down' : '') + '"><small>' + (down ? (nb > 1 ? 'Every bell is down!' : 'Bell down!') : 'Bells down') + '</small><b>' + bd + ' of ' + nb + '</b></div>' +
     '<div class="pill"><small>' + l3 + '</small><b>' + v3 + '</b></div>' +
@@ -485,6 +491,7 @@ function endRound(st) {
   }
   e.innerHTML = txt + '<div class="row" style="justify-content:center;margin-top:10px"><button class="btn big" id="keepAgain" style="font-size:16px;min-width:0">Rebuild</button><button class="btn" id="keepLook">Look around</button></div>';
   e.style.display = 'block'; firing = false; burstLeft = 0;
+  if (st.over === 'result' && st.stars === 3 && ses.sim.fort) { var dd = ses.sim.fort.design; JX.win(dd.cx, dd.baseY + dd.height + 0.5, dd.cz, 120); JX.pop('Three stars!', dd.cx, dd.baseY + dd.height + 1, dd.cz); }
   $('keepAgain').addEventListener('click', function () { if (loading || (ses && ses.replay)) return; build(pieces, true); });
   $('keepLook').addEventListener('click', function () { e.style.display = 'none'; });
 }
@@ -628,6 +635,8 @@ $('shadows').textContent = 'Shadows: ' + (shadowsOn ? 'on' : 'off');
 $('qGate').addEventListener('click', function () { quickAim('gate'); }); $('qTower').addEventListener('click', function () { quickAim('tower'); }); $('qKeep').addEventListener('click', function () { quickAim('keep'); });
 $('fly').addEventListener('click', function () { flyRound = !flyRound; this.textContent = 'Fly round: ' + (flyRound ? 'on' : 'off'); this.classList.toggle('on', flyRound); });
 $('boltHead').addEventListener('click', function () { boltPointed = !boltPointed; this.textContent = 'Bolt head: ' + (boltPointed ? 'pointed' : 'blunt'); var old = IM.rod.geometry; IM.rod.geometry = boltGeo(KINDS.rod, boltPointed); old.dispose(); });
+$('juice').addEventListener('click', function () { setJuice(!JX.on); });
+$('shake').addEventListener('click', function () { JX.shakeOn = !JX.shakeOn; this.textContent = 'Camera shake: ' + (JX.shakeOn ? 'on' : 'off'); this.classList.toggle('on', JX.shakeOn); });
 $('trails').addEventListener('click', function () { trailsOn = !trailsOn; this.textContent = 'Trails: ' + (trailsOn ? 'on' : 'off'); this.classList.toggle('on', trailsOn); });
 $('aimHelp').addEventListener('click', function () { aimHelp = !aimHelp; this.textContent = 'Aim line: ' + (aimHelp ? 'on' : 'off'); this.classList.toggle('on', aimHelp); aimUpdate(); });
 $('look').addEventListener('click', function () { applyLook(!pretty); this.textContent = 'Look: ' + (pretty ? 'Pretty' : 'Plain'); this.classList.toggle('on', pretty); });
@@ -638,7 +647,7 @@ $('replay').addEventListener('click', function () {
   if (!ses || loading) return;
   if (ses.replay) { ff = true; status('Skipping to the end of the replay...'); return; }
   if (!ses.events.length) { status('Nothing to replay yet: fire a few shots first.', 2000); return; }
-  ses.startReplay(); acc = 0; $('replay').textContent = 'Stop replay'; $('replay').classList.add('on'); status('REPLAY at 1/4 speed (same scene, same shots)');
+  ses.startReplay(); acc = 0; JX.reset(); bellSeen = 0; popPct = 0; $('replay').textContent = 'Stop replay'; $('replay').classList.add('on'); status('REPLAY at 1/4 speed (same scene, same shots)');
   ['fire', 'rebuild', 'ground', 'tide', 'pieces', 'modeTopple', 'modeKeep', 'keepDone'].forEach(function (id) { var e = $(id); if (e) e.disabled = true; });
 });
 function replayEnded() { $('replay').textContent = 'Replay slow'; $('replay').classList.remove('on'); ff = false; ['fire', 'rebuild', 'ground', 'tide', 'pieces', 'modeTopple', 'modeKeep', 'keepDone'].forEach(function (id) { var e = $(id); if (e) e.disabled = false; }); status('Replay finished: back to live (same state as before)', 2500); }
@@ -663,6 +672,24 @@ function stepOnce() {
   if (autoTide && !ses.replay && ses.sim.steps % 6 === 0) { var v = amp * Math.sin(ses.sim.steps / 3600 * Math.PI * 2); setTideUI(v); ses.setTide(v); }
   return ses.step();
 }
+/* a bell that has just fallen: a ring wave and glow; in Topple the confetti and the flash for the win (the primary bell, or every bell of a Grand fort) */
+function bellFx() {
+  var f = ses.sim.fort, fl = ses.bellFlags, i, r, w;
+  if (!f || !fl) return;
+  for (i = 0; i < f.bells.length; i++) {
+    if (!fl[i] || (bellSeen & (1 << i))) continue;
+    bellSeen |= 1 << i; r = f.bells[i]; if (r.cx === undefined || !JX.on) continue;
+    if (keepMode) { JX.bellRing(r.cx, r.cy, r.cz, true); continue; }
+    if (ses.bellDown) { JX.win(r.cx, r.cy, r.cz, f.bells.length > 1 ? 130 : 100); JX.pop(f.bells.length > 1 ? 'Every bell is down!' : 'Bell down!', r.cx, r.cy + 0.6, r.cz); }
+    else { JX.bellRing(r.cx, r.cy, r.cz, true); JX.confetti(r.cx, r.cy, r.cz, 30); JX.pop('Bell down!', r.cx, r.cy + 0.6, r.cz); }
+  }
+}
+function popFor(pct) {
+  var d = pct - popPct; if (d < 0) { popPct = pct; return; }
+  if (d < 3 || !JX.on) return; popPct = pct;
+  var f = ses && ses.sim.fort, h = JX.last, near = JX.age() < 150 && h.t > 0;
+  if (near) JX.pop('+' + Math.round(d) + '%', h.x, h.y + 0.5, h.z); else if (f) JX.pop('+' + Math.round(d) + '%', f.design.cx, f.design.baseY + f.design.height * 0.7, f.design.cz);
+}
 function frame(now) {
   requestAnimationFrame(frame);
   var dtms = now - last; last = now; var dt = Math.min(dtms / 1000, 0.1);
@@ -684,7 +711,7 @@ function frame(now) {
     if (pretty) { var tt = now / 1000; seaPretty.uniforms.time.value = tt; skyMesh.position.copy(cam.position); waveCloth(flagCloth, tt); mill.userData.sails.rotation.z = -tt * 0.5; }
     armAnim = Math.max(0, armAnim - dt * 5); armPivot.rotation.x = aim.elev + 0.6 - armAnim * 0.9;
     if (flyRound && !drag) orb.az += Math.min(dtms / 1000, 0.5) * 0.22;
-    drawBodies(sim, ses.replay ? acc / DT : Math.min(1, acc / DT)); updateTrails(sim); placeCam();
+    drawBodies(sim, ses.replay ? acc / DT : Math.min(1, acc / DT)); updateTrails(sim); placeCam(); bellFx(); JX.update(dt, cvs.height, now / 1000); JX.applyShake(dt);
     scoreT += dtms; if (scoreT > 250) { scoreT = 0; scoreUI(); }
     renderer.render(scene, cam);
     pushStat(P.frame, dtms); pushStat(P.phys, physMs); pushStat(P.steps, n);
@@ -785,7 +812,7 @@ $('shots').value = shotsMax; setShotsLabel(); document.body.classList.toggle('ke
 await build(start); setPiecesLabel();
 applyLook(pretty); $('look').textContent = 'Look: ' + (pretty ? 'Pretty' : 'Plain'); $('look').classList.toggle('on', pretty);
 recolor(tideNow, groundMode); placeCam(); requestAnimationFrame(frame);
-window.__rubble = { orb: orb, cam: cam, get ses() { return ses; }, site: site, THREE: THREE, P: P, build: build, fire: function (k, n) { ammoKind = k; for (var i = 0; i < (n || 1); i++) fireNow(); }, aim: aim, aimUpdate: aimUpdate, setAmmo: function (k) { ammoKind = k; syncAmmo(); aimUpdate(); }, perfText: perfText, renderer: renderer, applyLook: applyLook, look: function () { return pretty; }, benchRun: benchRun, tier: function () { return tier; }, quickAim: quickAim, fly: function () { return flyRound; }, aimLine: function () { return { on: aimHelp, visible: arcLine.visible, pts: arcLine.geometry.attributes.position.count, meter: document.getElementById('pbox').style.display, fill: document.getElementById('pbar').firstChild.style.width }; }, trails: function () { return { on: trailsOn, visible: trailLines.visible, drawn: trailGeo.drawRange.count }; }, keep: function () { return { on: keepMode, shotsMax: shotsMax, over: roundOver, best: bestGet() }; }, setMode: setMode, done: function () { $('keepDone').click(); } };
+window.__rubble = { juice: JX, orb: orb, cam: cam, get ses() { return ses; }, site: site, THREE: THREE, P: P, build: build, fire: function (k, n) { ammoKind = k; for (var i = 0; i < (n || 1); i++) fireNow(); }, aim: aim, aimUpdate: aimUpdate, setAmmo: function (k) { ammoKind = k; syncAmmo(); aimUpdate(); }, perfText: perfText, renderer: renderer, applyLook: applyLook, look: function () { return pretty; }, benchRun: benchRun, tier: function () { return tier; }, quickAim: quickAim, fly: function () { return flyRound; }, aimLine: function () { return { on: aimHelp, visible: arcLine.visible, pts: arcLine.geometry.attributes.position.count, meter: document.getElementById('pbox').style.display, fill: document.getElementById('pbar').firstChild.style.width }; }, trails: function () { return { on: trailsOn, visible: trailLines.visible, drawn: trailGeo.drawRange.count }; }, keep: function () { return { on: keepMode, shotsMax: shotsMax, over: roundOver, best: bestGet() }; }, setMode: setMode, done: function () { $('keepDone').click(); } };
 })();
 </script>
 </body></html>
