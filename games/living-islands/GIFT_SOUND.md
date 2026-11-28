@@ -20,3 +20,19 @@ The game calendar has twelve 30-day months and no weekdays, so the sound cuts th
 
 ## audio.js additive change (asked for by the opening film)
 `LI_AUDIO.ambient(on)` (default true) turns audio.js's own random gulls and crickets off and on, and `LI_AUDIO.setSeed(n)` makes its randomness (those, robot jitter, noise buffers made afterwards) repeatable. Nothing else changed; with the defaults the behaviour is as before. The only edit to audio.js in this job.
+
+## Tests (what was actually seen)
+Software GL and fake audio only, on a loaded machine. `gift-sound-test.js` 53 of 53 (core, a scripted day, throttles, caps, nothing before the tap, the audio.js additions). `gift-sound-page-test.js`: unlock 19 of 20 on the first run and 2 of 2 on a rerun of the one that failed (the reload check, a timing flake not reproduced); beds, events and song 18 of 18; storm 7 of 7 (after the test's own ordering check was made independent of when the spy attached); robots 4 of 4; smoke 6 of 6 at ipad 834x1062, desktop 1280x720 and radeon (zero console errors, audio running, song running). Unchanged: hud-test 66 of 66, glow 21 of 21, hold 29 of 29, night 52, storm-page all passed, look-test (default hash 8d962c0c, 88,790 triangles), audio-test 35, audio-song-test 15. Failing before and after this job, so not caused by sound: physical-page-test 43 of 47 (the stalled-robot and marker checks at the opening dock) and gift-day-page-test 125 of 127 (ten Order buttons; the cottage build-menu text).
+
+## What was not done
+- Nobody has heard any of it. A robot 'new' state (after a kit fit) and 'broken' are not sent. Gulls and crickets are audio.js's own random ones (use `LI_AUDIO.ambient(false)` to stop them); they are not silenced in a storm beyond audio.js's own wind rule.
+- The lighthouse note needs the music slider above zero (it is a song note).
+
+## What to listen for (owner, on the iPad)
+1. First tap starts the audio, at once, with no click or crackle; the "Sound on" chip goes away. No heat, no fan: the page should feel no warmer than without sound.
+2. In the arrival bay the sea is a soft breath you feel more than hear; rain and wind rise with the weather and do not hiss.
+3. Robots: the hauler's groan and pause read as effort, a tired one sleepy, a wet one dragging. With several working it stays gentle.
+4. The crate thud, the plank fit and the winch two-note feel like a mechanism; the brass key is a pleasant ring, not a doorbell; the UI tick is quiet.
+5. Before a storm a low hum slowly rises; then a wide roar and thunder that feel big and calm, not scary. The song goes darker and returns with a small brightening.
+6. At night a low beam hum and one long note about every twelve seconds.
+7. Menu, Sound: the three sliders and Mute work; leaving the tab silences it; coming back resumes.
