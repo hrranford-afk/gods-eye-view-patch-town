@@ -1,0 +1,56 @@
+{
+ "when": "2026-11-28T10:26:16.903Z",
+ "results": [
+  {
+   "name": "per-brick colour variation: Pretty spread 21.1 percent of the red channel against 5.8 in Plain, and switching back restores it",
+   "ok": true,
+   "detail": "{\"pretty\":{\"n\":1473,\"sd\":0.21054701133084572,\"lowGR\":0.9143229004572883,\"hiGR\":0.6782082123570331,\"nl\":521,\"nh\":48},\"plain\":{\"n\":1473,\"sd\":0.057687827360793184,\"lowGR\":0.6822916665945925,\"hiGR\":0.6822916656675337,\"nl\":521,\"nh\":48},\"back\":{\"n\":1473,\"sd\":0.21054701133084572,\"lowGR\":0.9143229004572883,\"hiGR\":0.6782082123570331,\"nl\":521,\"nh\":48}}"
+  },
+  {
+   "name": "moss and wear near the ground: bricks within 0.3 m of the ground are greener (green/red 0.91, 521 bricks) than those above 1.2 m (0.68, 48 bricks); Plain has none (0.68 against 0.68)",
+   "ok": true,
+   "detail": "[{\"n\":1473,\"sd\":0.21054701133084572,\"lowGR\":0.9143229004572883,\"hiGR\":0.6782082123570331,\"nl\":521,\"nh\":48},{\"n\":1473,\"sd\":0.057687827360793184,\"lowGR\":0.6822916665945925,\"hiGR\":0.6822916656675337,\"nl\":521,\"nh\":48}]"
+  },
+  {
+   "name": "banners on the towers: 5 pennants on poles standing on tower bricks (one for the bell and the far corners), 2 lanterns by the gate; visible in Pretty, hidden in Plain",
+   "ok": true,
+   "detail": "{\"banners\":5,\"lanterns\":2,\"bannerVisible\":true,\"lanternVisible\":true,\"foamQuads\":111,\"foamVisible\":true,\"sky\":true,\"bannerPos\":[{\"x\":0.5120394825935364,\"y\":2.811448097229004,\"z\":-6.6864471435546875},{\"x\":-2.718400478363037,\"y\":2.457146406173706,\"z\":-9.91751480102539},{\"x\":2.743265390396118,\"y\":2.4571542739868164,\"z\":-9.90930461883545},{\"x\":-2.715508460998535,\"y\":2.4568874835968018,\"z\":-4.158958435058594},{\"x\":2.7394495010375977,\"y\":2.4567105770111084,\"z\":-4.458372592926025}],\"fort\":{\"cx\":0,\"cz\":-7,\"baseY\":1.3870097656250002,\"h\":1.7677999999999998,\"hx\":3.1912000000000007,\"hz\":3.2922000000000007},\"plain\":{\"b\":false,\"l\":false,\"f\":false,\"sky\":false},\"foamHigh\":117,\"foamLow\":33,\"foamZero\":111}"
+  },
+  {
+   "name": "foam: 111 ribbon quads on the shoreline at tide 0, they follow the tide (high 117, low 33, back at zero 111), hidden in Plain; the sky gradient shows in Pretty only",
+   "ok": true,
+   "detail": "{\"q\":111,\"hi\":117,\"lo\":33,\"z\":111,\"plain\":{\"b\":false,\"l\":false,\"f\":false,\"sky\":false},\"sky\":true}"
+  },
+  {
+   "name": "banners ride on their bricks: after a volley 1 of 5 moved with the bricks they stand on, and every banner stays within 0.3 m of its brick",
+   "ok": true,
+   "detail": "{\"moved\":1,\"follows\":true,\"n\":5}"
+  },
+  {
+   "name": "the look does not touch the physics: the same shots and 300 steps give the same hash in Pretty and Plain (pretty bd991fb3 after 300 steps; plain bd991fb3 after 300 steps)",
+   "ok": true,
+   "detail": "pretty bd991fb3 after 300 steps | plain bd991fb3 after 300 steps"
+  },
+  {
+   "name": "one InstancedMesh per material: 16 instanced meshes carry 16 materials ({\"MeshStandardMaterial+vc\":1,\"MeshBasicMaterial+vc\":1,\"MeshStandardMaterial\":13,\"ShaderMaterial\":1})",
+   "ok": true,
+   "detail": "{\"plain\":{\"tris\":61094,\"calls\":7},\"pretty\":{\"tris\":62436,\"calls\":11},\"instanced\":16,\"n\":4000,\"shadow\":true,\"byMat\":{\"MeshStandardMaterial+vc\":1,\"MeshBasicMaterial+vc\":1,\"MeshStandardMaterial\":13,\"ShaderMaterial\":1},\"mats\":16}"
+  },
+  {
+   "name": "iPad tier, 4000 pieces: Plain 7 draw calls and 61094 triangles, Pretty 11 calls and 62436 triangles (the sky, water, banners, lanterns and foam are the difference); under 200,000 triangles and 40 calls",
+   "ok": true,
+   "detail": "{\"plain\":{\"tris\":61094,\"calls\":7},\"pretty\":{\"tris\":62436,\"calls\":11},\"instanced\":16,\"n\":4000,\"shadow\":true,\"byMat\":{\"MeshStandardMaterial+vc\":1,\"MeshBasicMaterial+vc\":1,\"MeshStandardMaterial\":13,\"ShaderMaterial\":1},\"mats\":16}"
+  },
+  {
+   "name": "INFO look cost on the iPad tier at 4000 pieces (software GL, counts only)",
+   "ok": true,
+   "detail": "{\"plain\":{\"tris\":61094,\"calls\":7},\"pretty\":{\"tris\":62436,\"calls\":11},\"instanced\":16,\"n\":4000,\"shadow\":true,\"byMat\":{\"MeshStandardMaterial+vc\":1,\"MeshBasicMaterial+vc\":1,\"MeshStandardMaterial\":13,\"ShaderMaterial\":1},\"mats\":16}"
+  },
+  {
+   "name": "zero console errors and zero page errors (look test)",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "errors": []
+}

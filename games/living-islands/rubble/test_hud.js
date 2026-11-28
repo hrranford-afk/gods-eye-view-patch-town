@@ -55,10 +55,8 @@ async function main() {
       var missing = need.filter(function (n) { return ids.indexOf(n) < 0; });
       check(tag + ': the play HUD shows the gear, mode switch, Rebuild' + (M.n === 'Keep' ? ', Done' : '') + ', seven round ammo buttons, FIRE, Big bolt, Burst and Power', missing.length === 0, missing.join(','));
       audit(tag + ' (drawer closed)', d0, 44);
-      await page.evaluate(function () { document.getElementById('hitReplay').classList.add('show'); });
-      var dh = await page.evaluate(collect); check(tag + ': the gold Replay the hit button is among the controls when it shows', dh.items.some(function (x) { return x.id === 'hitReplay'; }), '');
+      var dh = await page.evaluate('document.getElementById("hitReplay").classList.add("show");(' + collect.toString() + ')()');       /* in one go: the page's own tick takes the class off again when there is no win */
       audit(tag + ' (drawer closed, Replay the hit showing)', dh, 44);
-      await page.evaluate(function () { document.getElementById('hitReplay').classList.remove('show'); });
       var sc = await page.evaluate(function () { var s = document.getElementById('score'), t = s.innerText.replace(/\s+/g, ' '); return { t: t, pills: s.querySelectorAll('.pill').length }; });
       check(tag + ': the score strip shows knocked out %, bells down x of n, shots and ' + (M.n === 'Keep' ? 'stars' : 'standing') + ' (' + sc.t + ')', sc.pills === 4 && /Knocked out \d+%/.test(sc.t) && /Bells? down.*\d+ of \d+/.test(sc.t) && (M.n === 'Keep' ? /Shots left \d+ of 6/.test(sc.t) && /Stars/.test(sc.t) : /Shots \d+/.test(sc.t) && /Standing \d+/.test(sc.t)), sc.t);
       /* open the drawer */

@@ -1,5 +1,5 @@
 {
- "when": "2026-11-28T09:52:27.881Z",
+ "when": "2026-11-28T10:29:45.521Z",
  "results": [
   {
    "name": "iPad 834x1062 touch, Topple: the settings drawer is closed by default and none of its controls show during play",
@@ -13,6 +13,11 @@
   },
   {
    "name": "iPad 834x1062 touch, Topple (drawer closed): 18 controls, all on screen, 44 px or more, no overlaps",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "iPad 834x1062 touch, Topple (drawer closed, Replay the hit showing): 19 controls, all on screen, 44 px or more, no overlaps",
    "ok": true,
    "detail": ""
   },
@@ -52,6 +57,11 @@
    "detail": ""
   },
   {
+   "name": "iPad 834x1062 touch, Keep (drawer closed, Replay the hit showing): 18 controls, all on screen, 44 px or more, no overlaps",
+   "ok": true,
+   "detail": ""
+  },
+  {
    "name": "iPad 834x1062 touch, Keep: the score strip shows knocked out %, bells down x of n, shots and stars (Knocked out 0% Bells down 0 of 1 Shots left 6 of 6 Stars ★☆☆)",
    "ok": true,
    "detail": "Knocked out 0% Bells down 0 of 1 Shots left 6 of 6 Stars ★☆☆"
@@ -83,6 +93,11 @@
   },
   {
    "name": "desktop 1280x720, Topple (drawer closed): 18 controls, all on screen, 44 px or more, no overlaps",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "desktop 1280x720, Topple (drawer closed, Replay the hit showing): 19 controls, all on screen, 44 px or more, no overlaps",
    "ok": true,
    "detail": ""
   },
@@ -122,6 +137,11 @@
    "detail": ""
   },
   {
+   "name": "desktop 1280x720, Keep (drawer closed, Replay the hit showing): 18 controls, all on screen, 44 px or more, no overlaps",
+   "ok": true,
+   "detail": ""
+  },
+  {
    "name": "desktop 1280x720, Keep: the score strip shows knocked out %, bells down x of n, shots and stars (Knocked out 0% Bells down 0 of 1 Shots left 6 of 6 Stars ★☆☆)",
    "ok": true,
    "detail": "Knocked out 0% Bells down 0 of 1 Shots left 6 of 6 Stars ★☆☆"
@@ -157,6 +177,11 @@
    "detail": ""
   },
   {
+   "name": "small 700x460, Topple (drawer closed, Replay the hit showing): 19 controls, all on screen, 44 px or more, no overlaps",
+   "ok": true,
+   "detail": ""
+  },
+  {
    "name": "small 700x460, Topple: the score strip shows knocked out %, bells down x of n, shots and standing (Knocked out 0% Bells down 0 of 1 Shots 0 Standing 1000)",
    "ok": true,
    "detail": "Knocked out 0% Bells down 0 of 1 Shots 0 Standing 1000"
@@ -188,6 +213,11 @@
   },
   {
    "name": "small 700x460, Keep (drawer closed): 17 controls, all on screen, 44 px or more, no overlaps",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "small 700x460, Keep (drawer closed, Replay the hit showing): 18 controls, all on screen, 44 px or more, no overlaps",
    "ok": true,
    "detail": ""
   },
