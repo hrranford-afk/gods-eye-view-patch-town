@@ -3,85 +3,150 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Rubble</title>
 <style>
-:root{--ink:#2b2218;--paper:#fff6e4;--card:rgba(43,34,24,.9);--line:rgba(255,246,228,.35);--accent:#e8a33d}
+:root{--ink:#2b2218;--paper:#fff6e4;--card:rgba(43,34,24,.9);--line:rgba(255,246,228,.35);--accent:#e8a33d;--brick:#c4562b}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:#9cc7d8;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--paper);-webkit-user-select:none;user-select:none;touch-action:none}
 canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
-#perf{position:fixed;left:8px;top:8px;font:600 13px ui-monospace,Menlo,Consolas,monospace;line-height:1.35;white-space:pre;pointer-events:none;min-width:210px}
-#perf b{color:var(--accent)}
-#title{position:fixed;left:8px;top:152px;pointer-events:none;font-size:12px;max-width:min(300px,40vw)}
-#title h1{margin:0;font-size:17px}
-#title div{opacity:.85}
-#quickbox{position:fixed;left:8px;top:246px;font-size:13px;max-width:min(240px,42vw)}
-#quickbox .btn{min-height:40px;padding:6px 10px}
-#side{position:fixed;right:8px;top:8px;width:min(300px,46vw);max-height:calc(100% - 150px);overflow:auto;display:flex;flex-direction:column;gap:8px;font-size:13px}
-#side label{display:flex;flex-direction:column;gap:3px;font-weight:600}
-#side input[type=range]{width:100%;min-height:28px}
-#side select{min-height:34px;font-size:14px;border-radius:8px;border:1px solid var(--line);background:#3a2e21;color:var(--paper);padding:4px}
 .row{display:flex;gap:6px;flex-wrap:wrap}
 .btn{background:#3b2d1d;color:var(--paper);border:2px solid var(--line);border-radius:12px;padding:8px 12px;font:700 14px system-ui,sans-serif;cursor:pointer;min-height:44px;touch-action:manipulation}
 .btn:disabled{opacity:.4;cursor:default}
 .btn.on{background:var(--accent);color:#2b2218;border-color:#fff}
-.btn.big{font-size:20px;min-width:120px;background:#c4562b;border-color:#ffd9a8}
-#ammo{position:fixed;left:8px;right:8px;bottom:8px;display:flex;gap:8px;align-items:stretch;flex-wrap:wrap;justify-content:center}
-#ammo .am{min-width:84px;padding:6px 8px;text-align:center;font-size:12px;line-height:1.2}
-#ammo .am i{display:inline-block;width:16px;height:16px;border-radius:50%;border:2px solid #fff6;vertical-align:-3px;margin-right:4px}
-#aimbox{font:600 12px ui-monospace,Menlo,Consolas,monospace;white-space:pre;line-height:1.35}
-#score{position:fixed;left:50%;top:8px;transform:translateX(-50%);text-align:center;font:700 14px system-ui,sans-serif;pointer-events:none;min-width:260px}
-#score b{color:var(--accent)}
-#score.down{background:#7a3d12;border-color:#ffd9a8}
-#status{position:fixed;left:50%;top:60px;transform:translateX(-50%);font-weight:800;font-size:20px;text-shadow:0 2px 8px #000;pointer-events:none;display:none;text-align:center}
-#modal{position:fixed;inset:0;background:rgba(20,15,10,.82);display:none;align-items:center;justify-content:center;z-index:9;padding:12px}
+.btn.big{font-size:20px;min-width:120px;background:var(--brick);border-color:#ffd9a8}
+.btn.gold{background:linear-gradient(#f3c25c,#e8a33d);color:#2b2218;border-color:#fff;box-shadow:0 2px 10px rgba(0,0,0,.35)}
+/* the play HUD: a top row (settings, mode switch, Rebuild, Done), a score strip, and a bottom dock (aim chips, power, round ammo buttons, FIRE) */
+#hudTop{position:fixed;left:8px;right:8px;top:8px;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;z-index:5}
+#hudTop>*{pointer-events:auto}
+#topbar{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
+#gear{width:48px;height:48px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;background:var(--card);border:2px solid var(--line);color:var(--paper);cursor:pointer;touch-action:manipulation}
+#gear svg{width:30px;height:30px}
+.seg{display:flex;border:2px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card)}
+.seg .btn{border:0;border-radius:0;min-height:44px;min-width:92px;background:transparent}
+.seg .btn.on{background:var(--accent)}
+#topbar>.btn{background:var(--card)}
+#keepDone,#hitReplay{display:none}
+body.keepmode #keepDone{display:inline-block}
+#hitReplay.show{display:inline-block;animation:glow 1.6s ease-in-out infinite}
+@keyframes glow{50%{box-shadow:0 0 0 6px rgba(232,163,61,.35)}}
+#score{display:none;gap:6px;justify-content:center;flex-wrap:wrap;padding:0;background:none;border:0}
+#score .pill{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:3px 12px;min-width:84px;text-align:center;line-height:1.15}
+#score .pill small{display:block;font-size:11px;opacity:.8;letter-spacing:.02em}
+#score .pill b{font-size:19px;color:var(--accent)}
+#score .pill.down{background:#7a3d12;border-color:#ffd9a8}
+#score .pill.down b{color:#fff6e4}
+#score .pill b.stars{letter-spacing:2px}
+#status{position:fixed;left:50%;top:30%;transform:translateX(-50%);font-weight:800;font-size:20px;text-shadow:0 2px 8px #000;pointer-events:none;display:none;text-align:center;max-width:min(520px,90vw);z-index:6}
+#flash{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle,rgba(255,244,214,.85),rgba(255,214,140,.55));opacity:0;z-index:7}
+#flash.go{animation:flash .9s ease-out}
+@keyframes flash{0%{opacity:.9}100%{opacity:0}}
+.pop{position:fixed;left:0;top:0;pointer-events:none;font:800 24px system-ui,sans-serif;color:#fff6e4;text-shadow:0 2px 0 #7a3d12,0 0 10px rgba(0,0,0,.6);z-index:6;opacity:0;white-space:nowrap}
+#dock{position:fixed;left:8px;right:8px;bottom:8px;display:flex;flex-direction:column;gap:6px;z-index:5;pointer-events:none}
+#dock>*{pointer-events:auto}
+#dockTop{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+#aimrow{display:flex;gap:6px;align-items:center}
+#aimrow .btn{background:var(--card);padding:6px 12px}
+#powerBox{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;padding:2px 12px}
+#powerBox input{width:min(190px,34vw);min-height:44px}
+#hint{font-size:13px;opacity:.95;pointer-events:none;text-shadow:0 1px 4px #000;text-align:center}
+#ammoNote{display:none;max-width:min(360px,70vw);font-size:12px;align-self:flex-start;pointer-events:none}
+#bottom{display:flex;gap:10px;align-items:flex-end}
+#ammo{flex:1;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:flex-end}
+#ammo .am{display:flex;flex-direction:column;align-items:center;gap:2px;width:68px;padding:4px 0 3px;background:transparent;border:0;color:var(--paper);font:700 11px/1.15 system-ui,sans-serif;cursor:pointer;touch-action:manipulation;min-height:44px}
+#ammo .am .orb{width:58px;height:58px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#5a452d,#33261a);border:3px solid rgba(255,246,228,.45);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,.4)}
+#ammo .am .orb svg{width:36px;height:36px}
+#ammo .am.on .orb{border-color:#fff;background:radial-gradient(circle at 35% 30%,#f6c76a,#d8902a);box-shadow:0 0 0 3px rgba(232,163,61,.55),0 3px 8px rgba(0,0,0,.4)}
+#ammo .am .lbl{text-shadow:0 1px 4px #000}
+#ammo .am .tag{display:none;font-weight:800;font-size:10px;color:var(--accent)}
+body.keepmode #ammo .am .tag{display:block}
+#fireCol{display:flex;gap:8px;align-items:flex-end}
+.rnd{border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.05}
+#bigrod,#burst{width:58px;height:58px;font-size:12px;background:var(--card)}
+#fire{width:92px;height:92px;font-size:22px;letter-spacing:.04em;background:radial-gradient(circle at 35% 30%,#e8794a,#b3441f);border:3px solid #ffd9a8;box-shadow:0 4px 12px rgba(0,0,0,.45);min-width:0}
+#fire:active{transform:scale(.96)}
+#scrim{position:fixed;inset:0;background:rgba(20,15,10,.45);display:none;z-index:10}
+#scrim.open{display:block}
+#drawer{position:fixed;right:0;top:0;bottom:0;width:min(400px,94vw);background:rgba(36,28,19,.97);border-left:2px solid var(--line);z-index:11;overflow:auto;padding:10px 12px 24px;font-size:13px;visibility:hidden;transform:translateX(102%);transition:transform .22s ease,visibility 0s .22s;touch-action:pan-y}
+#drawer.open{visibility:visible;transform:none;transition:transform .22s ease}
+#drawer h1{margin:0;font-size:19px}
+#drawer h3{margin:14px 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+#drawer .head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#drawer label{display:flex;flex-direction:column;gap:3px;font-weight:600;margin-top:6px}
+#drawer input[type=range]{width:100%;min-height:44px}
+#drawer select{min-height:44px;font-size:14px;border-radius:8px;border:1px solid var(--line);background:#3a2e21;color:var(--paper);padding:4px;width:100%}
+#drawer .row{margin-top:6px}
+#drawer .note{opacity:.85;font-size:12px;margin-top:6px}
+#perf{font:600 12px ui-monospace,Menlo,Consolas,monospace;line-height:1.35;white-space:pre;overflow:auto;margin-top:6px}
+#perf b{color:var(--accent)}
+#aimbox{font:600 12px ui-monospace,Menlo,Consolas,monospace;white-space:pre;line-height:1.35;margin-top:6px}
+#keepBox{display:none;font-size:12px}
+#keepBox .big2{font-size:15px;font-weight:800}
+#modal{position:fixed;inset:0;background:rgba(20,15,10,.82);display:none;align-items:center;justify-content:center;z-index:13;padding:12px}
 #modal .in{max-width:760px;width:100%;max-height:92vh;overflow:auto}
 #modal h2{margin:4px 0 8px}
 #modal .warn{background:#6b2a1a;border:2px solid #ffb199;border-radius:10px;padding:10px;margin:8px 0;font-weight:700}
 #rep{width:100%;height:36vh;font:12px ui-monospace,Menlo,Consolas,monospace;background:#1b140d;color:#ffeccc;border:1px solid var(--line);border-radius:8px;-webkit-user-select:text;user-select:text}
-#hint{position:fixed;left:50%;bottom:150px;transform:translateX(-50%);font-size:13px;opacity:.9;pointer-events:none;text-shadow:0 1px 4px #000;text-align:center}
 #fatal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:#2b2218;z-index:20;padding:20px;text-align:center;font-size:16px}
-#keepBox{display:none;margin-top:6px;font-size:12px}
-#keepBox .big2{font-size:15px;font-weight:800}
-#keepEnd{position:fixed;left:50%;top:22%;transform:translateX(-50%);display:none;text-align:center;z-index:8;max-width:min(420px,88vw);padding:14px 16px;pointer-events:auto}
+#keepEnd{position:fixed;left:50%;top:max(150px,24%);transform:translateX(-50%);display:none;text-align:center;z-index:8;max-width:min(420px,88vw);padding:14px 16px;pointer-events:auto}
 #keepEnd h2{margin:0 0 6px;font-size:22px}
 #keepEnd .stars{font-size:34px;letter-spacing:4px;color:var(--accent)}
-#ammoNote{position:fixed;left:8px;bottom:112px;max-width:min(300px,44vw);font-size:12px;display:none;pointer-events:none}
-#ammo .am .tag{display:none;font-weight:800;font-size:11px}
-body.keepmode #ammo .am .tag{display:block}
-@media (max-width:700px){#title div{display:none}#side{width:min(250px,48vw);font-size:12px}#perf{font-size:11px;min-width:170px}}
+@media (max-height:560px){#ammo .am{width:60px}#ammo .am .orb{width:46px;height:46px}#ammo .am .orb svg{width:28px;height:28px}#fire{width:76px;height:76px;font-size:18px}#bigrod,#burst{width:48px;height:48px;font-size:11px}#hint{display:none}#score .pill b{font-size:16px}#score .pill{min-width:70px}}
+@media (max-width:600px){.seg .btn{min-width:70px;padding:8px}}
 </style>
 </head><body>
 <canvas id="c"></canvas>
-<div id="perf" class="card"></div>
-<div id="title" class="card"><h1>Rubble</h1><div id="siteNote">physics on the island ground</div></div>
-<div id="status"></div>
-<div class="card" id="quickbox"><div style="font-weight:700;margin-bottom:4px">Quick aim</div><div class="row"><button class="btn" id="qGate">Gate</button><button class="btn" id="qTower">Tower</button><button class="btn" id="qKeep">Keep</button></div><div class="row" style="margin-top:6px"><button class="btn" id="fly">Fly round: off</button></div></div>
-<div id="score" class="card"></div>
-<div id="hint">Tap or click the ground to aim. Hold Fire. Drag to turn the camera, wheel or pinch to zoom.</div>
-<div id="side">
-  <div class="card"><div class="row" id="modeRow"><button class="btn on" id="modeTopple">Topple the bell</button><button class="btn" id="modeKeep">Keep the bell</button></div>
-    <div id="keepBox"><div>Knock out as much of the base as you can and leave the bell standing on its perch. Shots: <span id="shotsV"></span><input id="shots" type="range" min="6" max="40" step="1" value="12" style="width:100%;min-height:28px"></div>
-      <div class="row" style="margin-top:6px"><button class="btn" id="keepDone">Done</button></div><div id="keepBest" style="margin-top:4px;opacity:.85"></div></div>
-    <label style="margin-top:6px">Fort pieces: <span id="piecesV"></span><input id="pieces" type="range" min="0" max="15" step="1" value="8"></label>
-    <div class="row" style="margin-top:6px"><select id="shape"><option value="grand">Grand fort</option><option value="castle">Castle</option><option value="tower">Tower</option><option value="wall">Wall</option></select><button class="btn" id="rubbleSw">Rubble field: off</button></div>
-    <div class="row" style="margin-top:6px"><button class="btn big" id="buildFort" style="font-size:16px;min-width:0;flex:1">Build fort</button></div>
-    <div class="row" style="margin-top:6px"><select id="tier"><option value="ipad">iPad preset</option><option value="radeon">Radeon preset</option></select></div>
-    <div id="fortInfo" style="margin-top:6px;opacity:.85;font-size:12px"></div>
-    <div id="tested" style="margin-top:6px;opacity:.8;font-size:11px">Tested up to: reading the measured numbers...</div></div>
-  <div class="card"><label>Ground
-    <select id="ground"><option value="-1">Island map (sand, wet sand, shingle, turf, rock)</option><option value="0">All dry sand</option><option value="1">All wet sand</option><option value="2">All shingle</option><option value="3">All turf</option><option value="4">All rock</option></select></label>
-    <label style="margin-top:6px">Tide: <span id="tideV"></span><input id="tide" type="range" min="-110" max="110" value="0"></label>
-    <div class="row" style="margin-top:4px"><button class="btn" id="autoTide">Auto tide: off</button><button class="btn" id="shadows">Shadows: on</button></div>
-    <div class="row" style="margin-top:4px"><button class="btn" id="look">Look: Pretty</button></div></div>
-  <div class="card"><div class="row"><button class="btn" id="replay">Replay slow</button><button class="btn" id="bench">Bench...</button></div>
-    <div style="margin-top:6px;opacity:.85">Slow motion is only the replay: it rebuilds the same scene and plays your shots again at one quarter speed.</div></div>
-  <div class="card"><div class="row"><button class="btn" id="boltHead">Bolt head: pointed</button><button class="btn on" id="trails">Trails: on</button></div><div style="margin-top:4px;opacity:.85;font-size:12px">The Bolt flies point first. The head shape is only for looks.</div></div>
-  <div class="card"><div id="pbox"><div style="font-weight:700;font-size:12px">Power</div><div id="pbar" style="height:12px;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#2a2016"><i style="display:block;height:100%;width:100%;background:linear-gradient(90deg,#8fc46a,#e8a33d,#d9552b)"></i></div></div>
-    <div class="row" style="margin-top:6px"><button class="btn on" id="aimHelp">Aim line: on</button></div></div>
-  <div class="card" id="aimbox"></div>
+<div id="flash"></div>
+<div id="hudTop">
+  <div id="topbar">
+    <button id="gear" aria-label="Settings" aria-expanded="false" title="Settings"><svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="11.5" fill="none" stroke="currentColor" stroke-width="5" stroke-dasharray="4.3 4.3"/><circle cx="20" cy="20" r="9" fill="currentColor"/><circle cx="20" cy="20" r="3.8" fill="#2b2218"/></svg></button>
+    <div class="seg" id="modeRow"><button class="btn on" id="modeTopple">Topple the bell</button><button class="btn" id="modeKeep">Keep the bell</button></div>
+    <button class="btn" id="rebuild">Rebuild</button>
+    <button class="btn" id="keepDone">Done</button>
+    <button class="btn gold" id="hitReplay">Replay the hit</button>
+  </div>
+  <div id="score" class="card"></div>
 </div>
-<div id="ammo"></div>
-<div id="ammoNote" class="card"></div>
+<div id="status"></div>
 <div id="keepEnd" class="card"></div>
+<div id="dock">
+  <div id="dockTop">
+    <div id="aimrow"><button class="btn" id="qGate">Gate</button><button class="btn" id="qTower">Tower</button><button class="btn" id="qKeep">Keep</button></div>
+    <div id="powerBox" class="card">Power<input id="power" type="range" min="20" max="100" value="100" aria-label="Power"></div>
+  </div>
+  <div id="hint">Tap the ground to aim. Hold FIRE. Drag to turn the camera, wheel or pinch to zoom.</div>
+  <div id="ammoNote" class="card"></div>
+  <div id="bottom"><div id="ammo"></div><div id="fireCol"></div></div>
+</div>
+<div id="scrim"></div>
+<aside id="drawer" aria-label="Settings" aria-hidden="true">
+  <div class="head"><div><h1>Settings</h1><div id="siteNote" style="font-size:11px;opacity:.8">physics on the island ground</div></div><button class="btn" id="drawerClose">Close</button></div>
+  <h3>Look and juice</h3>
+  <div class="row"><button class="btn" id="look">Look: Pretty</button><button class="btn on" id="juice">Juice: on</button><button class="btn on" id="shake">Camera shake: on</button><button class="btn on" id="trails">Trails: on</button></div>
+  <div class="row"><button class="btn" id="boltHead">Bolt head: pointed</button><button class="btn" id="shadows">Shadows: on</button></div>
+  <div class="note">Juice: dust, brick chips, bell rings, confetti, score pop-ups and a flash when you win. It never touches the physics. The Bolt flies point first; the head shape is only for looks.</div>
+  <h3>Fort</h3>
+  <label>Fort pieces: <span id="piecesV"></span><input id="pieces" type="range" min="0" max="15" step="1" value="8"></label>
+  <div class="row"><select id="shape"><option value="grand">Grand fort</option><option value="castle">Castle</option><option value="tower">Tower</option><option value="wall">Wall</option></select></div>
+  <div class="row"><button class="btn" id="rubbleSw">Rubble field: off</button><select id="tier"><option value="ipad">iPad preset</option><option value="radeon">Radeon preset</option></select></div>
+  <div class="row"><button class="btn big" id="buildFort" style="font-size:16px;min-width:0;flex:1">Build fort</button></div>
+  <div id="keepBox"><h3>Keep the bell</h3><div>Knock out as much of the base as you can and leave the bell standing on its perch. Shots: <span id="shotsV"></span><input id="shots" type="range" min="6" max="40" step="1" value="12" style="width:100%;min-height:44px"></div><div id="keepBest" style="margin-top:4px;opacity:.85"></div></div>
+  <div id="fortInfo" class="note"></div>
+  <h3>Ground and tide</h3>
+  <label>Ground
+    <select id="ground"><option value="-1">Island map (sand, wet sand, shingle, turf, rock)</option><option value="0">All dry sand</option><option value="1">All wet sand</option><option value="2">All shingle</option><option value="3">All turf</option><option value="4">All rock</option></select></label>
+  <label>Tide: <span id="tideV"></span><input id="tide" type="range" min="-110" max="110" value="0"></label>
+  <div class="row"><button class="btn" id="autoTide">Auto tide: off</button></div>
+  <h3>Aim and camera</h3>
+  <div class="row"><button class="btn" id="fly">Fly round: off</button><button class="btn on" id="aimHelp">Aim line: on</button></div>
+  <div id="pbox"><div style="font-weight:700;font-size:12px;margin-top:8px">Power</div><div id="pbar" style="height:12px;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#2a2016"><i style="display:block;height:100%;width:100%;background:linear-gradient(90deg,#8fc46a,#e8a33d,#d9552b)"></i></div></div>
+  <div id="nudgeRow" class="row"></div>
+  <div id="aimbox" class="card"></div>
+  <h3>Replay and bench</h3>
+  <div class="row"><button class="btn" id="replay">Replay slow</button><button class="btn" id="bench">Bench...</button></div>
+  <div class="note">Slow motion is only the replay: it rebuilds the same scene and plays your shots again at one quarter speed.</div>
+  <h3>Numbers</h3>
+  <div id="perf" class="card"></div>
+  <div id="tested" class="note">Tested up to: reading the measured numbers...</div>
+</aside>
 <div id="modal"><div class="in card">
   <h2>Bench: find the knee</h2>
   <div class="warn" id="warnBox">This test adds more and more pieces until the page runs slowly. It can freeze or crash this tab for a few seconds, and on a tablet it can get warm. Save your work in other tabs first. It stops by itself when the frame time stays over 100 ms for 5 frames in a row. Nothing is sent anywhere.</div>
@@ -393,11 +458,20 @@ function fortUI() {
     '. Settled in ' + f.settleSteps + ' steps, drift ' + (f.settleMax * 100).toFixed(1) + ' cm' + (ses.settleNote ? '. ' + ses.settleNote : '') + '.';
 }
 var scoreT = 0;
+/* the score strip: four pills (knocked out percent, bells down, shots, stars or standing). It only shows numbers the sim already has. */
+var stripPct = 0;
+function stripUI(pct, bd, nb, down, l3, v3, l4, v4, stars) {
+  var el = $('score');
+  el.style.display = 'flex'; stripPct = pct;
+  el.innerHTML = '<div class="pill"><small>Knocked out</small><b>' + pct.toFixed(0) + '%</b></div>' +
+    '<div class="pill' + (down ? ' down' : '') + '"><small>' + (down ? (nb > 1 ? 'Every bell is down!' : 'Bell down!') : 'Bells down') + '</small><b>' + bd + ' of ' + nb + '</b></div>' +
+    '<div class="pill"><small>' + l3 + '</small><b>' + v3 + '</b></div>' +
+    '<div class="pill"><small>' + l4 + '</small><b' + (stars ? ' class="stars"' : '') + '>' + v4 + '</b></div>';
+}
 /* the Keep HUD and the end of the round. The round is decided by sim_terrain's keepState (the same one the Node test uses); the page only shows it and keeps the first answer. */
 function keepUI(sc) {
   var el = $('score'), st = ses.replay ? null : ses.keepState(shotsMax, keepDone), left = Math.max(0, shotsMax - sc.shots), pct = sc.keep.percent;
-  el.style.display = 'block'; el.classList.toggle('down', sc.bellDown);
-  el.innerHTML = 'Knocked out: <b>' + pct.toFixed(0) + ' percent</b> &nbsp; ' + starText(SIM.keepStars(pct, !sc.bellDown)) + '<br>' + (sc.bellDown ? '<span style="font-size:20px">Bell down</span>' : 'Bell: <b>standing</b>') + ' &nbsp; Shots left: <b>' + left + '</b> of ' + shotsMax;
+  stripUI(pct, sc.bellsDown, sc.bells, sc.bellDown, 'Shots left', left + ' of ' + shotsMax, 'Stars', starText(SIM.keepStars(pct, !sc.bellDown)), true);
   if (st && st.over && !roundOver && !loading && !ses.settling) endRound(st);
 }
 function endRound(st) {
@@ -419,10 +493,7 @@ function scoreUI(force) {
   var sc = ses.score(), el = $('score');
   if (!sc) { el.style.display = 'none'; return; }
   if (sc.keep) { keepUI(sc); return; }
-  el.style.display = 'block'; el.classList.toggle('down', sc.bellDown);
-  el.innerHTML = (sc.bells > 1 ? (sc.bellDown ? '<span style="font-size:22px">Every bell is down!</span><br>' : '') + 'Bells down: <b>' + sc.bellsDown + '</b> of ' + sc.bells + ' (a bell is down at 32 cm)<br>' :
-    sc.bellDown ? '<span style="font-size:22px">Bell down!</span> (fell ' + (sc.bellDrop * 100).toFixed(0) + ' cm)<br>' : 'Bell: ' + (ses.settling ? 'settling' : 'still up') + ' (down at 32 cm)<br>') +
-    'pieces moved <b>' + sc.moved + '</b> &nbsp; standing <b>' + sc.standing + '</b> &nbsp; shots <b>' + sc.shots + '</b>';
+  stripUI(sc.count ? 100 * sc.moved / sc.count : 0, sc.bellsDown, sc.bells, sc.bellDown, 'Shots', String(sc.shots), 'Standing', String(sc.standing), false);
 }
 function status(t, ms) { var s = $('status'); s.textContent = t; s.style.display = t ? 'block' : 'none'; if (ms) setTimeout(function () { if (s.textContent === t) s.style.display = 'none'; }, ms); }
 
@@ -462,21 +533,30 @@ function nudge(dy, de) { aim.target = null; aim.yaw += dy; aim.elev = Math.max(-
 
 /* ---------- ammo buttons, firing ---------- */
 var firing = false, fireCool = 0, burstLeft = 0, burstGap = 0;
+/* the round ammo buttons: a drawn icon (SVG, no images) in a round button, the name under it */
+var AMMO_ICON = {
+  acorn: '<path d="M20 36c-6-3-9-9-9-15h18c0 6-3 12-9 15z" fill="#d49a4c"/><path d="M9 21c0-7 5-11 11-11s11 4 11 11z" fill="#7a5530"/><path d="M20 10V5" stroke="#7a5530" stroke-width="3" stroke-linecap="round"/><path d="M13 16h14M12 19h16" stroke="#9b6a2f" stroke-width="1.4"/>',
+  marble: '<circle cx="20" cy="20" r="14" fill="#7fb6e8" stroke="#e9f4ff" stroke-width="1.5"/><path d="M9 22c6-6 9 4 15-2s5 3 7 1" stroke="#fff" stroke-width="2" fill="none" opacity=".7"/><ellipse cx="14" cy="13" rx="4" ry="2.5" fill="#fff" opacity=".8" transform="rotate(-35 14 13)"/>',
+  coconut: '<circle cx="20" cy="20" r="14" fill="#8a6038"/><circle cx="14.5" cy="17" r="2.3" fill="#2b1a0e"/><circle cx="25.5" cy="17" r="2.3" fill="#2b1a0e"/><circle cx="20" cy="25" r="2.3" fill="#2b1a0e"/><path d="M10 12c3-4 8-6 12-5" stroke="#b58a5a" stroke-width="2" fill="none" stroke-linecap="round"/>',
+  lid: '<circle cx="20" cy="20" r="14.5" fill="#c9ccd0" stroke="#8d9296" stroke-width="2"/><circle cx="20" cy="20" r="9.5" fill="none" stroke="#9aa0a5" stroke-width="2"/><circle cx="20" cy="20" r="2.6" fill="#8d9296"/><path d="M10 12a12 12 0 0 1 8-5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" opacity=".8"/>',
+  float: '<circle cx="20" cy="20" r="14" fill="#6fd1b0" stroke="#d6fff0" stroke-width="1.5"/><path d="M8 14l24 12M8 26l24-12M20 6v28M6 20h28" stroke="#b9a37a" stroke-width="1.4" opacity=".75"/><ellipse cx="14" cy="13" rx="4" ry="2.4" fill="#fff" opacity=".8" transform="rotate(-35 14 13)"/>',
+  bottle: '<path d="M17 6h6v7c4 2 6 5 6 9v11a3 3 0 0 1-3 3H14a3 3 0 0 1-3-3V22c0-4 2-7 6-9z" fill="#4f9d78" stroke="#d3f2e2" stroke-width="1.3"/><rect x="17" y="3" width="6" height="4" rx="1.5" fill="#c9954c"/><path d="M15 22v9" stroke="#fff" stroke-width="2" opacity=".6" stroke-linecap="round"/>',
+  rod: '<g transform="rotate(40 20 20)"><rect x="17.5" y="11" width="5" height="21" rx="1" fill="#9aa1a8" stroke="#dfe3e6" stroke-width="1"/><path d="M20 2l5.5 10h-11z" fill="#e8ecef"/><path d="M17.5 32l-4 5h6.5zM22.5 32l4 5H20z" fill="#c4562b"/></g>'
+};
 (function () {
-  var box = $('ammo');
+  var box = $('ammo'), fc = $('fireCol');
   SIM.AMMO.forEach(function (k) {
-    var K = KINDS[k], b = document.createElement('button'); b.className = 'btn am'; b.dataset.k = k; b.innerHTML = '<i style="background:#' + ('000000' + K.col.toString(16)).slice(-6) + '"></i>' + K.name.replace(/ \(.*\)/, '') + '<br><span style="opacity:.75">' + K.rate + '/s</span><span class="tag">' + SIM.ammoStrength(k).label + '</span>';
+    var K = KINDS[k], b = document.createElement('button'); b.className = 'am'; b.dataset.k = k; b.setAttribute('aria-label', K.name.replace(/ \(.*\)/, ''));
+    b.innerHTML = '<span class="orb"><svg viewBox="0 0 40 40" aria-hidden="true">' + (AMMO_ICON[k] || '') + '</svg></span><span class="lbl">' + K.name.replace(/ \(.*\)/, '').replace(/ \(rapid\)/, '') + '</span><span class="tag">' + SIM.ammoStrength(k).label + '</span>';
     b.addEventListener('click', function () { ammoKind = k; syncAmmo(); aimUpdate(); }); box.appendChild(b);
   });
-  var f = document.createElement('button'); f.className = 'btn big'; f.id = 'fire'; f.textContent = 'FIRE'; box.appendChild(f);
-  var br = document.createElement('button'); br.className = 'btn'; br.id = 'bigrod'; br.textContent = 'Big bolt'; br.style.cssText = 'min-height:48px;font-size:16px'; box.appendChild(br);
-  var bu = document.createElement('button'); bu.className = 'btn'; bu.id = 'burst'; bu.textContent = 'Burst'; bu.style.cssText = 'min-height:48px;font-size:16px'; box.appendChild(bu);
-  var rb = document.createElement('button'); rb.className = 'btn'; rb.id = 'rebuild'; rb.textContent = 'Rebuild'; rb.style.cssText = 'min-height:48px;font-size:16px'; box.appendChild(rb);
+  var br = document.createElement('button'); br.className = 'btn rnd'; br.id = 'bigrod'; br.textContent = 'Big bolt'; fc.appendChild(br);
+  var bu = document.createElement('button'); bu.className = 'btn rnd'; bu.id = 'burst'; bu.textContent = 'Burst'; fc.appendChild(bu);
+  var f = document.createElement('button'); f.className = 'btn big rnd'; f.id = 'fire'; f.textContent = 'FIRE'; fc.appendChild(f);
   br.addEventListener('click', function () { ammoKind = 'rod'; syncAmmo(); aimUpdate(); fireNow(); });
   bu.addEventListener('click', function () { if (ammoKind === 'rod') burstLeft = 3; else burstLeft = Math.max(4, Math.min(8, Math.round(KINDS[ammoKind].rate * 2))); burstGap = 0; });
-  rb.addEventListener('click', function () { if (loading || !ses || ses.replay) return; build(pieces, true); });
-  var pw = document.createElement('label'); pw.className = 'card'; pw.style.cssText = 'min-width:120px;font-size:12px;font-weight:700'; pw.innerHTML = 'Power<input id="power" type="range" min="20" max="100" value="100" style="width:100%">'; box.appendChild(pw);
-  var nb = document.createElement('div'); nb.className = 'row'; [['◀', -0.01, 0], ['▶', 0.01, 0], ['▲', 0, 0.01], ['▼', 0, -0.01]].forEach(function (a) { var b = document.createElement('button'); b.className = 'btn'; b.textContent = a[0]; b.style.minWidth = '44px'; b.addEventListener('click', function () { nudge(a[1] * 3, a[2] * 3); }); nb.appendChild(b); }); box.appendChild(nb);
+  $('rebuild').addEventListener('click', function () { if (loading || !ses || ses.replay) return; build(pieces, true); });
+  var nb = $('nudgeRow'); [['◀', -0.01, 0], ['▶', 0.01, 0], ['▲', 0, 0.01], ['▼', 0, -0.01]].forEach(function (a) { var b = document.createElement('button'); b.className = 'btn'; b.textContent = a[0]; b.setAttribute('aria-label', 'Nudge the aim'); b.style.minWidth = '48px'; b.addEventListener('click', function () { nudge(a[1] * 3, a[2] * 3); }); nb.appendChild(b); });
   f.addEventListener('pointerdown', function (e) { e.preventDefault(); firing = true; fireCool = 0; }); addEventListener('pointerup', function () { firing = false; }); addEventListener('pointercancel', function () { firing = false; });
   $('power').addEventListener('input', function () { power = this.value / 100; aimUpdate(); });
   addEventListener('keydown', function (e) { if (e.code === 'Space') { firing = true; e.preventDefault(); } if (e.code === 'ArrowLeft') nudge(-0.01, 0); if (e.code === 'ArrowRight') nudge(0.01, 0); if (e.code === 'ArrowUp') nudge(0, 0.01); if (e.code === 'ArrowDown') nudge(0, -0.01); });
@@ -490,7 +570,7 @@ function shotsFired() { var c = 0, i; for (i = 0; i < ses.events.length; i++) if
 function fireNow() {
   if (!ses || ses.replay || loading || ses.settling) return;
   if (keepMode) { if (roundOver || keepDone) return; if (shotsFired() >= shotsMax) { status('No shots left: tap Done to see how you did.', 1500); return; } }
-  ses.fire(ammoKind, aim.yaw, aim.elev, power); armAnim = 1; }
+  ses.fire(ammoKind, aim.yaw, aim.elev, power); armAnim = 1; $('hint').style.display = 'none'; }
 
 /* ---------- camera ---------- */
 var orb = { az: 0.0, el: 0.55, dist: 19, tx: 0, ty: 0.7, tz: 1.5 };
@@ -516,6 +596,13 @@ addEventListener('resize', function () { renderer.setSize(innerWidth, innerHeigh
 cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix();
 
 /* ---------- controls ---------- */
+/* ---------- the settings drawer: closed by default while you play ---------- */
+function drawerOpen(on) { var d = $('drawer'); d.classList.toggle('open', on); d.setAttribute('aria-hidden', on ? 'false' : 'true'); $('scrim').classList.toggle('open', on); $('gear').setAttribute('aria-expanded', on ? 'true' : 'false'); if (on) d.scrollTop = 0; }
+$('gear').addEventListener('click', function () { drawerOpen(!$('drawer').classList.contains('open')); });
+$('drawerClose').addEventListener('click', function () { drawerOpen(false); }); $('scrim').addEventListener('click', function () { drawerOpen(false); });
+addEventListener('keydown', function (e) { if (e.code === 'Escape') drawerOpen(false); });
+$('drawer').addEventListener('wheel', function (e) { e.stopPropagation(); }, { passive: true });
+if (Q.get('settings') === '1') drawerOpen(true);
 function setPiecesLabel() { var n = piecesFromSlider(+$('pieces').value); $('piecesV').textContent = (keepMode && n < RFORT.KEEPMIN ? RFORT.KEEPMIN + ' (Keep the bell needs room for the perch: raised from ' + n + ')' : n) + (n > 4000 ? ' (past the 4,000 the iPad ran fine: untested)' : '') + (shape === 'grand' && n < RFORT.grandMin() ? ' (too few for a Grand fort: a castle is built)' : ''); $('buildFort').classList.toggle('on', !!ses && keyNow() !== builtKey); }
 $('pieces').addEventListener('input', setPiecesLabel); $('pieces').addEventListener('change', setPiecesLabel);
 function setMode(k) {

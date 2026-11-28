@@ -1,0 +1,221 @@
+{
+ "when": "2026-11-28T09:52:27.881Z",
+ "results": [
+  {
+   "name": "iPad 834x1062 touch, Topple: the settings drawer is closed by default and none of its controls show during play",
+   "ok": true,
+   "detail": "{\"open\":false,\"visibleInside\":0,\"aria\":\"true\"}"
+  },
+  {
+   "name": "iPad 834x1062 touch, Topple: the play HUD shows the gear, mode switch, Rebuild, seven round ammo buttons, FIRE, Big bolt, Burst and Power",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "iPad 834x1062 touch, Topple (drawer closed): 18 controls, all on screen, 44 px or more, no overlaps",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "iPad 834x1062 touch, Topple: the score strip shows knocked out %, bells down x of n, shots and standing (Knocked out 0% Bells down 0 of 1 Shots 0 Standing 1000)",
+   "ok": true,
+   "detail": "Knocked out 0% Bells down 0 of 1 Shots 0 Standing 1000"
+  },
+  {
+   "name": "iPad 834x1062 touch, Topple: the open drawer holds pieces, shape, tide, ground, tier, look, juice, bench and the rest",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "iPad 834x1062 touch, Topple: 23 controls in the open drawer: reachable, 44 px or more, no overlaps (drawer 400 px wide)",
+   "ok": true,
+   "detail": "{\"n\":23,\"bad\":[],\"small\":[],\"ov\":[],\"w\":400}"
+  },
+  {
+   "name": "iPad 834x1062 touch, Topple: Close puts the drawer away again",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "iPad 834x1062 touch, Keep: the settings drawer is closed by default and none of its controls show during play",
+   "ok": true,
+   "detail": "{\"open\":false,\"visibleInside\":0,\"aria\":\"true\"}"
+  },
+  {
+   "name": "iPad 834x1062 touch, Keep: the play HUD shows the gear, mode switch, Rebuild, Done, seven round ammo buttons, FIRE, Big bolt, Burst and Power",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "iPad 834x1062 touch, Keep (drawer closed): 17 controls, all on screen, 44 px or more, no overlaps",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "iPad 834x1062 touch, Keep: the score strip shows knocked out %, bells down x of n, shots and stars (Knocked out 0% Bells down 0 of 1 Shots left 6 of 6 Stars ★☆☆)",
+   "ok": true,
+   "detail": "Knocked out 0% Bells down 0 of 1 Shots left 6 of 6 Stars ★☆☆"
+  },
+  {
+   "name": "iPad 834x1062 touch, Keep: the open drawer holds pieces, shape, tide, ground, tier, look, juice, bench and the rest",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "iPad 834x1062 touch, Keep: 24 controls in the open drawer: reachable, 44 px or more, no overlaps (drawer 400 px wide)",
+   "ok": true,
+   "detail": "{\"n\":24,\"bad\":[],\"small\":[],\"ov\":[],\"w\":400}"
+  },
+  {
+   "name": "iPad 834x1062 touch, Keep: Close puts the drawer away again",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "desktop 1280x720, Topple: the settings drawer is closed by default and none of its controls show during play",
+   "ok": true,
+   "detail": "{\"open\":false,\"visibleInside\":0,\"aria\":\"true\"}"
+  },
+  {
+   "name": "desktop 1280x720, Topple: the play HUD shows the gear, mode switch, Rebuild, seven round ammo buttons, FIRE, Big bolt, Burst and Power",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "desktop 1280x720, Topple (drawer closed): 18 controls, all on screen, 44 px or more, no overlaps",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "desktop 1280x720, Topple: the score strip shows knocked out %, bells down x of n, shots and standing (Knocked out 0% Bells down 0 of 1 Shots 0 Standing 1000)",
+   "ok": true,
+   "detail": "Knocked out 0% Bells down 0 of 1 Shots 0 Standing 1000"
+  },
+  {
+   "name": "desktop 1280x720, Topple: the open drawer holds pieces, shape, tide, ground, tier, look, juice, bench and the rest",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "desktop 1280x720, Topple: 23 controls in the open drawer: reachable, 44 px or more, no overlaps (drawer 400 px wide)",
+   "ok": true,
+   "detail": "{\"n\":23,\"bad\":[],\"small\":[],\"ov\":[],\"w\":400}"
+  },
+  {
+   "name": "desktop 1280x720, Topple: Close puts the drawer away again",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "desktop 1280x720, Keep: the settings drawer is closed by default and none of its controls show during play",
+   "ok": true,
+   "detail": "{\"open\":false,\"visibleInside\":0,\"aria\":\"true\"}"
+  },
+  {
+   "name": "desktop 1280x720, Keep: the play HUD shows the gear, mode switch, Rebuild, Done, seven round ammo buttons, FIRE, Big bolt, Burst and Power",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "desktop 1280x720, Keep (drawer closed): 17 controls, all on screen, 44 px or more, no overlaps",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "desktop 1280x720, Keep: the score strip shows knocked out %, bells down x of n, shots and stars (Knocked out 0% Bells down 0 of 1 Shots left 6 of 6 Stars ★☆☆)",
+   "ok": true,
+   "detail": "Knocked out 0% Bells down 0 of 1 Shots left 6 of 6 Stars ★☆☆"
+  },
+  {
+   "name": "desktop 1280x720, Keep: the open drawer holds pieces, shape, tide, ground, tier, look, juice, bench and the rest",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "desktop 1280x720, Keep: 24 controls in the open drawer: reachable, 44 px or more, no overlaps (drawer 400 px wide)",
+   "ok": true,
+   "detail": "{\"n\":24,\"bad\":[],\"small\":[],\"ov\":[],\"w\":400}"
+  },
+  {
+   "name": "desktop 1280x720, Keep: Close puts the drawer away again",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "small 700x460, Topple: the settings drawer is closed by default and none of its controls show during play",
+   "ok": true,
+   "detail": "{\"open\":false,\"visibleInside\":0,\"aria\":\"true\"}"
+  },
+  {
+   "name": "small 700x460, Topple: the play HUD shows the gear, mode switch, Rebuild, seven round ammo buttons, FIRE, Big bolt, Burst and Power",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "small 700x460, Topple (drawer closed): 18 controls, all on screen, 44 px or more, no overlaps",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "small 700x460, Topple: the score strip shows knocked out %, bells down x of n, shots and standing (Knocked out 0% Bells down 0 of 1 Shots 0 Standing 1000)",
+   "ok": true,
+   "detail": "Knocked out 0% Bells down 0 of 1 Shots 0 Standing 1000"
+  },
+  {
+   "name": "small 700x460, Topple: the open drawer holds pieces, shape, tide, ground, tier, look, juice, bench and the rest",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "small 700x460, Topple: 23 controls in the open drawer: reachable, 44 px or more, no overlaps (drawer 400 px wide)",
+   "ok": true,
+   "detail": "{\"n\":23,\"bad\":[],\"small\":[],\"ov\":[],\"w\":400}"
+  },
+  {
+   "name": "small 700x460, Topple: Close puts the drawer away again",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "small 700x460, Keep: the settings drawer is closed by default and none of its controls show during play",
+   "ok": true,
+   "detail": "{\"open\":false,\"visibleInside\":0,\"aria\":\"true\"}"
+  },
+  {
+   "name": "small 700x460, Keep: the play HUD shows the gear, mode switch, Rebuild, Done, seven round ammo buttons, FIRE, Big bolt, Burst and Power",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "small 700x460, Keep (drawer closed): 17 controls, all on screen, 44 px or more, no overlaps",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "small 700x460, Keep: the score strip shows knocked out %, bells down x of n, shots and stars (Knocked out 0% Bells down 0 of 1 Shots left 6 of 6 Stars ★☆☆)",
+   "ok": true,
+   "detail": "Knocked out 0% Bells down 0 of 1 Shots left 6 of 6 Stars ★☆☆"
+  },
+  {
+   "name": "small 700x460, Keep: the open drawer holds pieces, shape, tide, ground, tier, look, juice, bench and the rest",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "small 700x460, Keep: 24 controls in the open drawer: reachable, 44 px or more, no overlaps (drawer 400 px wide)",
+   "ok": true,
+   "detail": "{\"n\":24,\"bad\":[],\"small\":[],\"ov\":[],\"w\":400}"
+  },
+  {
+   "name": "small 700x460, Keep: Close puts the drawer away again",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "zero console errors and zero page errors (HUD test)",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "errors": []
+}
