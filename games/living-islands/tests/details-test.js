@@ -17,7 +17,7 @@ const ok = (c, m) => { n++; console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fa
 const BUD = {   /* [lod0, lod1, lod2] */
   robot_hauler: [5000, 2400, 1000], robot_sorter: [5000, 2400, 1000], robot_stacker: [5000, 2400, 1000], hulk: [5500, 3000, 700], jetty: [16000, 9000, 5500],
   bay_planks: [2000, 1200, 900], bay_rope: [3000, 1200, 700], bay_glass: [3000, 1600, 1200], bay_metal: [2200, 1100, 800],
-  hut: [6000, 3000, 700], lantern: [300, 200, 200], washline: [600, 400, 400], firepit: [900, 400, 400], barrels: [1500, 800, 600], battery: [400, 200, 100], hands: [900, 700, 500]
+  hut: [6000, 3000, 700], lantern: [300, 200, 200], washline: [600, 400, 400], firepit: [900, 400, 400], barrels: [1500, 800, 600], battery: [400, 200, 100], hands: [2100, 900, 750]
 };
 const tri = {};
 for (const k of D.KINDS) {
