@@ -47,6 +47,7 @@ canvas{display:block;width:100%;height:100%}
   <input id="scrub" type="range" min="0" max="90" step="0.01" value="0">
   <span id="tm">0.00 / 90.00</span>
   <select id="spd"><option>0.25</option><option>0.5</option><option selected>1</option><option>2</option><option>4</option></select>
+  <button id="bSound" title="Turn the sound on (browsers need a tap)">Sound on</button><button id="bMute" class="hide" title="Mute (M)">Mute</button><input id="mus" class="hide" type="range" min="0" max="0.6" step="0.01" value="0.2" title="Music volume" style="width:70px">
   <button id="bDbg" title="Debug camera (D): drag to look, W A S D move, Q E down up, shift faster">Debug camera</button>
   <button id="bCap" title="Captions (C)">Captions</button>
   <select id="tierSel"><option value="ipad">iPad tier</option><option value="desktop">Desktop tier</option><option value="radeon">Radeon tier</option><option value="max">MAX tier</option></select>
@@ -59,6 +60,9 @@ canvas{display:block;width:100%;height:100%}
 <script src="sea_proto/salvage_world.js"></script>
 <script src="details.js"></script>
 <script src="opening.js"></script>
+<script src="audio.js"></script>
+<script src="audio_song.js"></script>
+<script src="opening_sound.js"></script>
 <script>
 (function(){
 'use strict';
@@ -531,18 +535,23 @@ function sync(){el('bPlay').textContent=DIR.playing?'Pause':(DIR.ended?'Replay':
   const sb=el('shots');if(!sb.children.length){DIR.shots.forEach((s,i)=>{const b=document.createElement('button');b.textContent=(i+1)+'  '+(capTxt[s.id]||s.id)+'   '+s.t0+' to '+s.t1+' s   (frame '+s.frame+')';b.onclick=()=>{DIR.skipTo(i);force();};sb.appendChild(b);});}
   const si=DIR.shotAt(DIR.t);[...sb.children].forEach((b,i)=>b.classList.toggle('on',i===si));
   el('cap').style.display=capsOn?'block':'none';if(capsOn&&si>=0)el('cap').textContent=capTxt[DIR.shots[si].id]||'';}
-function force(){sync();renderAt(DIR.t,0);}
+const SND=window.LI_OPENING_SOUND.create(DIR,{audio:window.LI_AUDIO,song:window.LI_SONG,musicVolume:0.2});   /* sound track of the film (opening_sound.js); silent until the Sound on tap */
+function force(){SND.seek(DIR.t);sync();renderAt(DIR.t,0);}
 const cuesSeen=[];DIR.onCue((nm,arg,t)=>{cuesSeen.unshift(t.toFixed(1)+' s  '+nm+(arg!==undefined?' '+arg:''));if(cuesSeen.length>7)cuesSeen.pop();});
 if(UI){
   el('bPlay').onclick=()=>{if(DIR.playing)DIR.pause();else DIR.play();sync();};
   el('bSkip').onclick=()=>{DIR.skip();force();};el('bPrev').onclick=()=>{DIR.prevShot();force();};
   el('scrub').oninput=e=>{DIR.seek(parseFloat(e.target.value));force();};
   el('spd').onchange=e=>{DIR.setSpeed(parseFloat(e.target.value));};
-  el('bDbg').onclick=()=>{setDbg(!dbg);};el('bCap').onclick=()=>{capsOn=!capsOn;sync();};
+  el('bDbg').onclick=()=>{setDbg(!dbg);};
+  el('bSound').onclick=()=>{if(SND.state.on){SND.disable();el('bSound').textContent='Sound on';el('bSound').classList.remove('on');el('bMute').classList.add('hide');el('mus').classList.add('hide');}
+    else{SND.enable();el('bSound').textContent='Sound off';el('bSound').classList.add('on');el('bMute').classList.remove('hide');el('mus').classList.remove('hide');}};
+  el('bMute').onclick=()=>{const m=SND.mute(!LI_AUDIO.isMuted());el('bMute').classList.toggle('on',m);el('bMute').textContent=m?'Muted':'Mute';};
+  el('mus').oninput=e=>SND.setMusic(parseFloat(e.target.value));el('bCap').onclick=()=>{capsOn=!capsOn;sync();};
   el('tierSel').value=TC.name;el('tierSel').onchange=e=>{location.search='?'+new URLSearchParams(Object.assign(Object.fromEntries(Q),{tier:e.target.value,t:DIR.t.toFixed(2),freeze:DIR.playing?'0':'1'})).toString();};
   window.addEventListener('keydown',e=>{if(/INPUT|SELECT/.test(e.target.tagName)&&e.key!==' ')return;const k=e.key.toLowerCase();
     if(k===' '){e.preventDefault();el('bPlay').click();}else if(k===']')el('bSkip').click();else if(k==='[')el('bPrev').click();else if(k==='arrowright'&&!dbg){DIR.seek(DIR.t+1);force();}else if(k==='arrowleft'&&!dbg){DIR.seek(DIR.t-1);force();}
-    else if(k==='c'){capsOn=!capsOn;sync();}else if(k==='d'&&!pressed.d0){setDbg(!dbg);}if('wasdqe'.includes(k)&&k.length===1)pressed[k]=true;if(k==='shift')pressed.shift=true;});
+    else if(k==='c'){capsOn=!capsOn;sync();}else if(k==='m'&&SND.state.on){el('bMute').click();}else if(k==='d'&&!pressed.d0){setDbg(!dbg);}if('wasdqe'.includes(k)&&k.length===1)pressed[k]=true;if(k==='shift')pressed.shift=true;});
   window.addEventListener('keyup',e=>{const k=e.key.toLowerCase();delete pressed[k];if(k==='shift')pressed.shift=false;});
 }
 function setDbg(on){dbg=on;if(on){const p=filmCam.position;dbgPose.x=p.x;dbgPose.y=p.y;dbgPose.z=p.z;const f=new THREE.Vector3();filmCam.getWorldDirection(f);dbgPose.yaw=Math.atan2(-f.x,-f.z);dbgPose.pitch=Math.asin(f.y);}sync();}
@@ -563,7 +572,7 @@ if(Q.get('speed'))DIR.setSpeed(parseFloat(Q.get('speed')));
 if(Q.get('debug')==='1')setDbg(true);
 let last=performance.now(),frames=0,ema=16,statT=0;
 function frame(now){const dt=Math.min((now-last)/1000,.2);last=now;frames++;window.__oframes=frames;ema=ema*.93+dt*1000*.07;
-  if(!FREEZE){DIR.update(dt);}
+  if(!FREEZE){DIR.update(dt);SND.step(DIR.t,DIR.playing,DIR.speed);}
   renderAt(DIR.t,FREEZE?0:dt);
   if(UI){el('scrub').value=DIR.t;el('tm').textContent=DIR.t.toFixed(2)+' / '+DIR.duration.toFixed(2);
     if(now-statT>300){statT=now;sync();const ri=renderer.info.render;const s=lastStats.salv;
@@ -573,7 +582,7 @@ function frame(now){const dt=Math.min((now-last)/1000,.2);last=now;frames++;wind
 sync();
 if(Q.get('autoplay')==='1'&&!FREEZE){DIR.play();sync();}
 requestAnimationFrame(frame);
-window.__opening={dir:DIR,film:FILM,layout:LAYOUT,field:FIELD,clock:()=>CLOCK,state:()=>lastStats,renderAt,seek:t=>{DIR.seek(t);renderAt(t,0);},ready:true,errors:[],G,robots,STAGED,renderer,scene,camera:filmCam,tier:TC.name,info:()=>({tri:renderer.info.render.triangles,calls:renderer.info.render.calls,ms:ema})};
+window.__opening={dir:DIR,film:FILM,layout:LAYOUT,field:FIELD,clock:()=>CLOCK,state:()=>lastStats,renderAt,seek:t=>{DIR.seek(t);renderAt(t,0);},ready:true,sound:SND,errors:[],G,robots,STAGED,renderer,scene,camera:filmCam,tier:TC.name,info:()=>({tri:renderer.info.render.triangles,calls:renderer.info.render.calls,ms:ema})};
 })();
 </script>
 </body>
